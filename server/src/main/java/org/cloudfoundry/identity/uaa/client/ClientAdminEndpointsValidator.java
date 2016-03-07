@@ -15,6 +15,7 @@ package org.cloudfoundry.identity.uaa.client;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.cloudfoundry.identity.uaa.constants.OriginKeys;
+import org.cloudfoundry.identity.uaa.oauth.OauthGrant;
 import org.cloudfoundry.identity.uaa.resources.QueryableResourceManager;
 import org.cloudfoundry.identity.uaa.security.DefaultSecurityContextAccessor;
 import org.cloudfoundry.identity.uaa.security.SecurityContextAccessor;
@@ -34,33 +35,10 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
 
-import static org.cloudfoundry.identity.uaa.oauth.token.TokenConstants.GRANT_TYPE_AUTHORIZATION_CODE;
-import static org.cloudfoundry.identity.uaa.oauth.token.TokenConstants.GRANT_TYPE_CLIENT_CREDENTIALS;
-import static org.cloudfoundry.identity.uaa.oauth.token.TokenConstants.GRANT_TYPE_IMPLICIT;
-import static org.cloudfoundry.identity.uaa.oauth.token.TokenConstants.GRANT_TYPE_JWT_BEARER;
-import static org.cloudfoundry.identity.uaa.oauth.token.TokenConstants.GRANT_TYPE_PASSWORD;
-import static org.cloudfoundry.identity.uaa.oauth.token.TokenConstants.GRANT_TYPE_REFRESH_TOKEN;
-import static org.cloudfoundry.identity.uaa.oauth.token.TokenConstants.GRANT_TYPE_SAML2_BEARER;
-import static org.cloudfoundry.identity.uaa.oauth.token.TokenConstants.GRANT_TYPE_USER_TOKEN;
-
 public class ClientAdminEndpointsValidator implements InitializingBean, ClientDetailsValidator {
 
 
     private final Log logger = LogFactory.getLog(getClass());
-
-    public static final Set<String> VALID_GRANTS =
-        new HashSet<>(
-                Arrays.asList(
-                        GRANT_TYPE_IMPLICIT,
-                        GRANT_TYPE_PASSWORD,
-                        GRANT_TYPE_CLIENT_CREDENTIALS,
-                        GRANT_TYPE_AUTHORIZATION_CODE,
-                        GRANT_TYPE_REFRESH_TOKEN,
-                        GRANT_TYPE_USER_TOKEN,
-                        GRANT_TYPE_SAML2_BEARER,
-                        GRANT_TYPE_JWT_BEARER
-                )
-        );
 
     private static final Collection<String> NON_ADMIN_INVALID_GRANTS = new HashSet<>(Arrays.asList("password"));
 
@@ -121,8 +99,9 @@ public class ClientAdminEndpointsValidator implements InitializingBean, ClientDe
         Set<String> requestedGrantTypes = client.getAuthorizedGrantTypes();
         if (requestedGrantTypes.isEmpty()) {
             throw new InvalidClientDetailsException("An authorized grant type must be provided. Must be one of: "
-                            + VALID_GRANTS.toString());
+                            + OauthGrant.SUPPORTED_GRANTS.toString());
         }
+
         checkRequestedGrantTypes(requestedGrantTypes);
 
         if ((requestedGrantTypes.contains(GRANT_TYPE_AUTHORIZATION_CODE) || requestedGrantTypes.contains(GRANT_TYPE_PASSWORD))
@@ -280,9 +259,9 @@ public class ClientAdminEndpointsValidator implements InitializingBean, ClientDe
 
     public static void checkRequestedGrantTypes(Set<String> requestedGrantTypes) {
         for (String grant : requestedGrantTypes) {
-            if (!VALID_GRANTS.contains(grant)) {
+            if (!OauthGrant.SUPPORTED_GRANTS.contains(grant.toLowerCase())) {
                 throw new InvalidClientDetailsException(grant + " is not an allowed grant type. Must be one of: "
-                                + VALID_GRANTS.toString());
+                        + OauthGrant.SUPPORTED_GRANTS.toString());
             }
         }
     }

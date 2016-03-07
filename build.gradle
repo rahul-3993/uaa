@@ -35,6 +35,9 @@ buildscript {
 apply from: file('shared_versions.gradle')
 apply plugin: 'com.bmuschko.cargo'
 
+def geArtifactoryReader = System.getenv('ARTIFACTORY_READER')
+def geArtifactoryReaderPassword  = System.getenv('ARTIFACTORY_READER_PW')
+
 allprojects {
     apply plugin: 'maven'
     group = 'org.cloudfoundry.identity'
@@ -45,11 +48,19 @@ allprojects {
     configurations.provided.transitive = false
 
     repositories {
+        mavenLocal()
         mavenCentral()
         maven {
             url 'https://build.shibboleth.net/nexus/content/repositories/releases/'
         }
         maven { url 'https://repository.mulesoft.org/releases/' }
+        maven {
+            credentials {
+              username geArtifactoryReader
+              password geArtifactoryReaderPassword
+            }
+            url 'https://devcloud.swcoe.ge.com/artifactory/predix-virtual'
+        }
     }
     task sourceJar(type: Jar) {
         from sourceSets.main.allJava
