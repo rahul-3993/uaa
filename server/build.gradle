@@ -1,5 +1,8 @@
 description = 'CloudFoundry Identity Server JAR'
 
+Project identityModel = parent.subprojects.find { it.name.equals('cloudfoundry-identity-model') }
+
+
 dependencies {
 
   compile project(':cloudfoundry-identity-model')
