@@ -1,8 +1,10 @@
 package org.cloudfoundry.identity.uaa.provider.token;
 
-import java.security.interfaces.RSAPrivateKey;
+import java.util.Arrays;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Set;
 
 import org.cloudfoundry.identity.uaa.oauth.token.ClaimConstants;
 import org.cloudfoundry.identity.uaa.util.JsonUtils;
@@ -17,52 +19,39 @@ public class MockAssertionToken {
         this.signer = new RsaSigner(tokenSigningKey);
     }
 
-    /**
-     * Create a mock with D1 signer
-     */
     public MockAssertionToken() {
-        this.signer = new RsaSigner(MockKeyProvider.DEVICE1_PRIVATE_KEY);
-    }
-    
-    public MockAssertionToken(RSAPrivateKey tokenSigningKey) {
-        this.signer = new RsaSigner(tokenSigningKey);
+        this.signer = new RsaSigner(TestKeys.TOKEN_SIGNING_KEY);
     }
 
-    public String mockAssertionToken(String issuer, final String subject, final long issuedAtMillis,
-            final long validitySeconds, final String tenantId, final String audience) {
-        Object expiration = (issuedAtMillis + (validitySeconds * 1000L)) / 1000L;
-        return createAssertionToken(issuer, subject, audience, issuedAtMillis, tenantId, expiration);
+    public String mockAssertionToken(final String issuerId, final long issuedAtMillis, final int validitySeconds,
+            final String tenantId, final String audience) {
+        Set<String> audienceSet = new HashSet<>(Arrays.asList(new String[] { audience }));
+        return createAssertionToken(issuerId, issuerId, validitySeconds, audienceSet,issuedAtMillis, tenantId);
     }
 
-    public String mockInvalidExpirationAssertionToken(String issuer, final String subject,
-            final long issuedAtMillis, final String tenantId, final String audience, final Object expiration) {
-        return createAssertionToken(issuer, subject, audience, issuedAtMillis, tenantId, expiration);
-    }
-
-    private String createAssertionToken(String issuer, String subject, String audience,
-             final long issuedAtMillis, final String tenantId, final Object expiration) {
+    private String createAssertionToken(final String issuerId, final String userId,
+            final int validitySeconds, final Set<String> resourceIds,
+            final long issuedAtMillis, final String tenantId) {
 
         String content;
         try {
-            content = JsonUtils.writeValueAsString(
-                    createClaims(issuer, subject, audience, issuedAtMillis, expiration, tenantId));
+            content = JsonUtils.writeValueAsString(createClaims(issuerId, userId, resourceIds,issuedAtMillis,
+                    validitySeconds, tenantId));
         } catch (JsonUtils.JsonUtilException e) {
             throw new IllegalStateException("Cannot convert access token to JSON", e);
         }
         return JwtHelper.encode(content, this.signer).getEncoded();
     }
 
-    static Map<String, ?> createClaims(String issuer, String subject, final String audience,
-             final long issuedAtMillis, final Object expiration, final String tenantId) {
+    private static Map<String, ?> createClaims(final String issuerId,
+            final String userId, final Set<String> audience, final long issuedAtMillis,
+            final int validitySeconds, final String tenantId) {
         Map<String, Object> response = new LinkedHashMap<String, Object>();
-        response.put(ClaimConstants.ISS, issuer);
-        response.put(ClaimConstants.SUB, subject);
+        response.put(ClaimConstants.SUB, userId);
         response.put(ClaimConstants.TENANT_ID, tenantId);
-        response.put(ClaimConstants.IAT, issuedAtMillis / 1000L);
-
-        if (expiration != null) {
-            response.put(ClaimConstants.EXP, expiration);
-        }
+        response.put(ClaimConstants.IAT, issuedAtMillis / 1000);
+        response.put(ClaimConstants.EXP, (issuedAtMillis + (validitySeconds * 1000L)) / 1000);
+        response.put(ClaimConstants.ISS, issuerId);
         response.put(ClaimConstants.AUD, audience);
 
         return response;
