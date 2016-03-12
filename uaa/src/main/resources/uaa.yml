@@ -4,8 +4,8 @@
 
 device:
   assertion:
-    proxy-public-key: |
-      not-used
+    device-public-key: |
+      hello
 #spring_profiles: mysql,default,ldap
 #spring_profiles: postgresql,default
 #spring_profiles: ldap,default,hsqldb
