@@ -13,7 +13,7 @@ buildscript {
 
     repositories {
         mavenCentral()
-        jcenter()
+        //jcenter()
         maven {
             url 'https://repo.spring.io/plugins-release'
         }
@@ -37,6 +37,9 @@ apply plugin: 'com.bmuschko.cargo'
 
 def geArtifactoryReader = System.getenv('ARTIFACTORY_READER')
 def geArtifactoryReaderPassword  = System.getenv('ARTIFACTORY_READER_PW')
+def proxyHost  = System.getenv('PROXY_HOST')
+def proxyPort  = System.getenv('PROXY_PORT')
+def nonProxyHosts = 'localhost|*.localhost'
 
 allprojects {
     apply plugin: 'maven'
@@ -199,6 +202,11 @@ cargo {
             property 'metrics.perRequestMetrics', System.getProperty('metrics.perRequestMetrics', 'true')
             property 'smtp.host', 'localhost'
             property 'smtp.port', 2525
+            property 'http.proxyHost', proxyHost
+            property 'http.proxyPort', proxyPort
+            property 'https.proxyHost', proxyHost
+            property 'https.proxyPort', proxyPort
+            property 'http.nonProxyHosts', nonProxyHosts
         }
 
         installer {
