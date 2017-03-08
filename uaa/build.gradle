@@ -88,6 +88,7 @@ test {
   exclude '**/*IT.class'
   exclude '**/*Docs.class'
   systemProperty "mock.suite.test", "true"
+  systemProperty "java.io.tmpdir", "/tmp"
 }
 
 task populateVersionfile {
