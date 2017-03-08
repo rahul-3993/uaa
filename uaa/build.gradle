@@ -72,6 +72,7 @@ test {
   exclude 'org/cloudfoundry/identity/uaa/integration/*.class'
   exclude '**/*IT.class'
   systemProperty "mock.suite.test", "true"
+  systemProperty "java.io.tmpdir", "/tmp"
 }
 task customizeSlate(type: Copy) {
   from 'slate'
