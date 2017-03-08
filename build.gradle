@@ -131,11 +131,80 @@ subprojects {
         systemProperties['user.dir'] = workingDir
     }
 
+<<<<<<< HEAD
     task integrationTest(type: Test) {
         dependsOn rootProject.cargoStartLocal
 
         afterSuite { descriptor, testResult ->
             sendTestData(honeyCombEventFactory, descriptor, testResult, "after_integration_suite")
+=======
+subprojects {
+  apply plugin: 'java'
+  [compileJava, compileTestJava]*.options*.compilerArgs = ['-Xlint:none', '-nowarn']
+  sourceCompatibility = 1.8
+  targetCompatibility = 1.8
+  test {
+    jvmArgs += [ "-Xmx1024m" ]
+  }
+
+  tasks.withType(Test) {
+    systemProperties = System.properties
+    systemProperties['user.dir'] = workingDir
+  }
+
+  task integrationTest(type: Test) {
+    dependsOn rootProject.cargoStartLocal
+  }
+
+  task packageSources(type: Jar) {
+    classifier = 'sources'
+    from sourceSets.main.allSource
+  }
+
+  task generateDocs() {
+  }
+
+  javadoc {
+    logging.captureStandardError LogLevel.INFO
+    logging.captureStandardOutput LogLevel.INFO // suppress "## warnings" message
+  }
+
+  task javadocJar(type: Jar, dependsOn: javadoc) {
+    classifier 'javadoc'
+    from javadoc.destinationDir
+  }
+
+  artifacts {
+    archives packageSources
+    archives javadocJar
+  }
+  repositories {
+    maven { url "https://repo.spring.io/release" }
+    maven { url "https://repo.spring.io/milestone" }
+    maven { url "https://repo.spring.io/snapshot" }
+    maven { url "https://repo.spring.io/ext-release-local" }
+    maven { url "https://repo.maven.apache.org/maven2" }
+  }
+
+  install {
+    repositories.mavenInstaller {
+      pom.project {
+        name 'UAA'
+        description 'Cloud Foundry User Account and Authentication'
+        url 'http://github.com//cloudfoundry/uaa'
+        inceptionYear '2011'
+        licenses {
+          license {
+            name 'The Apache License, Version 2.0'
+            url 'http://www.apache.org/licenses/LICENSE-2.0.txt'
+            distribution 'repo'
+          }
+        }
+        scm {
+          connection 'scm:git:git@github.com:cloudfoundry/uaa.git'
+          developerConnection 'scm:git:git@github.com:cloudfoundry/uaa.git'
+          url 'https://github.com/cloudfoundry/uaa'
+>>>>>>> Rebase feature/jwt_grant to 3.12.0
         }
 
         afterTest { descriptor, testResult ->
