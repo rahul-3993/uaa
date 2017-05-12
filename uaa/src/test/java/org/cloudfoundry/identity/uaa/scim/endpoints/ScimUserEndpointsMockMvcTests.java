@@ -40,6 +40,7 @@ import org.cloudfoundry.identity.uaa.zone.IdentityZoneHolder;
 import org.cloudfoundry.identity.uaa.zone.IdentityZoneSwitchingFilter;
 import org.hamcrest.MatcherAssert;
 import org.json.JSONObject;
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.springframework.http.HttpStatus;
@@ -120,6 +121,11 @@ public class ScimUserEndpointsMockMvcTests extends InjectedMockContextTest {
         identityProviderProvisioning = getWebApplicationContext().getBean(JdbcIdentityProviderProvisioning.class);
         codeStore = getWebApplicationContext().getBean(ExpiringCodeStore.class);
         uaaAdminToken = testClient.getClientCredentialsOAuthAccessToken(clientId, clientSecret, "uaa.admin");
+    }
+
+    @After
+    public void clear() {
+        IdentityZoneHolder.clear();
     }
 
     private ScimUser createUser(String token) throws Exception {

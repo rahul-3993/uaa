@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import org.cloudfoundry.identity.uaa.codestore.ExpiringCode;
 import org.cloudfoundry.identity.uaa.codestore.ExpiringCodeStore;
 import org.cloudfoundry.identity.uaa.codestore.ExpiringCodeType;
+import org.cloudfoundry.identity.uaa.codestore.InMemoryExpiringCodeStore;
 import org.cloudfoundry.identity.uaa.constants.OriginKeys;
 import org.cloudfoundry.identity.uaa.mock.InjectedMockContextTest;
 import org.cloudfoundry.identity.uaa.mock.util.MockMvcUtils;
@@ -92,6 +93,7 @@ public class InvitationsEndpointMockMvcTests extends InjectedMockContextTest {
 
     @After
     public void cleanUpDomainList() throws Exception {
+        IdentityZoneHolder.clear();
         IdentityProvider<UaaIdentityProviderDefinition> uaaProvider = getWebApplicationContext().getBean(JdbcIdentityProviderProvisioning.class).retrieveByOrigin(UAA, IdentityZone.getUaa().getId());
         uaaProvider.getConfig().setEmailDomain(null);
         getWebApplicationContext().getBean(JdbcIdentityProviderProvisioning.class).update(uaaProvider);
@@ -346,6 +348,7 @@ public class InvitationsEndpointMockMvcTests extends InjectedMockContextTest {
         sendRequestWithToken(userToken, null, clientId, "example.com", "user1@"+domain);
 
         String code = getWebApplicationContext().getBean(JdbcTemplate.class).queryForObject("SELECT code FROM expiring_code_store", String.class);
+        code = new InMemoryExpiringCodeStore().extractCode(code);
         assertNotNull("Invite Code Must be Present", code);
 
         MockHttpServletRequestBuilder accept = get("/invitations/accept")
@@ -392,9 +395,9 @@ public class InvitationsEndpointMockMvcTests extends InjectedMockContextTest {
             String query = response.getNewInvites().get(i).getInviteLink().getQuery();
             assertThat(query, startsWith("code="));
             String code = query.split("=")[1];
-
             ExpiringCode expiringCode = codeStore.retrieveCode(code, IdentityZoneHolder.get().getId());
             IdentityZoneHolder.clear();
+
             assertThat(expiringCode.getExpiresAt().getTime(), is(greaterThan(System.currentTimeMillis())));
             assertThat(expiringCode.getIntent(), is(ExpiringCodeType.INVITATION.name()));
             Map<String, String> data = readValue(expiringCode.getData(), new TypeReference<Map<String, String>>() {});
