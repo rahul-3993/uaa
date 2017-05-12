@@ -28,6 +28,7 @@ import org.mockito.Mockito;
 import org.springframework.dao.DataAccessException;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.dao.EmptyResultDataAccessException;
+import org.springframework.jdbc.core.RowMapper;
 import org.springframework.security.oauth2.common.util.RandomValueStringGenerator;
 import org.springframework.test.util.ReflectionTestUtils;
 
@@ -205,7 +206,6 @@ public class ExpiringCodeStoreTests extends JdbcTestBase {
         ExpiringCode code = expiringCodeStore.generateCode("{}", new Timestamp(System.currentTimeMillis() + 60000), "Test Intent", IdentityZoneHolder.get().getId());
 
         Assert.assertEquals(1, countCodes());
-
         IdentityZoneHolder.set(MultitenancyFixture.identityZone("id","id"));
         expiringCodeStore.expireByIntent("Test Intent", IdentityZoneHolder.get().getId());
         Assert.assertEquals(1, countCodes());
@@ -242,7 +242,8 @@ public class ExpiringCodeStoreTests extends JdbcTestBase {
             jdbcTemplate.update(JdbcExpiringCodeStore.insert, "test", System.currentTimeMillis() - 1000, "{}", null, IdentityZoneHolder.get().getId());
             ((JdbcExpiringCodeStore) expiringCodeStore).cleanExpiredEntries();
             jdbcTemplate.queryForObject(JdbcExpiringCodeStore.selectAllFields,
-                            new JdbcExpiringCodeStore.JdbcExpiringCodeMapper(), "test", IdentityZoneHolder.get().getId());
+                    new JdbcExpiringCodeStore.JdbcExpiringCodeMapper(), "test", IdentityZoneHolder.get().getId());
+
         } else {
             throw new EmptyResultDataAccessException(1);
         }
