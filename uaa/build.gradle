@@ -87,6 +87,7 @@ test {
   exclude 'org/cloudfoundry/identity/uaa/integration/*.class'
   exclude '**/*IT.class'
   exclude '**/*Docs.class'
+  exclude 'org/cloudfoundry/identity/uaa/jwt/degraded/*.class'
   systemProperty "mock.suite.test", "true"
   systemProperty "java.io.tmpdir", "/tmp"
 }
@@ -131,10 +132,17 @@ generateDocs {
 }
 
 integrationTest {
+  exclude 'org/cloudfoundry/identity/uaa/jwt/degraded/*.class'
   filter {
     includeTestsMatching "org.cloudfoundry.identity.uaa.integration.*"
     includeTestsMatching "*IT"
   }
+}
+
+task degradedJwtTest(type: Test) {
+  dependsOn rootProject.cargoStartLocal
+  finalizedBy rootProject.cargoStopLocal
+  include "org/cloudfoundry/identity/uaa/jwt/degraded/*.class"
 }
 
 war {

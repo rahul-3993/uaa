@@ -229,6 +229,12 @@ project.gradle.taskGraph.whenReady { TaskExecutionGraph graph ->
     }
 }
 
+task setupDegradedTestsForJwtBearer(type: Exec, dependsOn: cargoStartLocal) {
+  workingDir 'scripts'
+  commandLine './setupDegradedTestsForJwtBearer.sh'
+  finalizedBy cargoStopLocal
+}
+
 //task declarations
 task run(dependsOn: cargoRunLocal)
 
