@@ -2,8 +2,8 @@
 
 set -e -x -v
 
-uaac target http://localhost:8080/uaa
-uaac token client get admin -s adminsecret
+uaac target ${PROTOCOL}://$PUBLISHED_DOMAIN
+uaac token client get admin -s ${ADMIN_CLIENT_SECRET}
 
 uaac curl /oauth/clients -X POST -H 'Content-Type: application/json' -H 'Accept: application/json' -d '{
   "scope" : [ "uaa.none"],

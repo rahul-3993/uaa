@@ -11,6 +11,7 @@ import org.cloudfoundry.identity.uaa.provider.token.MockAssertionToken;
 import org.cloudfoundry.identity.uaa.provider.token.MockClientAssertionHeader;
 import org.cloudfoundry.identity.uaa.util.JsonUtils;
 import org.junit.Assert;
+import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -18,6 +19,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.env.Environment;
 import org.springframework.http.*;
 import org.springframework.security.crypto.codec.Base64;
 import org.springframework.security.jwt.Jwt;
@@ -45,7 +47,6 @@ public class JwtBearerGrantDegradedIntegrationTest {
     private static final String TENANT_ID = "t10";
     private final static String DEVICE_ID = "d10";
     private final static String DEVICE_CLIENT_ID = "c1";
-    private static final String AUDIENCE = "http://localhost:8080/uaa/oauth/token";
 
     protected final static Logger logger = LoggerFactory.getLogger(JwtBearerGrantDegradedIntegrationTest.class);
 
@@ -53,9 +54,25 @@ public class JwtBearerGrantDegradedIntegrationTest {
     @Value("${integration.test.base_url}")
     private String baseUrl;
 
+    @Value("${PUBLISHED_HOST:predix-uaa-integration}")
+    String publishedHost;
+
+    @Value("${CF_DOMAIN:run.aws-usw02-dev.ice.predix.io}")
+    String cfDomain;
+
+    @Value("${BASIC_AUTH_CLIENT_ID:app}")
+    String basicAuthClientId;
+
+    @Value("${BASIC_AUTH_CLIENT_SECRET:appclientsecret}")
+    String basicAuthClientSecret;
+
+    private String baseUaaZoneUrl;
+
+    private String audience;
+
     @Autowired
-    @Rule
-    public IntegrationTestRule integrationTestRule;
+    public Environment environment;
+
 
     ServerRunning serverRunning = ServerRunning.isRunning();
 
@@ -69,6 +86,13 @@ public class JwtBearerGrantDegradedIntegrationTest {
         return headers;
     }
 
+    @Before
+    public void setup() {
+        String protocol = Boolean.valueOf(environment.getProperty("RUN_AGAINST_CLOUD")) ? "https://" : "http://";
+        baseUaaZoneUrl = Boolean.valueOf(environment.getProperty("RUN_AGAINST_CLOUD")) ? (protocol + publishedHost + "." + cfDomain) : baseUrl;
+        audience = baseUaaZoneUrl + "/oauth/token";
+    }
+
     @Test
     public void testJwtBearerGrantSuccess() throws Exception {
         doJwtBearerGrantRequest(getHttpHeaders());
@@ -77,7 +101,7 @@ public class JwtBearerGrantDegradedIntegrationTest {
     private void doJwtBearerGrantRequest(final HttpHeaders headers) throws Exception {
         // create bearer token
         String token = new MockAssertionToken().mockAssertionToken(DEVICE_CLIENT_ID, DEVICE_ID,
-                System.currentTimeMillis(), 600, TENANT_ID, AUDIENCE);
+                System.currentTimeMillis(), 600, TENANT_ID, audience);
         // call uaa/oauth/token
         LinkedMultiValueMap<String, String> formData = new LinkedMultiValueMap<String, String>();
         formData.add(OAuth2Utils.GRANT_TYPE, OauthGrant.JWT_BEARER);
@@ -85,7 +109,7 @@ public class JwtBearerGrantDegradedIntegrationTest {
 
         HttpEntity<LinkedMultiValueMap<String, String>> requestEntity = new HttpEntity<>(formData, headers);
 
-        ResponseEntity<OAuth2AccessToken> response = this.tokenRestTemplate.postForEntity(this.baseUrl + "/oauth/token",
+        ResponseEntity<OAuth2AccessToken> response = this.tokenRestTemplate.postForEntity(this.baseUaaZoneUrl + "/oauth/token",
                 requestEntity, OAuth2AccessToken.class);
         // verify access token received
         OAuth2AccessToken accessToken = response.getBody();
@@ -94,9 +118,9 @@ public class JwtBearerGrantDegradedIntegrationTest {
         MultiValueMap<String, String> tokenFormData = new LinkedMultiValueMap<>();
         tokenFormData.add("token", accessToken.getValue());
 
-        headers.set("Authorization", getAuthorizationHeader("app", "appclientsecret"));
+        headers.set("Authorization", getAuthorizationHeader(basicAuthClientId, basicAuthClientSecret));
 
-        ResponseEntity<Map> checkTokenResponse = new RestTemplate().exchange(baseUrl + "/check_token", HttpMethod.POST, new HttpEntity<>(tokenFormData, headers), Map.class);
+        ResponseEntity<Map> checkTokenResponse = new RestTemplate().exchange(this.baseUaaZoneUrl + "/check_token", HttpMethod.POST, new HttpEntity<>(tokenFormData, headers), Map.class);
         assertEquals(checkTokenResponse.getStatusCode(), HttpStatus.OK);
         logger.info("check token response: " + checkTokenResponse.getBody());
     }
