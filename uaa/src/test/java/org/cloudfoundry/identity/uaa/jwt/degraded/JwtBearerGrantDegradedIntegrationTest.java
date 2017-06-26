@@ -142,7 +142,7 @@ public class JwtBearerGrantDegradedIntegrationTest {
         assertEquals(DEVICE_CLIENT_ID, claims.get(ClaimConstants.SUB));
         assertEquals(DEVICE_CLIENT_ID, claims.get(ClaimConstants.CLIENT_ID));
         assertEquals(OauthGrant.JWT_BEARER, claims.get(ClaimConstants.GRANT_TYPE));
-        assertEquals("http://localhost:8080/uaa/oauth/token", claims.get(ClaimConstants.ISS));
+        assertEquals(this.baseUaaZoneUrl + "/oauth/token", claims.get(ClaimConstants.ISS));
         long currentTimestamp = System.currentTimeMillis() / 1000;
         String expirationTimestamp = (claims.get(ClaimConstants.EXP)).toString();
         String issueTimestamp = (claims.get(ClaimConstants.IAT)).toString();
