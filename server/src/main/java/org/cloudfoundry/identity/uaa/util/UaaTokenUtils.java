@@ -16,6 +16,7 @@ package org.cloudfoundry.identity.uaa.util;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import org.apache.commons.codec.binary.Base64;
+import org.cloudfoundry.identity.uaa.oauth.OauthGrant;
 import org.cloudfoundry.identity.uaa.oauth.client.ClientConstants;
 import org.cloudfoundry.identity.uaa.oauth.jwt.Jwt;
 import org.cloudfoundry.identity.uaa.oauth.jwt.JwtHelper;
@@ -145,7 +146,7 @@ public final class UaaTokenUtils {
 
     public static boolean isUserToken(Map<String, Object> claims) {
         if (claims.get(GRANT_TYPE)!=null) {
-            return !GRANT_TYPE_CLIENT_CREDENTIALS.equals(claims.get(GRANT_TYPE));
+            return !(GRANT_TYPE_CLIENT_CREDENTIALS.equals(claims.get(GRANT_TYPE)) || (OauthGrant.JWT_BEARER.equals(claims.get(GRANT_TYPE))));
         }
         if (claims.get(SUB)!=null) {
             if (claims.get(SUB).equals(claims.get(USER_ID))) {
