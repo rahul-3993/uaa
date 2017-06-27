@@ -1,5 +1,7 @@
 package org.cloudfoundry.identity.uaa.integration.feature;
 
+import static org.junit.Assert.assertEquals;
+
 import java.util.Base64;
 import java.util.List;
 import java.util.Map;
@@ -21,6 +23,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.jwt.Jwt;
@@ -32,6 +35,7 @@ import org.springframework.security.oauth2.provider.client.BaseClientDetails;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
 import org.springframework.util.LinkedMultiValueMap;
+import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
 
@@ -293,6 +297,17 @@ public class JwtBearerGrantIT {
         // verify access token received
         OAuth2AccessToken accessToken = response.getBody();
         assertAccessToken(accessToken);
+        
+        MultiValueMap<String, String> tokenFormData = new LinkedMultiValueMap<>();
+        tokenFormData.add("token", accessToken.getValue());
+
+        String clientCreds = "app:appclientsecret";
+        String base64ClientCreds = Base64.getEncoder().encodeToString(clientCreds.getBytes());
+        headers.set("Authorization", "Basic " + base64ClientCreds);
+
+        ResponseEntity<Map> checkTokenResponse = new RestTemplate().exchange(this.baseUrl + "/check_token",
+                HttpMethod.POST, new HttpEntity<>(tokenFormData, headers), Map.class);
+        assertEquals(checkTokenResponse.getStatusCode(), HttpStatus.OK);
         IntegrationTestUtils.deleteClient(this.adminClient, this.baseUrl, DEVICE_CLIENT_ID);
     }
 
