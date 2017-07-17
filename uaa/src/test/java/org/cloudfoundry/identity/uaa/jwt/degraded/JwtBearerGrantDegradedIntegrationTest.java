@@ -89,7 +89,7 @@ public class JwtBearerGrantDegradedIntegrationTest {
     @Before
     public void setup() {
         String protocol = Boolean.valueOf(environment.getProperty("RUN_AGAINST_CLOUD")) ? "https://" : "http://";
-        baseUaaZoneUrl = Boolean.valueOf(environment.getProperty("RUN_AGAINST_CLOUD")) ? (protocol + publishedHost + "." + cfDomain) : baseUrl;
+        baseUaaZoneUrl = Boolean.valueOf(environment.getProperty("RUN_AGAINST_CLOUD")) ? (protocol + "test-jwt-zone." + publishedHost + "." + cfDomain) : baseUrl;
         audience = baseUaaZoneUrl + "/oauth/token";
     }
 
