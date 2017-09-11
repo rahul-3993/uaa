@@ -211,7 +211,7 @@ public class BackwardsCompatibleTokenEndpointAuthenticationFilter implements Fil
                 logger.debug("No assertion or filter, not attempting SAML authentication for token endpoint.");
                 throw new InsufficientAuthenticationException("SAML Assertion is missing");
             }
-        } else if (GRANT_TYPE_JWT_BEARER.equals(grantType)) {
+        }/* else if (GRANT_TYPE_JWT_BEARER.equals(grantType)) {
             logger.debug(GRANT_TYPE_JWT_BEARER +" found. Attempting authentication with assertion");
             String assertion = request.getParameter("assertion");
             if (assertion != null && xoAuthAuthenticationManager != null) {
@@ -223,7 +223,7 @@ public class BackwardsCompatibleTokenEndpointAuthenticationFilter implements Fil
                 logger.debug("No assertion or authentication manager, not attempting JWT bearer authentication for token endpoint.");
                 throw new InsufficientAuthenticationException("Assertion is missing");
             }
-        }
+        }*/
         if (authResult != null && authResult.isAuthenticated()) {
             logger.debug("Authentication success: " + authResult.getName());
             return authResult;

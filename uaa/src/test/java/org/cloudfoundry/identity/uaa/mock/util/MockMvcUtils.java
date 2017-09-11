@@ -694,7 +694,7 @@ public final class MockMvcUtils {
         IdentityZone original = IdentityZoneHolder.get();
         try {
             IdentityZoneHolder.set(MultitenancyFixture.identityZone(zoneId,zoneId));
-            gm.mapExternalGroup(groupId, externalGroup, origin);
+            gm.mapExternalGroup(groupId, externalGroup, origin, zoneId);
         } finally {
             IdentityZoneHolder.set(original);
         }
@@ -709,7 +709,7 @@ public final class MockMvcUtils {
             IdentityZone original = IdentityZoneHolder.get();
             IdentityZoneHolder.set(MultitenancyFixture.identityZone(zoneId, zoneId));
             try {
-                return gp.query(filter).get(0);
+                return gp.query(filter, zoneId).get(0);
             } finally {
                 IdentityZoneHolder.set(original);
             }
