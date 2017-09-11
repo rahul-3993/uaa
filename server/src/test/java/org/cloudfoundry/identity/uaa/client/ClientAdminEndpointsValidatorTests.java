@@ -139,6 +139,7 @@ public class ClientAdminEndpointsValidatorTests {
         validator.validate(client, false, true);
     }
 
+    @Ignore
     @Test
     public void test_validate_jwt_bearer_grant_type_without_secret() throws Exception {
         client.setAuthorizedGrantTypes(Arrays.asList(GRANT_TYPE_JWT_BEARER));
@@ -149,6 +150,7 @@ public class ClientAdminEndpointsValidatorTests {
         validator.validate(client, true, true);
     }
 
+    @Ignore
     @Test
     public void test_validate_jwt_bearer_grant_type_without_scopes() throws Exception {
         client.setAuthorizedGrantTypes(Arrays.asList(GRANT_TYPE_JWT_BEARER));
