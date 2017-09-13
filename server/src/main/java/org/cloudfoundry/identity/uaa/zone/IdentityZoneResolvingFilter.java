@@ -44,10 +44,13 @@ public class IdentityZoneResolvingFilter extends OncePerRequestFilter implements
             throws ServletException, IOException {
         IdentityZone identityZone = null;
         String hostname = request.getServerName();
+        logger.info("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX-----HOSTNAME:XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX:::::"+hostname);
         String subdomain = getSubdomain(hostname);
+        logger.info("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX-----SUBDOMAIN:XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX:::::"+subdomain);
         if (subdomain != null) {
             try {
                 identityZone = dao.retrieveBySubdomain(subdomain);
+                logger.info("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX-----identityZone:XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX:::::"+identityZone);
             } catch (EmptyResultDataAccessException ex) {
                 logger.debug("Cannot find identity zone for subdomain " + subdomain);
             } catch (Exception ex) {
