@@ -20,18 +20,13 @@ import org.junit.Test;
 import org.springframework.security.oauth2.common.exceptions.RedirectMismatchException;
 import org.springframework.security.oauth2.provider.ClientDetails;
 import org.springframework.security.oauth2.provider.client.BaseClientDetails;
-import org.springframework.test.util.ReflectionTestUtils;
 
 import static org.hamcrest.Matchers.containsString;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
-import static org.junit.Assume.assumeFalse;
-import static org.junit.Assume.assumeTrue;
 
 public class AntPathRedirectResolverTests {
-
-    boolean enableClientRedirectUriCheck = true;
 
     String requestedRedirectHttp  = "http://subdomain.domain.com/path1/path2?query1=value1&query2=value2";
     String requestedRedirectHttps = "https://subdomain.domain.com/path1/path2?query1=value1&query2=value2";
@@ -46,8 +41,6 @@ public class AntPathRedirectResolverTests {
 
     @Test
     public void testClientMissingRedirectUri() {
-        ReflectionTestUtils.setField(resolver, "enableClientRedirectUriCheck", enableClientRedirectUriCheck, boolean.class);
-
         ClientDetails clientDetails = new BaseClientDetails("client1", "", "openid","authorization_code","");
         try {
             resolver.resolveRedirect(requestedRedirectHttp, clientDetails);
@@ -60,8 +53,6 @@ public class AntPathRedirectResolverTests {
 
     @Test
     public void testClientWithInvalidRedirectUri() {
-        ReflectionTestUtils.setField(resolver, "enableClientRedirectUriCheck", enableClientRedirectUriCheck , boolean.class);
-
         ClientDetails clientDetails = new BaseClientDetails("client1", "", "openid","authorization_code","", "*, */*");
         try {
             resolver.resolveRedirect(requestedRedirectHttp, clientDetails);
@@ -70,31 +61,6 @@ public class AntPathRedirectResolverTests {
             String reason = "Client registration contains invalid redirect_uri";
             Assert.assertThat(e.getMessage(), containsString(reason));
             Assert.assertThat(e.getMessage(), containsString("*,  */*"));
-        }
-    }
-
-    @Test
-    public void testClientRedirectUriCheckIsDisabledForClientMissingRedirectUri() {
-        ReflectionTestUtils.setField(resolver, "enableClientRedirectUriCheck", !enableClientRedirectUriCheck , boolean.class);
-
-        ClientDetails clientDetails = new BaseClientDetails("client1", "", "openid", "authorization_code", "");
-        try {
-            String resolvedRedirectUri = resolver.resolveRedirect(requestedRedirectHttp, clientDetails);
-            Assert.assertNotNull("Redirect URI resolution succeeded for Client with Missing Redirect URI",resolvedRedirectUri);
-        } catch (RedirectMismatchException e) {
-            fail();
-        }
-    }
-
-    @Test
-    public void testClientRedirectUriCheckIsDisabledForClientWithInvalidRedirectUri() {
-        ReflectionTestUtils.setField(resolver, "enableClientRedirectUriCheck", !enableClientRedirectUriCheck , boolean.class);
-        try {
-            ClientDetails clientDetails = new BaseClientDetails("client1", "", "openid","authorization_code","", "*,http://*com/**");
-            String resolvedRedirectUri = resolver.resolveRedirect(requestedRedirectHttp, clientDetails);
-            Assert.assertNotNull("Redirect URI resolution succeeded for Client with Invalid Redirect URI",resolvedRedirectUri);
-        } catch (RedirectMismatchException e) {
-            fail();
         }
     }
 

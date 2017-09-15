@@ -16,7 +16,7 @@
 package org.cloudfoundry.identity.uaa.oauth;
 
 import org.cloudfoundry.identity.uaa.util.UaaUrlUtils;
-import org.springframework.beans.factory.annotation.Value;
+import org.cloudfoundry.identity.uaa.zone.IdentityZoneHolder;
 import org.springframework.security.oauth2.common.exceptions.OAuth2Exception;
 import org.springframework.security.oauth2.common.exceptions.RedirectMismatchException;
 import org.springframework.security.oauth2.provider.ClientDetails;
@@ -31,9 +31,6 @@ import static java.util.Collections.emptySet;
 import static java.util.Optional.ofNullable;
 
 public class AntPathRedirectResolver extends DefaultRedirectResolver {
-
-    @Value("${ENABLE_CLIENT_REDIRECT_URI_CHECK:true}")
-    private boolean enableClientRedirectUriCheck;
 
     @Override
     protected boolean redirectMatches(String requestedRedirect, String redirectUri) {
@@ -50,7 +47,7 @@ public class AntPathRedirectResolver extends DefaultRedirectResolver {
     @Override
     public String resolveRedirect(String requestedRedirect, ClientDetails client) throws OAuth2Exception {
         // Temporary backward compatible behavior for legacy clients (4.4.0 deployments)
-        if(enableClientRedirectUriCheck) {
+        if(IdentityZoneHolder.get().isEnableRedirectUriCheck()) {
             Set<String> registeredRedirectUris = ofNullable(client.getRegisteredRedirectUri()).orElse(emptySet());
             if (registeredRedirectUris.size() == 0) {
                 throw new RedirectMismatchException("Client registration is missing redirect_uri");
