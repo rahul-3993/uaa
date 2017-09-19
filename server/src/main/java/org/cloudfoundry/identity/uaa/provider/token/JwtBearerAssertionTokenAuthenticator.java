@@ -1,5 +1,6 @@
 package org.cloudfoundry.identity.uaa.provider.token;
 
+import java.util.ArrayList;
 import java.util.Base64;
 import java.util.Collections;
 import java.util.Map;
@@ -148,8 +149,20 @@ public class JwtBearerAssertionTokenAuthenticator {
         }
 
         // require audience claim
-        if (!StringUtils.hasText((String) claims.get(ClaimConstants.AUD))) {
-            throw new InvalidTokenException("aud claim is required in jwt-bearer assertion.");
+        Object audience = claims.get(ClaimConstants.AUD);
+        if (audience instanceof ArrayList) {
+            ArrayList<?> audienceList = (ArrayList<?>) audience;
+            if (audienceList.isEmpty()) {
+                throw new InvalidTokenException("aud claim is required in jwt-bearer assertion.");
+            }
+        }
+        else if(audience instanceof String) {
+            if (!StringUtils.hasText((String) claims.get(ClaimConstants.AUD))) {
+                throw new InvalidTokenException("aud claim is required in jwt-bearer assertion.");
+            }
+        }
+        else {
+            throw new InvalidTokenException("aud claim is in the wrong format.");
         }
 
         // require iat positive numeric claim
@@ -235,10 +248,21 @@ public class JwtBearerAssertionTokenAuthenticator {
     }
 
     private void assertAudience(final Map<String, Object> claims, final String issuerURL) {
-        String audience = (String) claims.get(ClaimConstants.AUD);
-
-        if (StringUtils.isEmpty(audience) || !audience.equals(issuerURL)) {
-            throw new InvalidTokenException("Audience does not match.");
+        Object audienceObject = claims.get(ClaimConstants.AUD);
+        if(audienceObject instanceof ArrayList) {
+            ArrayList<?> audienceList = (ArrayList<?>) audienceObject;
+            if(!audienceList.contains(issuerURL)) {
+                throw new InvalidTokenException("Audience does not match.");
+            }
+        }
+        else if(audienceObject instanceof String) {
+            String audience = (String) audienceObject;
+            if (StringUtils.isEmpty(audience) || !audience.equals(issuerURL)) {
+                throw new InvalidTokenException("Audience does not match.");
+            }
+        }
+        else {
+            throw new InvalidTokenException("aud claim is in the wrong format.");
         }
     }
 
