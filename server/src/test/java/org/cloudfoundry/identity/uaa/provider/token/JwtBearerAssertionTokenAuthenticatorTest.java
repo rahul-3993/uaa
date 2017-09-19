@@ -21,16 +21,12 @@ import org.cloudfoundry.identity.uaa.util.JsonUtils;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
 import org.mockito.Mockito;
-import org.mockito.MockitoAnnotations;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.jwt.codec.Codecs;
 import org.springframework.security.oauth2.common.exceptions.InvalidClientException;
 import org.springframework.security.oauth2.provider.ClientDetailsService;
-import org.springframework.security.oauth2.provider.NoSuchClientException;
 import org.springframework.security.oauth2.provider.client.BaseClientDetails;
 
 import com.ge.predix.pki.device.spi.DevicePublicKeyProvider;
@@ -77,12 +73,32 @@ public class JwtBearerAssertionTokenAuthenticatorTest {
     public void testSuccessWithAudienceAsArray() {
         long currentTime = System.currentTimeMillis();
         String token = new MockAssertionToken().mockAssertionToken(DEVICE_1_CLIENT_ID, DEVICE_1_ID,
-                currentTime, 600, TENANT_ID, new String[] {AUDIENCE});
+                currentTime, 600, TENANT_ID, new String[] {"https://other-aud.com/path", AUDIENCE});
         String header = new MockClientAssertionHeader().mockSignedHeader(this.currentTimeSecs, DEVICE_1_ID, TENANT_ID);
         this.tokenAuthenticator.setClientDetailsService(this.clientDetailsService);
         Authentication authn = this.tokenAuthenticator.authenticate(token, header, MockKeyProvider.DEVICE1_PUBLIC_KEY);
         Assert.assertEquals(DEVICE_1_CLIENT_ID, authn.getPrincipal());
         Assert.assertEquals(true, authn.isAuthenticated());
+    }
+
+    @Test(expected=AuthenticationException.class)
+    public void testInvalidAudienceAsArray() {
+        long currentTime = System.currentTimeMillis();
+        String token = new MockAssertionToken().mockAssertionToken(DEVICE_1_CLIENT_ID, DEVICE_1_ID,
+                currentTime, 600, TENANT_ID, new String[] {"https://other-aud.com/path"});
+        String header = new MockClientAssertionHeader().mockSignedHeader(this.currentTimeSecs, DEVICE_1_ID, TENANT_ID);
+        this.tokenAuthenticator.setClientDetailsService(this.clientDetailsService);
+        this.tokenAuthenticator.authenticate(token, header, MockKeyProvider.DEVICE1_PUBLIC_KEY);
+    }
+
+    @Test(expected=AuthenticationException.class)
+    public void testInvalidAudienceEmptyArray() {
+        long currentTime = System.currentTimeMillis();
+        String token = new MockAssertionToken().mockAssertionToken(DEVICE_1_CLIENT_ID, DEVICE_1_ID,
+                currentTime, 600, TENANT_ID, new String[] {});
+        String header = new MockClientAssertionHeader().mockSignedHeader(this.currentTimeSecs, DEVICE_1_ID, TENANT_ID);
+        this.tokenAuthenticator.setClientDetailsService(this.clientDetailsService);
+        this.tokenAuthenticator.authenticate(token, header, MockKeyProvider.DEVICE1_PUBLIC_KEY);
     }
 
     @Test(expected=AuthenticationException.class)
