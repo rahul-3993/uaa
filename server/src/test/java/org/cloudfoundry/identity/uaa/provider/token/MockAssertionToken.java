@@ -29,17 +29,17 @@ public class MockAssertionToken {
     }
 
     public String mockAssertionToken(String issuer, final String subject, final long issuedAtMillis,
-            final long validitySeconds, final String tenantId, final String audience) {
+            final long validitySeconds, final String tenantId, final Object audience) {
         Object expiration = (issuedAtMillis + (validitySeconds * 1000L)) / 1000L;
         return createAssertionToken(issuer, subject, audience, issuedAtMillis, tenantId, expiration);
     }
 
     public String mockInvalidExpirationAssertionToken(String issuer, final String subject,
-            final long issuedAtMillis, final String tenantId, final String audience, final Object expiration) {
+            final long issuedAtMillis, final String tenantId, final Object audience, final Object expiration) {
         return createAssertionToken(issuer, subject, audience, issuedAtMillis, tenantId, expiration);
     }
 
-    private String createAssertionToken(String issuer, String subject, String audience,
+    private String createAssertionToken(String issuer, String subject, Object audience,
              final long issuedAtMillis, final String tenantId, final Object expiration) {
 
         String content;
@@ -52,7 +52,7 @@ public class MockAssertionToken {
         return JwtHelper.encode(content, this.signer).getEncoded();
     }
 
-    static Map<String, ?> createClaims(String issuer, String subject, final String audience,
+    static Map<String, ?> createClaims(String issuer, String subject, final Object audience,
              final long issuedAtMillis, final Object expiration, final String tenantId) {
         Map<String, Object> response = new LinkedHashMap<String, Object>();
         response.put(ClaimConstants.ISS, issuer);

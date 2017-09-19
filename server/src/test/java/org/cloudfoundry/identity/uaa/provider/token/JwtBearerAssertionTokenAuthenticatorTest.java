@@ -73,6 +73,28 @@ public class JwtBearerAssertionTokenAuthenticatorTest {
         Assert.assertEquals(true, authn.isAuthenticated());
     }
 
+    @Test
+    public void testSuccessWithAudienceAsArray() {
+        long currentTime = System.currentTimeMillis();
+        String token = new MockAssertionToken().mockAssertionToken(DEVICE_1_CLIENT_ID, DEVICE_1_ID,
+                currentTime, 600, TENANT_ID, new String[] {AUDIENCE});
+        String header = new MockClientAssertionHeader().mockSignedHeader(this.currentTimeSecs, DEVICE_1_ID, TENANT_ID);
+        this.tokenAuthenticator.setClientDetailsService(this.clientDetailsService);
+        Authentication authn = this.tokenAuthenticator.authenticate(token, header, MockKeyProvider.DEVICE1_PUBLIC_KEY);
+        Assert.assertEquals(DEVICE_1_CLIENT_ID, authn.getPrincipal());
+        Assert.assertEquals(true, authn.isAuthenticated());
+    }
+
+    @Test(expected=AuthenticationException.class)
+    public void testInvalidAudienceType() {
+        long currentTime = System.currentTimeMillis();
+        String token = new MockAssertionToken().mockAssertionToken(DEVICE_1_CLIENT_ID, DEVICE_1_ID,
+                currentTime, 600, TENANT_ID, 1);
+        String header = new MockClientAssertionHeader().mockSignedHeader(this.currentTimeSecs, DEVICE_1_ID, TENANT_ID);
+        this.tokenAuthenticator.setClientDetailsService(this.clientDetailsService);
+        this.tokenAuthenticator.authenticate(token, header, MockKeyProvider.DEVICE1_PUBLIC_KEY);
+    }
+
     // c1.allowed_device_id is not set
     @Test(expected=AuthenticationException.class)
     public void testNoAllowedDeviceIdSet() {
