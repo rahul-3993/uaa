@@ -14,14 +14,19 @@ package org.cloudfoundry.identity.uaa.zone;
 
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import org.cloudfoundry.identity.uaa.saml.SamlKey;
+import org.cloudfoundry.identity.uaa.util.UaaUrlUtils;
 import org.junit.*;
 import org.junit.rules.ExpectedException;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
 import java.security.Security;
+import java.util.ArrayList;
+import java.util.Arrays;
 
+import static java.util.Collections.EMPTY_LIST;
 import static java.util.Collections.EMPTY_MAP;
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 
 @RunWith(Parameterized.class)
@@ -260,6 +265,65 @@ public class GeneralIdentityZoneConfigurationValidatorTests {
         assertNull(config.getActiveKeyId());
         validator.validate(zoneConfiguration, mode);
     }
+
+    @Test
+    public void validate_redirect_uri_protocol_list_empty() throws Exception {
+        zoneConfiguration.getLinks().setRedirectURIProtocolWhiteList(EMPTY_LIST);
+        expection.expect(InvalidIdentityZoneConfigurationException.class);
+        expection.expectMessage("Invalid Redirect Uri Protocol Whitelist. Must provide at least one protocol scheme");
+        validator.validate(zoneConfiguration, mode);
+    }
+
+    @Test
+    public void validate_redirect_uri_protocol_list_elements_conform_to_scheme_pattern_negative() throws Exception {
+        zoneConfiguration.getLinks().setRedirectURIProtocolWhiteList(Arrays.asList("http", "https", "*"));
+        expection.expect(InvalidIdentityZoneConfigurationException.class);
+        expection.expectMessage("Invalid Redirect Uri Protocol Whitelist Element(s) found. Must Match the pattern " + UaaUrlUtils.allowedRedirectUriProtocolPattern);
+        validator.validate(zoneConfiguration, mode);
+    }
+
+    @Test
+    public void validate_redirect_uri_protocol_list_elements_conform_to_scheme_pattern_positive() throws Exception {
+        zoneConfiguration.getLinks().setRedirectURIProtocolWhiteList(Arrays.asList("http", "https", "cool-scheme", "cool+scheme", "cool.scheme.01"));
+        assertEquals(zoneConfiguration, validator.validate(zoneConfiguration, mode));
+    }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 }
