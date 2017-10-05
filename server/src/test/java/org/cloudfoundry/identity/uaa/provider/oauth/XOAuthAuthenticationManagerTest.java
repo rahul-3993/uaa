@@ -770,8 +770,10 @@ public class XOAuthAuthenticationManagerTest {
         List<String> costCenter = Arrays.asList("Austin, TX");
         claims.put("managers", managers);
         claims.put("employeeCostCenter", costCenter);
+        claims.put("testStringKey", "testarjun");
         attributeMappings.put("user.attribute.costCenter", "employeeCostCenter");
         attributeMappings.put("user.attribute.terribleBosses", "managers");
+        attributeMappings.put("user.attribute.testKey", "testStringKey");
         config.setStoreCustomAttributes(true);
         config.setExternalGroupsWhitelist(Arrays.asList("*"));
         List<String> scopes = Arrays.asList("openid", "some.other.scope", "closedid");
@@ -781,6 +783,7 @@ public class XOAuthAuthenticationManagerTest {
         MultiValueMap<String, String> map = new LinkedMultiValueMap<>();
         map.put("costCenter", costCenter);
         map.put("terribleBosses", managers);
+        map.put("testKey", Arrays.asList("testarjun"));
         UaaAuthentication authentication = (UaaAuthentication)xoAuthAuthenticationManager.authenticate(xCodeToken);
         assertEquals(map, authentication.getUserAttributes());
         assertThat(authentication.getExternalGroups(), containsInAnyOrder(scopes.toArray()));
