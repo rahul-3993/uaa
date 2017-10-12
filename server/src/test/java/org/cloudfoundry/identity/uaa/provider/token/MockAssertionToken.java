@@ -8,7 +8,6 @@ import org.cloudfoundry.identity.uaa.oauth.token.ClaimConstants;
 import org.cloudfoundry.identity.uaa.util.JsonUtils;
 import org.springframework.security.jwt.JwtHelper;
 import org.springframework.security.jwt.crypto.sign.RsaSigner;
-
 public class MockAssertionToken {
 
     private final RsaSigner signer;
@@ -38,6 +37,7 @@ public class MockAssertionToken {
             final long issuedAtMillis, final String tenantId, final Object audience, final Object expiration) {
         return createAssertionToken(issuer, subject, audience, issuedAtMillis, tenantId, expiration);
     }
+
 
     private String createAssertionToken(String issuer, String subject, Object audience,
              final long issuedAtMillis, final String tenantId, final Object expiration) {
