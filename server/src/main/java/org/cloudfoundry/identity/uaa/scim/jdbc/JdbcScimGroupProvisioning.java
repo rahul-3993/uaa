@@ -167,13 +167,22 @@ public class JdbcScimGroupProvisioning extends AbstractQueryable<ScimGroup>
     }
 
     @Override
+    public ScimGroup getOrCreate(ScimGroup group, String zoneId) {
+        try {
+            return getByName(group.getDisplayName(), zoneId);
+        }catch (IncorrectResultSizeDataAccessException ignore){
+        }
+        return create(new ScimGroup(null, group.getDisplayName(), zoneId), zoneId);
+    }
+
+    @Override
     public ScimGroup getByName(String displayName, String zoneId) {
         if (!hasText(displayName)) {
             throw new IncorrectResultSizeDataAccessException("group name must contain text", 1, 0);
         }
         String jsonName = UaaStringUtils.toJsonString(displayName);
         String filter = String.format(GROUP_BY_NAME_FILTER, jsonName);
-        List<ScimGroup> groups = query(filter, zoneId);
+        List<ScimGroup> groups = query(filter, null, true, zoneId);
         if (groups.size()==1) {
             return groups.get(0);
         } else {
