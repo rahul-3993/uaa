@@ -96,8 +96,10 @@ test {
   exclude '**/*IT.class'
   exclude '**/*AT.class'
   exclude 'org/cloudfoundry/identity/uaa/degraded/*.class'
+  exclude 'org/cloudfoundry/identity/uaa/jwt/degraded/*.class'
   systemProperty 'java.io.tmpdir', '/tmp'
   systemProperty "mock.suite.test", "true"
+  systemProperty "java.io.tmpdir", "/tmp"
 }
 task customizeSlate(type: Copy) {
   from 'slate'
@@ -134,6 +136,7 @@ generateDocs {
 }
 
 integrationTest {
+  exclude 'org/cloudfoundry/identity/uaa/jwt/degraded/*.class'
   filter {
     exclude '**/*AT.class'
     exclude 'org/cloudfoundry/identity/uaa/degraded/*.class'
@@ -158,6 +161,17 @@ task degradedTestLocal(type: Test) {
   include "org/cloudfoundry/identity/uaa/degraded/*.class"
 }
 
+task degradedJwtTestCloud(type: Test) {
+  systemProperty "RUN_AGAINST_CLOUD", true
+  include "org/cloudfoundry/identity/uaa/jwt/degraded/*.class"
+}
+
+task degradedJwtTestLocal(type: Test) {
+  systemProperty "RUN_AGAINST_CLOUD", false
+  dependsOn rootProject.cargoStartLocal
+  finalizedBy rootProject.cargoStopLocal
+  include "org/cloudfoundry/identity/uaa/jwt/degraded/*.class"
+}
 
 //asciidoctor {
 //  sourceDir 'src/asciidoc'

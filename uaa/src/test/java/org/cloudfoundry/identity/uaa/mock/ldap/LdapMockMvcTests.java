@@ -21,6 +21,7 @@ import org.cloudfoundry.identity.uaa.mock.DefaultConfigurationTestSuite;
 import org.cloudfoundry.identity.uaa.mock.util.ApacheDSHelper;
 import org.cloudfoundry.identity.uaa.mock.util.MockMvcUtils;
 import org.cloudfoundry.identity.uaa.mock.util.MockMvcUtils.ZoneScimInviteData;
+import org.cloudfoundry.identity.uaa.oauth.jwt.JwtHelper;
 import org.cloudfoundry.identity.uaa.provider.IdentityProvider;
 import org.cloudfoundry.identity.uaa.provider.IdentityProviderValidationRequest;
 import org.cloudfoundry.identity.uaa.provider.IdentityProviderValidationRequest.UsernamePasswordAuthentication;
@@ -62,6 +63,7 @@ import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.ldap.server.ApacheDsSSLContainer;
 import org.springframework.security.oauth2.common.util.RandomValueStringGenerator;
+import org.springframework.security.oauth2.provider.client.BaseClientDetails;
 import org.springframework.security.web.FilterChainProxy;
 import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
 import org.springframework.test.web.servlet.MockMvc;
@@ -119,6 +121,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.model;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl;
@@ -236,7 +239,6 @@ public class LdapMockMvcTests  {
                                                        LDAP,
                                                        definition);
 
-
         host = zone.getZone().getIdentityZone().getSubdomain() + ".localhost";
         IdentityZoneHolder.clear();
     }
@@ -250,6 +252,54 @@ public class LdapMockMvcTests  {
             .andExpect(status().isOk());
     }
 
+
+    @Test
+    public void testLdapGroupMapping() throws Exception {
+        Assume.assumeThat("ldap-groups-map-to-scopes.xml", StringContains.containsString(ldapGroup));
+
+        String externalGroup = "cn=developers,ou=scopes,dc=test,dc=com";
+        ScimGroup create = new ScimGroup("cloud_controller.admin");
+        String uaaZoneId = IdentityZone.getUaa().getId();
+        create.setZoneId(uaaZoneId);
+        ScimGroup group = MockMvcUtils.createGroup(getWebApplicationContext(),
+                                                   create,
+                                                   uaaZoneId
+        );
+
+        MockMvcUtils.mapExternalGroup(getWebApplicationContext(),
+                                      group.getId(),
+                                      externalGroup,
+                                      OriginKeys.LDAP,
+                                      uaaZoneId
+        );
+
+        BaseClientDetails cfClient = new BaseClientDetails("cf", "", "cloud_controller.admin,openid", "password", "");
+        cfClient.setClientSecret("");
+        MockMvcUtils.createClient(getWebApplicationContext(), cfClient, zone.getZone().getIdentityZone().getId());
+
+        LdapIdentityProviderDefinition definition = provider.getConfig();
+        provider.setConfig(definition);
+        updateLdapProvider();
+
+        String username = "marissa6";
+        String password = "ldap6";
+        MvcResult result = performPasswordGrant(username,
+                                                password,
+                                                host,
+                                                HttpStatus.OK,
+                                                "cf",
+                                                "");
+
+        Map<String,Object> json = JsonUtils.readValue(result.getResponse().getContentAsString(),
+                                                      new TypeReference<Map<String, Object>>() {});
+        String accessToken = (String) json.get("access_token");
+
+        Map<String,Object> claims = JsonUtils.readValue(JwtHelper.decode(accessToken).getClaims(),
+                                                        new TypeReference<Map<String, Object>>() {});
+
+        List<String> scopes = (List<String>) claims.get("scope");
+        assertThat(scopes, containsInAnyOrder("openid"));
+    }
 
     @Test
     public void acceptInvitation_for_ldap_user_whose_username_is_not_email() throws Exception {
@@ -334,7 +384,7 @@ public class LdapMockMvcTests  {
             .andReturn();
 
         code = getWebApplicationContext().getBean(JdbcTemplate.class).queryForObject("select code from expiring_code_store", String.class);
-
+        
         session = (MockHttpSession) result.getRequest().getSession(false);
         getMockMvc().perform(post("/invitations/accept_enterprise.do")
                                  .session(session)
@@ -1162,6 +1212,30 @@ public class LdapMockMvcTests  {
                 .param("password", password);
 
         return getMockMvc().perform(post)
+            .andExpect(status().is(status.value()))
+            .andReturn();
+    }
+
+    private MvcResult performPasswordGrant(String username,
+                                           String password,
+                                           String host,
+                                           HttpStatus status,
+                                           String clientId,
+                                           String clientSecret) throws Exception {
+        MockHttpServletRequestBuilder post =
+            post("/oauth/token")
+                .header(HOST, host)
+                .accept(MediaType.APPLICATION_JSON)
+                .contentType(MediaType.APPLICATION_FORM_URLENCODED)
+                .param("client_id", clientId)
+                .param("client_secret", clientSecret)
+                .param("grant_type", "password")
+                .param("response_type", "token")
+                .param("username", username)
+                .param("password", password);
+
+        return getMockMvc().perform(post)
+            .andDo(print())
             .andExpect(status().is(status.value()))
             .andReturn();
     }

@@ -394,9 +394,9 @@ public class InvitationsEndpointMockMvcTests extends InjectedMockContextTest {
             String query = response.getNewInvites().get(i).getInviteLink().getQuery();
             assertThat(query, startsWith("code="));
             String code = query.split("=")[1];
-
             ExpiringCode expiringCode = codeStore.retrieveCode(code, IdentityZoneHolder.get().getId());
             IdentityZoneHolder.clear();
+
             assertThat(expiringCode.getExpiresAt().getTime(), is(greaterThan(System.currentTimeMillis())));
             assertThat(expiringCode.getIntent(), is(ExpiringCodeType.INVITATION.name()));
             Map<String, String> data = readValue(expiringCode.getData(), new TypeReference<Map<String, String>>() {});

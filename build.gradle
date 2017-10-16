@@ -92,6 +92,13 @@ allprojects {
     maven {
         url 'https://build.shibboleth.net/nexus/content/repositories/releases/'
     }
+    maven {
+      credentials {
+        username geArtifactoryReader
+        password geArtifactoryReaderPassword
+      }
+      url 'https://devcloud.swcoe.ge.com/artifactory/predix-virtual'
+   }
   }
 }
 
@@ -154,6 +161,8 @@ task manifests(dependsOn: assemble, type: Copy) {
   into 'build/sample-manifests'
 }
 
+
+
 subprojects {
   apply plugin: 'java'
   [compileJava, compileTestJava]*.options*.compilerArgs = ['-Xlint:none', '-nowarn']
@@ -161,6 +170,11 @@ subprojects {
   targetCompatibility = 1.8
   test {
     jvmArgs += [ "-Xmx1024m" ]
+  }
+
+  tasks.withType(Test) {
+    systemProperties = System.properties
+    systemProperties['user.dir'] = workingDir
   }
 
   task integrationTest(type: Test) {
@@ -364,6 +378,17 @@ task integrationTest {
   finalizedBy cargoStopLocal
 }
 integrationTest.dependsOn subprojects.integrationTest
+
+task setupDegradedTestsForJwtBearerCloud(type: Exec) {
+  workingDir 'scripts'
+  commandLine './setupDegradedTestsForJwtBearer.sh'
+}
+
+task setupDegradedTestsForJwtBearerLocal(type: Exec, dependsOn: cargoStartLocal) {
+  workingDir 'scripts'
+  commandLine './setupDegradedTestsForJwtBearer.sh'
+  finalizedBy cargoStopLocal
+}
 
 test.dependsOn subprojects.test
 test.mustRunAfter integrationTest

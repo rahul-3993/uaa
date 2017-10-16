@@ -35,6 +35,7 @@ import org.cloudfoundry.identity.uaa.zone.IdentityZone;
 import org.cloudfoundry.identity.uaa.zone.IdentityZoneConfiguration;
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.mockito.ArgumentCaptor;
 import org.springframework.context.ApplicationEventPublisher;
@@ -192,6 +193,7 @@ public class ClientAdminEndpointsMockMvcTests extends AdminClientCreator {
         verify(applicationEventPublisher, times(1)).publishEvent(captor.capture());
     }
 
+    @Ignore
     @Test
     public void testCreateClientWithJwtBearerGrantInvalid() throws Exception {
         String id = new RandomValueStringGenerator().generate();
