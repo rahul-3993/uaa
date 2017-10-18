@@ -15,7 +15,11 @@ package org.cloudfoundry.identity.uaa.db;
  import org.springframework.context.annotation.Profile;
  import org.springframework.transaction.PlatformTransactionManager;
 
- import java.util.Arrays;
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.util.Arrays;
  import java.util.List;
 
  /**
@@ -35,11 +39,10 @@ package org.cloudfoundry.identity.uaa.db;
      @Value("${MAX_WAIT_TIME:30000}")
      private int maxWaitTime;
 
-
      @Bean
      public DataSourceConfig dataSourceConfig() {
          PoolConfig poolConfig = new PoolConfig(this.minActive, this.maxActive, this.maxWaitTime);
-         ConnectionConfig connect = new ConnectionConfig("charset=utf-8;sslmode=verify-full");
+         ConnectionConfig connect = new ConnectionConfig("charset=utf-8;sslmode=verify-full;sslrootcert=classpath:rds-combined-ca-bundle.pem");
          List<String> dataSourceNames = Arrays.asList("TomcatJdbc", "BasicDbcp");
          return new DataSourceConfig(poolConfig, connect, dataSourceNames);
      }
