@@ -23,6 +23,7 @@ import org.hamcrest.MatcherAssert;
 import org.hamcrest.Matchers;
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -389,13 +390,17 @@ public class LoginIT {
         webDriver.get(zoneUrl);
         assertEquals(userEmail, webDriver.findElement(By.className("email-address")).getText());
         webDriver.findElement(By.className("email-address")).click();
-
-        assertEquals(userEmail, webDriver.findElement(By.id("username")).getAttribute("value"));
-        webDriver.findElement(By.id("password")).sendKeys(USER_PASSWORD);
+        //GE has changed the flow for idp discovery page for native UAA user to go to login page instead of password page
+        //when coming from account chooser, the username will not be populated on the login page
+        //assertEquals(userEmail, webDriver.findElement(By.name("username")).getAttribute("value"));
+        webDriver.findElement(By.name("username")).sendKeys(userEmail);
+        webDriver.findElement(By.name("password")).sendKeys(USER_PASSWORD);
         webDriver.findElement(By.xpath("//input[@value='Sign in']")).click();
         assertEquals("Where to?", webDriver.findElement(By.cssSelector(".island h1")).getText());
     }
 
+    //GE has changed the flow for idp discovery/account chooser page for native UAA users to go to login page instead of password page
+    @Ignore
     @Test
     public void testAccountChooserPopulatesUsernameNotEmailWhenOriginIsUAAorLDAP() throws Exception {
         String userUAA = "{\"userId\":\"1\",\"username\":\"userUAA\",\"origin\":\"uaa\",\"email\":\"user@uaa.org\"}";
@@ -490,7 +495,10 @@ public class LoginIT {
     private void loginThroughDiscovery(String userEmail, String password) {
         webDriver.findElement(By.id("email")).sendKeys(userEmail);
         webDriver.findElement(By.cssSelector(".form-group input[value='Next']")).click();
-        webDriver.findElement(By.id("password")).sendKeys(password);
+        System.out.println(webDriver.getPageSource());
+        //GE has changed the flow for idp discovery page for native UAA user to go to login page instead of password page
+        webDriver.findElement(By.name("username")).sendKeys(userEmail);
+        webDriver.findElement(By.name("password")).sendKeys(password);
         webDriver.findElement(By.xpath("//input[@value='Sign in']")).click();
     }
 }

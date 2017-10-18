@@ -2186,7 +2186,7 @@ public class LoginMockMvcTests extends InjectedMockContextTest {
             .header("Accept", TEXT_HTML)
             .with(new SetServerNameRequestPostProcessor(zone.getSubdomain() + ".localhost")))
             .andExpect(status().isOk())
-            .andExpect(view().name("idp_discovery/password"));
+            .andExpect(view().name("login"));
     }
 
     @Test
