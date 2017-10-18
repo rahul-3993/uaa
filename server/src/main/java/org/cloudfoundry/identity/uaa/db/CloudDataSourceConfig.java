@@ -39,7 +39,7 @@ package org.cloudfoundry.identity.uaa.db;
      @Bean
      public DataSourceConfig dataSourceConfig() {
          PoolConfig poolConfig = new PoolConfig(this.minActive, this.maxActive, this.maxWaitTime);
-         ConnectionConfig connect = new ConnectionConfig("charset=utf-8;sslmode=verify-full");
+         ConnectionConfig connect = new ConnectionConfig("charset=utf-8;sslmode=verify-full;sslrootcert=rds-combined-ca-bundle.pem");
          List<String> dataSourceNames = Arrays.asList("TomcatJdbc", "BasicDbcp");
          return new DataSourceConfig(poolConfig, connect, dataSourceNames);
      }
