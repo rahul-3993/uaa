@@ -2,24 +2,17 @@
 # if any of these exist:
 # [$UAA_CONFIG_URL, $UAA_CONFIG_PATH/uaa.yml, $CLOUD_FOUNDRY_CONFIG_PATH/uaa.yml]
 
-#spring_profiles: postgresql,default
+spring_profiles: postgresql,default
 #spring_profiles: ldap,default,hsqldb
 #spring_profiles: saml
 #spring_profiles: keystone,default,hsqldb
 
-#database:
-#  driverClassName: org.postgresql.Driver
-#  url: jdbc:postgresql:uaa
-#  username: pivotal
-#  password:
-#  maxactive: 100
-#  maxidle: 10
-#  minidle: 3
-#  removeabandoned: false
-#  logabandoned: true
-#  abandonedtimeout: 300
-#  evictionintervalms: 15000
-#  caseinsensitive: false
+spring_profiles: postgresql,default
+database:
+  driverClassName: org.postgresql.Driver
+  url: jdbc:postgresql:uaa
+  username: root
+  password: changeme
 
 #note - this is not the place to set these properties
 # - they are just here for documentation purposes

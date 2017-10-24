@@ -42,7 +42,8 @@ import java.util.Arrays;
      @Bean
      public DataSourceConfig dataSourceConfig() {
          PoolConfig poolConfig = new PoolConfig(this.minActive, this.maxActive, this.maxWaitTime);
-         ConnectionConfig connect = new ConnectionConfig("charset=utf-8;sslmode=verify-full;sslrootcert=classpath:rds-combined-ca-bundle.pem");
+         ConnectionConfig connect = new ConnectionConfig("charset=utf-8;ssl=true;sslmode=verify-full;sslrootcert=classpath:classes/root.crt");
+//         ConnectionConfig connect = new ConnectionConfig("charset=utf-8;sslmode=verify-full;");
          List<String> dataSourceNames = Arrays.asList("TomcatJdbc", "BasicDbcp");
          return new DataSourceConfig(poolConfig, connect, dataSourceNames);
      }

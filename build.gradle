@@ -298,8 +298,8 @@ cargo {
   }
 
   local {
-    //jvmArgs = "-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=5005"
-    jvmArgs = "-javaagent:${jacocoLocation}=output=file,dumponexit=true,append=false,destfile=${integrationTestCoverageExecutionData} -DLOGIN_CONFIG_URL=file://"+ projectDir +"/uaa/src/main/resources/required_configuration.yml"
+    jvmArgs = "-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=5005"
+    //jvmArgs = "-javaagent:${jacocoLocation}=output=file,dumponexit=true,append=false,destfile=${integrationTestCoverageExecutionData} -DLOGIN_CONFIG_URL=file://"+ projectDir +"/uaa/src/main/resources/required_configuration.yml"
     outputFile = file('uaa/build/reports/tests/uaa-server.log')
     configFile {
       file = file('scripts/travis/tomcat-conf/context.xml')
@@ -337,7 +337,7 @@ project.gradle.taskGraph.whenReady { TaskExecutionGraph graph ->
     }
 
     local {
-//      jvmArgs = jvmArgs + " -agentlib:jdwp=transport=dt_socket,server=y,suspend=y,address=5005"
+      jvmArgs = jvmArgs + " -agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=5005"
       systemProperties {
           //property 'uaa.allowUnverifiedUsers', 'false'
           property 'smtp.host', 'localhost'
