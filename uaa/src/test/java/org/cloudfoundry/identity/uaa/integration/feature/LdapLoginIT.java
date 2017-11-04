@@ -12,6 +12,7 @@ import org.hamcrest.Matchers;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
+import org.junit.Ignore;
 import org.junit.runner.RunWith;
 import org.openqa.selenium.By;
 import org.openqa.selenium.WebDriver;
@@ -66,6 +67,7 @@ public class LdapLoginIT {
         }
     }
     @Test
+    @Ignore
     public void ldapLogin_with_StartTLS() throws Exception {
         Long beforeTest = System.currentTimeMillis();
         performLdapLogin("testzone2", "ldap://52.87.212.253:389/", true, true, "marissa4", "ldap4");
@@ -77,6 +79,7 @@ public class LdapLoginIT {
     }
 
     @Test
+    @Ignore
     public void ldap_login_using_utf8_characters() throws Exception {
         performLdapLogin("testzone2", "ldap://52.87.212.253:389/", true, true, "\u7433\u8D3A", "koala");
         assertThat(webDriver.findElement(By.cssSelector("h1")).getText(), Matchers.containsString("Where to?"));
