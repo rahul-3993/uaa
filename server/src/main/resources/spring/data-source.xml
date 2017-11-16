@@ -96,6 +96,7 @@
             <property name="logAbandoned" value="${database.logabandoned:true}"/>
             <property name="removeAbandonedTimeout" value="${database.abandonedtimeout:300}"/>
             <property name="timeBetweenEvictionRunsMillis" value="${database.evictionintervalms:15000}"/>
+            <property name="connectionProperties" value="ssl=true;sslmode=verify-full;sslcert=/Users/arjunnayak/postgres-certs/postgresql.der;sslrootcert=/Users/arjunnayak/postgres-certs/root.der;"/>
         </bean>
     </beans>
 

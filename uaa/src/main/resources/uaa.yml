@@ -13,6 +13,7 @@ database:
   url: jdbc:postgresql:uaa
   username: root
   password: changeme
+  certpath: /resources/rds-combined-ca-bundle.pem
 
 #note - this is not the place to set these properties
 # - they are just here for documentation purposes
