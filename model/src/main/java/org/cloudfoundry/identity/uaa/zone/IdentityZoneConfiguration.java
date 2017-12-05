@@ -38,6 +38,7 @@ public class IdentityZoneConfiguration {
     private BrandingInformation branding;
     private boolean accountChooserEnabled;
     private UserConfig userConfig = new UserConfig();
+    private String publicKeyProviderInstanceId;
 
     public IdentityZoneConfiguration() {}
 
@@ -125,5 +126,13 @@ public class IdentityZoneConfiguration {
 
     public void setUserConfig(UserConfig userConfig) {
         this.userConfig = userConfig;
+    }
+
+    public void setPublicKeyProviderInstanceId(String publicKeyProviderInstanceId) {
+        this.publicKeyProviderInstanceId = publicKeyProviderInstanceId;
+    }
+
+    public String getPublicKeyProviderInstanceId() {
+        return publicKeyProviderInstanceId;
     }
 }
