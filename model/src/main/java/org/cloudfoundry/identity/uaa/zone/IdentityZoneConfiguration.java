@@ -43,6 +43,7 @@ public class IdentityZoneConfiguration {
     private MfaConfig mfaConfig = new MfaConfig();
     private String issuer;
     private String defaultIdentityProvider;
+    private String publicKeyProviderInstanceId;
 
     public IdentityZoneConfiguration() {}
 
@@ -163,5 +164,12 @@ public class IdentityZoneConfiguration {
         } catch (MalformedURLException e) {
             throw new IllegalArgumentException("Invalid issuer format. Must be valid URL.");
         }
+
+    public void setPublicKeyProviderInstanceId(String publicKeyProviderInstanceId) {
+        this.publicKeyProviderInstanceId = publicKeyProviderInstanceId;
+    }
+
+    public String getPublicKeyProviderInstanceId() {
+        return publicKeyProviderInstanceId;
     }
 }

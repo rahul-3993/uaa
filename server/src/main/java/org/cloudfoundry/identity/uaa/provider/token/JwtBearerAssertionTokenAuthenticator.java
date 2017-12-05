@@ -10,6 +10,7 @@ import org.apache.commons.logging.LogFactory;
 import org.cloudfoundry.identity.uaa.oauth.client.ClientConstants;
 import org.cloudfoundry.identity.uaa.oauth.token.ClaimConstants;
 import org.cloudfoundry.identity.uaa.util.JsonUtils;
+import org.cloudfoundry.identity.uaa.zone.IdentityZoneHolder;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
@@ -213,7 +214,8 @@ public class JwtBearerAssertionTokenAuthenticator {
             // Predix CAAS url base64URL decodes the public key.
             String tenantId = (String) claims.get(ClaimConstants.TENANT_ID);
             String deviceId = (String) claims.get(ClaimConstants.SUB);
-            base64UrlEncodedPublicKey = this.clientPublicKeyProvider.getPublicKey(tenantId, deviceId);
+            String predixZoneId = IdentityZoneHolder.get().getConfig().getPublicKeyProviderInstanceId();
+            base64UrlEncodedPublicKey = this.clientPublicKeyProvider.getPublicKey(tenantId, deviceId, predixZoneId);
             this.logger.debug("Public Key for tenant: " + base64UrlEncodedPublicKey);
             return new String(Base64.getUrlDecoder().decode(base64UrlEncodedPublicKey));
         } catch (PublicKeyNotFoundException e) {
