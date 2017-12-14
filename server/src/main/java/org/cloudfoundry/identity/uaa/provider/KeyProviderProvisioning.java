@@ -6,9 +6,9 @@ public interface KeyProviderProvisioning {
 
     KeyProviderConfig retrieve(String identityZoneId);
 
-    KeyProviderConfig update();
+    KeyProviderConfig createOrUpdate(KeyProviderConfig config);
 
-    KeyProviderConfig update(String identityZoneId);
+    KeyProviderConfig createOrUpdate(KeyProviderConfig config, String identityZoneId);
 
-    KeyProviderConfig create(String identityZoneId);
+    KeyProviderConfig delete();
 }
