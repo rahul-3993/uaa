@@ -126,6 +126,8 @@ import static org.springframework.util.StringUtils.hasText;
 
 public class IntegrationTestUtils {
 
+    public static final String ZONE_NAME_TEMPLATE = "The Twiglet Zone[%s]";
+
     public static void updateUserToForcePasswordChange(RestTemplate restTemplate, String baseUrl, String adminToken, String userId) {
         updateUserToForcePasswordChange(restTemplate, baseUrl, adminToken, userId, null);
     }
