@@ -616,7 +616,7 @@ public class SamlLoginWithLocalIdpIT {
     private void initializeSamlCrossZones(String zoneId1, String zoneId2, RestTemplate identityClient) {
         IdentityZoneConfiguration configuration = new IdentityZoneConfiguration();
         IntegrationTestUtils.createZoneOrUpdateSubdomain(identityClient, baseUrl, zoneId1, zoneId1, configuration);
-        IntegrationTestUtils.createZoneOrUpdateSubdomain(identityClient, baseUrl, zoneId2, zoneId2);
+        IntegrationTestUtils.createZoneOrUpdateSubdomain(identityClient, baseUrl, zoneId2, zoneId2, null);
     }
 
     private Map<String, Object> createValidAttributeMappingsMap() {
@@ -735,7 +735,7 @@ public class SamlLoginWithLocalIdpIT {
 
         String adminToken = IntegrationTestUtils.getClientCredentialsToken(baseUrl, "admin", "adminsecret");
 
-        IntegrationTestUtils.createZoneOrUpdateSubdomain(identityClient, baseUrl, idpZoneId, idpZoneId);
+        IntegrationTestUtils.createZoneOrUpdateSubdomain(identityClient, baseUrl, idpZoneId, idpZoneId, null);
         String idpZoneAdminEmail = new RandomValueStringGenerator().generate() + "@samltesting.org";
         ScimUser idpZoneAdminUser = IntegrationTestUtils.createUser(adminClient, baseUrl, idpZoneAdminEmail, "firstname", "lastname", idpZoneAdminEmail, true);
 
