@@ -16,13 +16,20 @@
 package org.cloudfoundry.identity.uaa.zone;
 
 import org.cloudfoundry.identity.uaa.provider.IdentityProviderProvisioning;
+import org.cloudfoundry.identity.uaa.provider.KeyProviderConfig;
+import org.cloudfoundry.identity.uaa.provider.KeyProviderProvisioning;
+import org.cloudfoundry.identity.uaa.provider.KeyProviderValidator;
 import org.cloudfoundry.identity.uaa.saml.SamlKey;
 import org.cloudfoundry.identity.uaa.scim.ScimGroup;
 import org.cloudfoundry.identity.uaa.scim.ScimGroupProvisioning;
 import org.junit.Before;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.ExpectedException;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mockito;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.validation.BindingResult;
 
 import java.util.List;
@@ -47,6 +54,11 @@ public class IdentityZoneEndpointsTests {
     private IdentityZone zone;
     private IdentityZoneProvisioning zoneDao = mock(IdentityZoneProvisioning.class);
     private ScimGroupProvisioning groupProvisioning = mock(ScimGroupProvisioning.class);
+    private final KeyProviderProvisioning keyProviderProvisioning = mock(KeyProviderProvisioning.class);
+    private final KeyProviderValidator keyProviderValidator = mock(KeyProviderValidator.class);
+
+    @Rule
+    public ExpectedException expection = ExpectedException.none();
 
     @Before
     public void setup() {
@@ -54,7 +66,9 @@ public class IdentityZoneEndpointsTests {
             zoneDao,
             mock(IdentityProviderProvisioning.class),
             mock(IdentityZoneEndpointClientRegistrationService.class),
-            groupProvisioning
+            groupProvisioning,
+                keyProviderProvisioning,
+                keyProviderValidator
         );
         endpoints.setValidator((config, mode) -> config);
         when(zoneDao.create(any())).then(invocation -> invocation.getArguments()[0]);
@@ -156,5 +170,20 @@ public class IdentityZoneEndpointsTests {
             }
         );
 
+    }
+
+    @Test
+    public void testCreateKeyProviderConfigValidatesZoneId() throws Exception{
+        String invalidZoneId = IdentityZoneHolder.get().getId() + "_OTHER";
+        expection.expect(ZoneDoesNotExistsException.class);
+        expection.expectMessage("Invalid zoneId " + invalidZoneId);
+        ResponseEntity<KeyProviderConfig> responseEntity = endpoints.createOrUpdateKeyProviderConfig(new KeyProviderConfig("dcsClient", "dcsTenant"), invalidZoneId);
+    }
+
+    @Test
+    public void testCreateKeyProviderConfigValidatesZoneIdForSystemZone() throws Exception{
+        expection.expect(ZoneDoesNotExistsException.class);
+        expection.expectMessage("Invalid zoneId " + IdentityZoneHolder.get().getId());
+        ResponseEntity<KeyProviderConfig> responseEntity = endpoints.createOrUpdateKeyProviderConfig(new KeyProviderConfig("dcsClient", "dcsTenant"), IdentityZoneHolder.get().getId());
     }
 }

@@ -31,18 +31,14 @@ public class KeyProviderValidatorTest {
     @Test
     public void testValidate() throws KeyProviderValidator.KeyProviderValidatorException {
         when(mockClients.loadClientByClientId(eq("valid-client-id"))).thenReturn(new BaseClientDetails());
-        KeyProviderConfig test = new KeyProviderConfig();
-        test.setClientId("valid-client-id");
-        test.setDcsTenantId("anything");
+        KeyProviderConfig test = new KeyProviderConfig("valid-client-id", "anything");
         keyProviderValidator.validate(test);
     }
 
     @Test
     public void testValidateEmptyClientId() throws KeyProviderValidator.KeyProviderValidatorException {
         when(mockClients.loadClientByClientId(anyString())).thenReturn(new BaseClientDetails());
-        KeyProviderConfig test = new KeyProviderConfig();
-        test.setClientId("");
-        test.setDcsTenantId("anything");
+        KeyProviderConfig test = new KeyProviderConfig("", "anything");
         expection.expect(KeyProviderValidator.KeyProviderValidatorException.class);
         expection.expectMessage("Empty client id.");
         keyProviderValidator.validate(test);
@@ -51,9 +47,7 @@ public class KeyProviderValidatorTest {
     @Test
     public void testValidateEmptyTenantId() throws KeyProviderValidator.KeyProviderValidatorException {
         when(mockClients.loadClientByClientId(anyString())).thenReturn(new BaseClientDetails());
-        KeyProviderConfig test = new KeyProviderConfig();
-        test.setClientId("anything");
-        test.setDcsTenantId("");
+        KeyProviderConfig test = new KeyProviderConfig("anything", "");
         expection.expect(KeyProviderValidator.KeyProviderValidatorException.class);
         expection.expectMessage("Empty tenant id.");
         keyProviderValidator.validate(test);
@@ -62,9 +56,7 @@ public class KeyProviderValidatorTest {
     @Test
     public void testValidateClientNotFound() throws KeyProviderValidator.KeyProviderValidatorException {
         when(mockClients.loadClientByClientId(anyString())).thenThrow(new NoSuchClientException("I dunno man, it's in the title"));
-        KeyProviderConfig test = new KeyProviderConfig();
-        test.setClientId("nonexistent-client-id");
-        test.setDcsTenantId("anything");
+        KeyProviderConfig test = new KeyProviderConfig("nonexistent-client-id","anything");
         expection.expect(KeyProviderValidator.KeyProviderValidatorException.class);
         expection.expectMessage("Client nonexistent-client-id was not found.");
         keyProviderValidator.validate(test);

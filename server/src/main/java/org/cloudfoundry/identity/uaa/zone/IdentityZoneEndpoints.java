@@ -18,10 +18,14 @@ import org.cloudfoundry.identity.uaa.constants.OriginKeys;
 import org.cloudfoundry.identity.uaa.error.UaaException;
 import org.cloudfoundry.identity.uaa.provider.IdentityProvider;
 import org.cloudfoundry.identity.uaa.provider.IdentityProviderProvisioning;
+import org.cloudfoundry.identity.uaa.provider.KeyProviderConfig;
+import org.cloudfoundry.identity.uaa.provider.KeyProviderProvisioning;
+import org.cloudfoundry.identity.uaa.provider.KeyProviderValidator;
 import org.cloudfoundry.identity.uaa.provider.UaaIdentityProviderDefinition;
 import org.cloudfoundry.identity.uaa.saml.SamlKey;
 import org.cloudfoundry.identity.uaa.scim.ScimGroup;
 import org.cloudfoundry.identity.uaa.scim.ScimGroupProvisioning;
+import org.jboss.logging.Param;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -85,17 +89,23 @@ public class IdentityZoneEndpoints implements ApplicationEventPublisherAware {
     private final IdentityProviderProvisioning idpDao;
     private final IdentityZoneEndpointClientRegistrationService clientRegistrationService;
     private final ScimGroupProvisioning groupProvisioning;
+    private final KeyProviderProvisioning keyProviderProvisioning;
+    private final KeyProviderValidator keyProviderValidator;
+
 
     private IdentityZoneValidator validator;
 
     public IdentityZoneEndpoints(IdentityZoneProvisioning zoneDao, IdentityProviderProvisioning idpDao,
                                  IdentityZoneEndpointClientRegistrationService clientRegistrationService,
-                                 ScimGroupProvisioning groupProvisioning) {
+                                 ScimGroupProvisioning groupProvisioning, KeyProviderProvisioning keyProviderProvisioning,
+                                 KeyProviderValidator keyProviderValidator) {
         super();
         this.zoneDao = zoneDao;
         this.idpDao = idpDao;
         this.clientRegistrationService = clientRegistrationService;
         this.groupProvisioning = groupProvisioning;
+        this.keyProviderProvisioning = keyProviderProvisioning;
+        this.keyProviderValidator = keyProviderValidator;
     }
 
     public void setValidator(IdentityZoneValidator validator) {
@@ -394,6 +404,34 @@ public class IdentityZoneEndpoints implements ApplicationEventPublisherAware {
             IdentityZoneHolder.set(previous);
         }
     }
+
+    @RequestMapping(method = PUT, value = "{identity-zone-id}/key-provider-config")
+    public ResponseEntity<KeyProviderConfig> createOrUpdateKeyProviderConfig(@RequestBody KeyProviderConfig body, @Param String zoneId) throws KeyProviderValidator.KeyProviderValidatorException {
+        if(IdentityZoneHolder.get().getId() != zoneId) {
+            throw new ZoneDoesNotExistsException("Invalid zoneId " + zoneId);
+        }
+        body.setZoneId(zoneId);
+        keyProviderValidator.validate(body);
+        keyProviderProvisioning.createOrUpdate(body);
+        return new ResponseEntity<>(keyProviderProvisioning.retrieve(), OK);
+    }
+
+    @RequestMapping(method = GET, value="{identity-zone-id}/key-provider-config")
+    public ResponseEntity<KeyProviderConfig> retrieveKeyProviderConfig() {
+        return new ResponseEntity<>(keyProviderProvisioning.retrieve(), OK);
+    }
+
+    @RequestMapping(method = DELETE, value="{identity-zone-id}/key-provider-config")
+    public ResponseEntity<KeyProviderConfig> deleteKeyProviderConfig() {
+        KeyProviderConfig result = keyProviderProvisioning.delete();
+        return new ResponseEntity<>(result, OK);
+    }
+
+    @ExceptionHandler(KeyProviderValidator.KeyProviderValidatorException.class)
+    public ResponseEntity<String> handleProviderNotFoundException() {
+        return new ResponseEntity<>("Provider not found.", HttpStatus.NOT_FOUND);
+    }
+
 
     @ExceptionHandler(ZoneAlreadyExistsException.class)
     public ResponseEntity<ZoneAlreadyExistsException> handleZoneAlreadyExistsException(ZoneAlreadyExistsException e) {

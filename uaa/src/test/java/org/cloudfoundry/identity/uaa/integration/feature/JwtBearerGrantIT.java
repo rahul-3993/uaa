@@ -2,7 +2,10 @@ package org.cloudfoundry.identity.uaa.integration.feature;
 
 import static org.junit.Assert.assertEquals;
 
+import java.net.URI;
 import java.util.Base64;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
@@ -11,6 +14,7 @@ import org.cloudfoundry.identity.uaa.integration.util.IntegrationTestUtils;
 import org.cloudfoundry.identity.uaa.oauth.OauthGrant;
 import org.cloudfoundry.identity.uaa.oauth.client.ClientConstants;
 import org.cloudfoundry.identity.uaa.oauth.token.ClaimConstants;
+import org.cloudfoundry.identity.uaa.provider.KeyProviderConfig;
 import org.cloudfoundry.identity.uaa.provider.token.MockAssertionToken;
 import org.cloudfoundry.identity.uaa.provider.token.MockClientAssertionHeader;
 import org.cloudfoundry.identity.uaa.provider.token.MockKeyProvider;
@@ -29,6 +33,8 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.jwt.Jwt;
 import org.springframework.security.jwt.JwtHelper;
 import org.springframework.security.oauth2.client.OAuth2RestTemplate;
@@ -293,7 +299,6 @@ public class JwtBearerGrantIT {
     //TODO enable when DCS deploys multitenant
     public void testJwtBearerGrantSuccessZonifiedDCS() throws Exception {
         IdentityZoneConfiguration config = new IdentityZoneConfiguration();
-        config.setPublicKeyProviderInstanceId(DCS_TEST_INSTANCE_ID);
         IdentityZone zone = IntegrationTestUtils.createZoneOrUpdateSubdomain(adminClient, this.baseUrl, "testzone1", "testzone1", config);
         String zoneUrl = baseUrl.replace("localhost", zone.getSubdomain() + ".localhost");
         BaseClientDetails zoneAdminClient = new BaseClientDetails();
@@ -301,7 +306,19 @@ public class JwtBearerGrantIT {
         zoneAdminClient.setClientSecret("adminsecret");
         IntegrationTestUtils.createClientAsZoneAdmin(adminClient.getAccessToken().getValue(), baseUrl, zone.getId(), zoneAdminClient);
 
+        BaseClientDetails dcsClient = new BaseClientDetails();
+        dcsClient.setClientId("dcsClient");
+        dcsClient.setClientSecret("dcsisawesome");
+        dcsClient.setAuthorities(Collections.singleton(new SimpleGrantedAuthority("pki.cert.key")));
+        dcsClient.setAuthorizedGrantTypes(Collections.singleton("client_credentials"));
+        IntegrationTestUtils.createClient(adminClient.getAccessToken().getValue(), zoneUrl, dcsClient);
+        configureKeyProviderInZone(zoneUrl, zone.getId(), dcsClient.getClientId());
+
         doJwtBearerGrantRequest(getHttpHeaders(), zoneUrl, zoneAdminClient, new MockAssertionToken(MockKeyProvider.ZONE1_PRIVATE_KEY));
+    }
+
+    private void configureKeyProviderInZone(String zoneUrl, String zoneId, String dcsClientId) {
+        adminClient.postForEntity(zoneUrl + "/identity-zones/" + zoneId + "/key-provider-config", new KeyProviderConfig(dcsClientId, DCS_TEST_INSTANCE_ID), KeyProviderConfig.class);
     }
 
     private void doJwtBearerGrantRequest(final HttpHeaders headers, final String uaaUrl, final BaseClientDetails client, MockAssertionToken assertionToken) throws Exception {

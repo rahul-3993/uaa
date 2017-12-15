@@ -14,6 +14,11 @@ public class KeyProviderConfig {
 
     //TODO maybe add dcs url
 
+    public KeyProviderConfig(String clientId, String dcsTenantId) {
+        this.clientId = clientId;
+        this.dcsTenantId = dcsTenantId;
+    }
+
     public String getClientId() {
         return clientId;
     }

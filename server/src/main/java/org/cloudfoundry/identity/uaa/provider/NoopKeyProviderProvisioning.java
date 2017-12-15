@@ -17,17 +17,17 @@ public class NoopKeyProviderProvisioning implements KeyProviderProvisioning, Sys
     }
 
     @Override
-    public KeyProviderConfig update() {
+    public KeyProviderConfig createOrUpdate(KeyProviderConfig config) {
         return null;
     }
 
     @Override
-    public KeyProviderConfig update(String identityZoneId) {
+    public KeyProviderConfig createOrUpdate(KeyProviderConfig config, String identityZoneId) {
         return null;
     }
 
     @Override
-    public KeyProviderConfig create(String identityZoneId) {
+    public KeyProviderConfig delete() {
         return null;
     }
 

@@ -34,12 +34,20 @@
           class="org.cloudfoundry.identity.uaa.provider.JdbcIdentityProviderProvisioning">
         <constructor-arg ref="jdbcTemplate"/>
     </bean>
+    <bean id="keyProviderProvisioning"
+          class="org.cloudfoundry.identity.uaa.provider.NoopKeyProviderProvisioning">
+    </bean>
+    <bean id="keyProviderValidator"
+          class="org.cloudfoundry.identity.uaa.provider.KeyProviderValidator">
+    </bean>
 
     <bean id="identityZoneEndpoints" class="org.cloudfoundry.identity.uaa.zone.IdentityZoneEndpoints">
         <constructor-arg ref="identityZoneProvisioning"/>
         <constructor-arg ref="identityProviderProvisioning"/>
         <constructor-arg ref="zoneEndpointsClientRegistrationService"/>
         <constructor-arg ref="scimGroupProvisioning"/>
+        <constructor-arg ref="keyProviderProvisioning"/>
+        <constructor-arg ref="keyProviderValidator"/>
         <property name="validator" ref="identityZoneValidator"/>
     </bean>
 

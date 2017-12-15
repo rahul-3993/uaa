@@ -1889,6 +1889,17 @@ public class IdentityZoneEndpointsMockMvcTests extends InjectedMockContextTest {
         assertEquals("kid", zoneResult.getConfig().getTokenPolicy().getActiveKeyId());
     }
 
+    @Test
+    public void testUpdateKeyProviderConfigDeniedForSystemZone() throws Exception{
+        MockHttpServletResponse result = getMockMvc().perform(
+                put("/identity-zones/" + IdentityZoneHolder.getUaaZone().getId())
+                        .header("Authorization", "Bearer " + adminToken)
+                        .accept(APPLICATION_JSON))
+                .andExpect(status().isForbidden())
+                .andReturn().getResponse();
+
+        assertEquals(HttpStatus.FORBIDDEN, result.getStatus());
+    }
     private IdentityZone getIdentityZone(String id, HttpStatus expect, String token) throws Exception {
         MvcResult result = getMockMvc().perform(
             get("/identity-zones/" + id)
