@@ -2235,6 +2235,18 @@ class IdentityZoneEndpointsMockMvcTests {
         assertEquals("originkey", zone.getConfig().getDefaultIdentityProvider());
     }
 
+    @Test
+    void testUpdateKeyProviderConfigDeniedForSystemZone() throws Exception{
+        MockHttpServletResponse result = getMockMvc().perform(
+                put("/identity-zones/" + IdentityZoneHolder.getUaaZone().getId())
+                        .header("Authorization", "Bearer " + adminToken)
+                        .accept(APPLICATION_JSON))
+                .andExpect(status().isForbidden())
+                .andReturn().getResponse();
+
+        assertEquals(HttpStatus.FORBIDDEN, result.getStatus());
+    }
+
     private static class IdentityZonesBaseUrlsArgumentsSource implements ArgumentsProvider {
 
         @Override

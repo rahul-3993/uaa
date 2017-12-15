@@ -69,9 +69,7 @@ public class JwtBearerAssertionTokenAuthenticatorTest {
         long currentTime = System.currentTimeMillis();
         String token = new MockAssertionToken().mockAssertionToken(DEVICE_1_CLIENT_ID, DEVICE_1_ID,
                 currentTime, 600, TENANT_ID, AUDIENCE);
-        KeyProviderConfig mockConfig = new KeyProviderConfig();
-        mockConfig.setDcsTenantId("test-zone-guid");
-        mockConfig.setClientId("any-client");
+        KeyProviderConfig mockConfig = new KeyProviderConfig("test-zone-guid", "any-client");
         when(keyProviderConfigProvisioner.retrieve()).thenReturn(mockConfig);
         String header = new MockClientAssertionHeader().mockSignedHeader(this.currentTimeSecs, DEVICE_1_ID, TENANT_ID);
         this.tokenAuthenticator.setClientDetailsService(this.clientDetailsService);
@@ -88,9 +86,7 @@ public class JwtBearerAssertionTokenAuthenticatorTest {
         long currentTime = System.currentTimeMillis();
         String token = new MockAssertionToken().mockAssertionToken(DEVICE_1_CLIENT_ID, DEVICE_1_ID,
                 currentTime, 600, TENANT_ID, AUDIENCE);
-        KeyProviderConfig mockConfig = new KeyProviderConfig();
-        mockConfig.setDcsTenantId("test-zone-guid");
-        mockConfig.setClientId("any-client");
+        KeyProviderConfig mockConfig = new KeyProviderConfig("test-zone-guid", "any-client");
         when(keyProviderConfigProvisioner.retrieve()).thenReturn(null);
         String header = new MockClientAssertionHeader().mockSignedHeader(this.currentTimeSecs, DEVICE_1_ID, TENANT_ID);
         this.tokenAuthenticator.setClientDetailsService(this.clientDetailsService);
