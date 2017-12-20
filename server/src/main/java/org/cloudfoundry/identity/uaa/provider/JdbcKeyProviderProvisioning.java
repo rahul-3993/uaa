@@ -21,6 +21,7 @@ public class JdbcKeyProviderProvisioning implements KeyProviderProvisioning, Sys
     public static final String SELECT_KEY_PROVIDER_CONFIG_BY_ZONE = "select * from key_provider_config where identity_zone_id = ?";
     public static final String SELECT_KEY_PROVIDER_CONFIG_BY_ZONE_AND_ID = "select * from key_provider_config where id = ? and identity_zone_id = ?";
     public static final String DELETE_KEY_PROVIDER_CONFIG_BY_ZONE_AND_ID = "delete from key_provider_config where id = ? and identity_zone_id = ?";
+    public static final String DELETE_KEY_PROVIDER_CONFIG_BY_ZONE = "delete from key_provider_config where identity_zone_id = ?";
 
     protected final JdbcTemplate jdbcTemplate;
 
@@ -54,7 +55,7 @@ public class JdbcKeyProviderProvisioning implements KeyProviderProvisioning, Sys
     }
 
     @Override
-    public KeyProviderConfig createOrUpdate(KeyProviderConfig config) {
+    public KeyProviderConfig create(KeyProviderConfig config) {
         String id = UUID.randomUUID().toString();
         if( findActive() != null ) {
          throw new KeyProviderAlreadyExistsException("Key provider already exists for this zone.");
@@ -70,7 +71,7 @@ public class JdbcKeyProviderProvisioning implements KeyProviderProvisioning, Sys
 
     @Override
     public int deleteByIdentityZone(String zoneId) {
-        return 0;
+        return jdbcTemplate.update(DELETE_KEY_PROVIDER_CONFIG_BY_ZONE, zoneId);
     }
 
     @Override

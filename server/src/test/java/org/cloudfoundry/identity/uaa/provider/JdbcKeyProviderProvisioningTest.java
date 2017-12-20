@@ -19,6 +19,7 @@ public class JdbcKeyProviderProvisioningTest extends JdbcTestBase{
     JdbcKeyProviderProvisioning provisioning;
 
     public static final String GET_KEY_PROVIDER_BY_ID_SQL = "select * from key_provider_config where id=?";
+    public static final String GET_KEY_PROVIDER_BY_ZONE_ID_SQL = "select * from key_provider_config where identity_zone_id=?";
 
     @Rule
     public ExpectedException expection = ExpectedException.none();
@@ -30,7 +31,7 @@ public class JdbcKeyProviderProvisioningTest extends JdbcTestBase{
     @Test
     public void testCreate() {
         KeyProviderConfig keyProviderConfig = new KeyProviderConfig("client1", "tenant1");
-        KeyProviderConfig created = provisioning.createOrUpdate(keyProviderConfig);
+        KeyProviderConfig created = provisioning.create(keyProviderConfig);
 
         assertEquals("client1", created.getClientId());
         assertEquals("tenant1", created.getDcsTenantId());
@@ -42,11 +43,11 @@ public class JdbcKeyProviderProvisioningTest extends JdbcTestBase{
     @Test
     public void testCreateForExistingZone() {
         KeyProviderConfig keyProviderConfig = new KeyProviderConfig("client1", "tenant1");
-        provisioning.createOrUpdate(keyProviderConfig);
+        provisioning.create(keyProviderConfig);
 
         expection.expect(KeyProviderAlreadyExistsException.class);
         expection.expectMessage("Key provider already exists for this zone.");
-        provisioning.createOrUpdate(keyProviderConfig);
+        provisioning.create(keyProviderConfig);
 
     }
 
@@ -91,6 +92,26 @@ public class JdbcKeyProviderProvisioningTest extends JdbcTestBase{
     @Test
     public void testFindActiveForZoneZeroResults() {
         assertNull(provisioning.findActive());
+    }
+
+    @Test
+    public void testDeleteByZoneId() {
+        String keyProviderId1 = UUID.randomUUID().toString();
+        String zoneId1 = IdentityZoneHolder.get().getId() + "1";
+        int update = jdbcTemplate.update(JdbcKeyProviderProvisioning.INSERT_KEY_PROVIDER_CONFIG, keyProviderId1, zoneId1, "client1", "tenant1");
+        String keyProviderId2 = UUID.randomUUID().toString();
+        assertEquals(1, jdbcTemplate.query(GET_KEY_PROVIDER_BY_ZONE_ID_SQL, JdbcKeyProviderProvisioning.mapper, zoneId1).size());
+        String currentZoneId = IdentityZoneHolder.get().getId();
+        IdentityZoneHolder.get().setId(zoneId1);
+        String zoneId2 = IdentityZoneHolder.get().getId() + "2";
+        jdbcTemplate.update(JdbcKeyProviderProvisioning.INSERT_KEY_PROVIDER_CONFIG, keyProviderId2, zoneId2, "client1", "tenant1");
+
+        assertEquals(1, provisioning.deleteByIdentityZone(zoneId1));
+
+        assertEquals(0, jdbcTemplate.query(GET_KEY_PROVIDER_BY_ZONE_ID_SQL, JdbcKeyProviderProvisioning.mapper, zoneId1).size());
+        assertEquals(1, jdbcTemplate.query(GET_KEY_PROVIDER_BY_ZONE_ID_SQL, JdbcKeyProviderProvisioning.mapper, zoneId2).size());
+
+        IdentityZoneHolder.get().setId(currentZoneId);
     }
 
 }

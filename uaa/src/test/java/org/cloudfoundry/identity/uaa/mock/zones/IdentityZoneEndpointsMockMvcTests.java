@@ -19,6 +19,7 @@ import org.cloudfoundry.identity.uaa.oauth.client.ClientConstants;
 import org.cloudfoundry.identity.uaa.provider.IdentityProvider;
 import org.cloudfoundry.identity.uaa.provider.IdentityProviderProvisioning;
 import org.cloudfoundry.identity.uaa.provider.JdbcIdentityProviderProvisioning;
+import org.cloudfoundry.identity.uaa.provider.JdbcKeyProviderProvisioning;
 import org.cloudfoundry.identity.uaa.provider.KeyProviderConfig;
 import org.cloudfoundry.identity.uaa.scim.*;
 import org.cloudfoundry.identity.uaa.scim.ScimGroup;
@@ -2314,7 +2315,7 @@ class IdentityZoneEndpointsMockMvcTests {
     @Test
     void testDeleteKeyProviderConfig() throws Exception {
         String identityZoneId = new RandomValueStringGenerator(5).generate();
-        String keyProviderId = keyProviderSetup(identityZoneId, CREATED.value(), CREATED, adminToken);
+        String keyProviderId = keyProviderSetup(identityZoneId, CREATED, CREATED, adminToken);
         getMockMvc().perform(
                 delete("/identity-zones/" + identityZoneId + "/key-provider-config/" + keyProviderId)
                         .header("Authorization", "Bearer " + adminToken)
@@ -2328,7 +2329,7 @@ class IdentityZoneEndpointsMockMvcTests {
     @Test
     void testDeleteKeyProviderConfigWithLowPrivilegeTokenIsForbidden() throws Exception {
         String identityZoneId = new RandomValueStringGenerator(5).generate();
-        String keyProviderId = keyProviderSetup(identityZoneId, CREATED.value(), CREATED, adminToken);
+        String keyProviderId = keyProviderSetup(identityZoneId, CREATED, CREATED, adminToken);
         getMockMvc().perform(
                 delete("/identity-zones/" + identityZoneId + "/key-provider-config/" + keyProviderId)
                         .header("Authorization", "Bearer " + lowPriviledgeToken)
@@ -2341,26 +2342,26 @@ class IdentityZoneEndpointsMockMvcTests {
 
     @Test
     void testCreateKeyProviderConfigWithLowPrivilegeIsForbidden() throws Exception {
-        keyProviderSetup(new RandomValueStringGenerator(5).generate(), FORBIDDEN.value(), CREATED, lowPriviledgeToken);
+        keyProviderSetup(new RandomValueStringGenerator(5).generate(), FORBIDDEN, CREATED, lowPriviledgeToken);
     }
 
     @Test
     void testCreateKeyProviderConfig() throws Exception {
-        keyProviderSetup(new RandomValueStringGenerator(5).generate(), CREATED.value(), CREATED, adminToken);
+        keyProviderSetup(new RandomValueStringGenerator(5).generate(), CREATED, CREATED, adminToken);
     }
 
     @Test
     void testCreateKeyProviderConfigAlreadyExists() throws Exception{
         String zoneId = new RandomValueStringGenerator(5).generate();
-        keyProviderSetup(zoneId, CREATED.value(), CREATED, adminToken);
-        keyProviderSetup(zoneId, CONFLICT.value(), CONFLICT, adminToken);
+        keyProviderSetup(zoneId, CREATED, CREATED, adminToken);
+        keyProviderSetup(zoneId, CONFLICT, CONFLICT, adminToken);
 
     }
 
     @Test
     void testFindActiveKeyProviderForZone() throws Exception{
         String identityZoneId = new RandomValueStringGenerator(5).generate();
-        String keyProviderId = keyProviderSetup(identityZoneId, CREATED.value(), CREATED, adminToken);
+        String keyProviderId = keyProviderSetup(identityZoneId, CREATED, CREATED, adminToken);
         assertNotNull(keyProviderId);
         MockHttpServletResponse response = getMockMvc().perform(
                 get("/identity-zones/" + identityZoneId + "/key-provider-config")
@@ -2376,7 +2377,7 @@ class IdentityZoneEndpointsMockMvcTests {
     @Test
     void testFindActiveKeyProviderForZoneWithLowPrivilegeTokenIsForbidden() throws Exception{
         String identityZoneId = new RandomValueStringGenerator(5).generate();
-        String keyProviderId = keyProviderSetup(identityZoneId, CREATED.value(), CREATED, adminToken);
+        String keyProviderId = keyProviderSetup(identityZoneId, CREATED, CREATED, adminToken);
         assertNotNull(keyProviderId);
         MockHttpServletResponse response = getMockMvc().perform(
                 get("/identity-zones/" + identityZoneId + "/key-provider-config")
@@ -2389,7 +2390,7 @@ class IdentityZoneEndpointsMockMvcTests {
     @Test
     void testGetKeyProvider() throws Exception{
         String identityZoneId = new RandomValueStringGenerator(5).generate();
-        String keyProviderId = keyProviderSetup(identityZoneId, CREATED.value(), CREATED, adminToken);
+        String keyProviderId = keyProviderSetup(identityZoneId, CREATED, CREATED, adminToken);
         assertNotNull(keyProviderId);
         MockHttpServletResponse response = getMockMvc().perform(
                 get("/identity-zones/" + identityZoneId + "/key-provider-config/" + keyProviderId)
@@ -2404,7 +2405,7 @@ class IdentityZoneEndpointsMockMvcTests {
     @Test
     void testGetKeyProviderWithLowPrivilegeTokenIsForbidden() throws Exception{
         String identityZoneId = new RandomValueStringGenerator(5).generate();
-        String keyProviderId = keyProviderSetup(identityZoneId, CREATED.value(), CREATED, adminToken);
+        String keyProviderId = keyProviderSetup(identityZoneId, CREATED, CREATED, adminToken);
         assertNotNull(keyProviderId);
         MockHttpServletResponse response = getMockMvc().perform(
                 get("/identity-zones/" + identityZoneId + "/key-provider-config/" + keyProviderId)
@@ -2414,7 +2415,21 @@ class IdentityZoneEndpointsMockMvcTests {
                 .andExpect(status().isForbidden()).andReturn().getResponse();
     }
 
-    private String keyProviderSetup(String identityZoneId, int createKeyProviderStatus, HttpStatus zoneCreateStatus, String token) throws Exception {
+    @Test
+    public void testDeleteZoneAlsoDeletesKeyProviders() throws Exception{
+        String identityZoneId = new RandomValueStringGenerator(5).generate();
+        JdbcKeyProviderProvisioning jdbcKeyProviderProvisioning = getWebApplicationContext().getBean(JdbcKeyProviderProvisioning.class);
+        String currentZoneId = IdentityZoneHolder.get().getId();
+        String keyProviderId = keyProviderSetup(identityZoneId, CREATED, CREATED, adminToken);
+        IdentityZoneHolder.get().setId(identityZoneId);
+        assertEquals(keyProviderId, jdbcKeyProviderProvisioning.findActive().getId());
+        MockMvcUtils.deleteIdentityZone(identityZoneId, getMockMvc());
+
+        assertNull(jdbcKeyProviderProvisioning.findActive());
+
+        IdentityZoneHolder.get().setId(currentZoneId);
+    }
+    private String keyProviderSetup(String identityZoneId, HttpStatus createKeyProviderStatus, HttpStatus zoneCreateStatus, String token) throws Exception {
         createZone(identityZoneId, zoneCreateStatus, adminToken, new IdentityZoneConfiguration());
         BaseClientDetails client = new BaseClientDetails();
         client.setClientId("client1");
@@ -2439,7 +2454,7 @@ class IdentityZoneEndpointsMockMvcTests {
                         .accept(APPLICATION_JSON)
                         .content(JsonUtils.writeValueAsString(keyProviderConfig)))
                 .andReturn().getResponse();
-        assertEquals(createKeyProviderStatus, response.getStatus());
+        assertEquals(createKeyProviderStatus.value(), response.getStatus());
         try {
             return JsonUtils.readValue(response.getContentAsString(), KeyProviderConfig.class).getId();
         } catch (Exception e) {

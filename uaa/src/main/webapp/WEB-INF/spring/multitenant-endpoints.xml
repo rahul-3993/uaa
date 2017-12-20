@@ -154,7 +154,7 @@
             <aop:before method="checkIdentityZoneId"
                         pointcut="execution(* *..IdentityZoneEndpoints+.deleteClient(..)) and args(identityZoneId,*)"/>
             <aop:before method="checkIdentityZoneId"
-                        pointcut="execution(* *..IdentityZoneEndpoints+.createOrUpdateKeyProviderConfig(..)) and args(*,identityZoneId)"/>
+                        pointcut="execution(* *..IdentityZoneEndpoints+.createKeyProviderConfig(..)) and args(*,identityZoneId)"/>
             <aop:before method="checkIdentityZoneId"
                         pointcut="execution(* *..IdentityZoneEndpoints+.retrieveKeyProviderConfig(..)) and args(identityZoneId, *)"/>
             <aop:before method="checkIdentityZoneId"

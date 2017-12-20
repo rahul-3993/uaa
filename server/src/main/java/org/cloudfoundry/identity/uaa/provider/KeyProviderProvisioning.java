@@ -6,7 +6,7 @@ public interface KeyProviderProvisioning {
 
     KeyProviderConfig findActive();
 
-    KeyProviderConfig createOrUpdate(KeyProviderConfig config);
+    KeyProviderConfig create(KeyProviderConfig config);
 
     int delete(String keyProviderId);
 }
