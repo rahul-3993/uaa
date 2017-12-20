@@ -6,7 +6,7 @@ import org.springframework.security.oauth2.provider.NoSuchClientException;
 import org.springframework.util.StringUtils;
 
 public class KeyProviderValidator {
-    ClientDetailsService clientDetails;
+    ClientDetailsService clientDetailsService;
 
     public void validate(KeyProviderConfig config) throws KeyProviderValidatorException {
         if(!StringUtils.hasText(config.getClientId())) {
@@ -16,18 +16,18 @@ public class KeyProviderValidator {
             throw new KeyProviderValidatorException("Empty tenant id.");
         }
         try {
-            ClientDetails retrieved = clientDetails.loadClientByClientId(config.getClientId());
+            ClientDetails retrieved = clientDetailsService.loadClientByClientId(config.getClientId());
         } catch (NoSuchClientException e) {
             throw new KeyProviderValidatorException("Client " + config.getClientId() + " was not found.", e);
         }
     }
 
-    public ClientDetailsService getClientDetails() {
-        return clientDetails;
+    public ClientDetailsService getClientDetailsService() {
+        return clientDetailsService;
     }
 
-    public void setClientDetails(ClientDetailsService clientDetails) {
-        this.clientDetails = clientDetails;
+    public void setClientDetailsService(ClientDetailsService clientDetailsService) {
+        this.clientDetailsService = clientDetailsService;
     }
 
     public class KeyProviderValidatorException extends Exception {

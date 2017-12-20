@@ -25,7 +25,6 @@ import org.cloudfoundry.identity.uaa.provider.UaaIdentityProviderDefinition;
 import org.cloudfoundry.identity.uaa.saml.SamlKey;
 import org.cloudfoundry.identity.uaa.scim.ScimGroup;
 import org.cloudfoundry.identity.uaa.scim.ScimGroupProvisioning;
-import org.jboss.logging.Param;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -406,31 +405,51 @@ public class IdentityZoneEndpoints implements ApplicationEventPublisherAware {
         }
     }
 
-    @RequestMapping(method = PUT, value = "{identity-zone-id}/key-provider-config")
-    public ResponseEntity<KeyProviderConfig> createOrUpdateKeyProviderConfig(@RequestBody KeyProviderConfig body, @Param String zoneId) throws KeyProviderValidator.KeyProviderValidatorException {
-        if(IdentityZoneHolder.get().getId() != zoneId) {
-            throw new ZoneDoesNotExistsException("Invalid zoneId " + zoneId);
-        }
-        body.setZoneId(zoneId);
+    @RequestMapping(method = POST, value = "{identityZoneId}/key-provider-config")
+    public ResponseEntity<KeyProviderConfig> createOrUpdateKeyProviderConfig(@RequestBody KeyProviderConfig body, @PathVariable String identityZoneId) throws KeyProviderValidator.KeyProviderValidatorException {
+        validateZoneId(identityZoneId);
+        body.setIdentityZoneId(identityZoneId);
         keyProviderValidator.validate(body);
-        keyProviderProvisioning.createOrUpdate(body);
-        return new ResponseEntity<>(keyProviderProvisioning.retrieve(), OK);
+        KeyProviderConfig keyProvider = keyProviderProvisioning.createOrUpdate(body);
+        return new ResponseEntity<>(keyProvider, CREATED);
     }
 
-    @RequestMapping(method = GET, value="{identity-zone-id}/key-provider-config")
-    public ResponseEntity<KeyProviderConfig> retrieveKeyProviderConfig() {
-        return new ResponseEntity<>(keyProviderProvisioning.retrieve(), OK);
+    @RequestMapping(method = GET, value="{identityZoneId}/key-provider-config/{keyProviderId}")
+    public ResponseEntity<KeyProviderConfig> retrieveKeyProviderConfig(@PathVariable String identityZoneId, @PathVariable String keyProviderId) {
+        validateZoneId(identityZoneId);
+        return new ResponseEntity<>(keyProviderProvisioning.retrieve(keyProviderId), OK);
     }
 
-    @RequestMapping(method = DELETE, value="{identity-zone-id}/key-provider-config")
-    public ResponseEntity<KeyProviderConfig> deleteKeyProviderConfig() {
-        KeyProviderConfig result = keyProviderProvisioning.delete();
-        return new ResponseEntity<>(result, OK);
+    @RequestMapping(method = GET, value="{identityZoneId}/key-provider-config")
+    public ResponseEntity<KeyProviderConfig> findKeyProviderConfigs(@PathVariable String identityZoneId) {
+        validateZoneId(identityZoneId);
+        return new ResponseEntity<>(keyProviderProvisioning.findActive(), OK);
     }
 
-    @ExceptionHandler(KeyProviderValidator.KeyProviderValidatorException.class)
+    @RequestMapping(method = DELETE, value="{identityZoneId}/key-provider-config/{keyProviderId}")
+    public ResponseEntity<KeyProviderConfig> deleteKeyProviderConfig(@PathVariable String identityZoneId, @PathVariable String keyProviderId) {
+        validateZoneId(identityZoneId);
+        int deleted = keyProviderProvisioning.delete(keyProviderId);
+        if(deleted != 1) {
+            throw new KeyProviderNotFoundException("KeyProvider not found for id: " + keyProviderId);
+        }
+        return new ResponseEntity<>(NO_CONTENT);
+    }
+
+    private void validateZoneId(String identityZoneId) {
+        if(!IdentityZoneHolder.get().getId().equals(identityZoneId)) {
+            throw new ZoneDoesNotExistsException("Invalid zoneId " + identityZoneId);
+        }
+    }
+
+    @ExceptionHandler({KeyProviderValidator.KeyProviderValidatorException.class, KeyProviderNotFoundException.class})
     public ResponseEntity<String> handleProviderNotFoundException() {
-        return new ResponseEntity<>("Provider not found.", HttpStatus.NOT_FOUND);
+        return new ResponseEntity<>("Key provider not found.", HttpStatus.NOT_FOUND);
+    }
+
+    @ExceptionHandler(KeyProviderAlreadyExistsException.class)
+    public ResponseEntity<String> handleProvideAlreadyExistsException() {
+        return new ResponseEntity<>("Key provider already exists.", HttpStatus.CONFLICT);
     }
 
 

@@ -2,13 +2,11 @@ package org.cloudfoundry.identity.uaa.provider;
 
 
 public interface KeyProviderProvisioning {
-    KeyProviderConfig retrieve();
+    KeyProviderConfig retrieve(String keyProviderId);
 
-    KeyProviderConfig retrieve(String identityZoneId);
+    KeyProviderConfig findActive();
 
     KeyProviderConfig createOrUpdate(KeyProviderConfig config);
 
-    KeyProviderConfig createOrUpdate(KeyProviderConfig config, String identityZoneId);
-
-    KeyProviderConfig delete();
+    int delete(String keyProviderId);
 }

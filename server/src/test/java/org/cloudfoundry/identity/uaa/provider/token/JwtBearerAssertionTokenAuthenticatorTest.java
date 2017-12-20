@@ -20,7 +20,6 @@ import org.cloudfoundry.identity.uaa.oauth.client.ClientConstants;
 import org.cloudfoundry.identity.uaa.provider.KeyProviderConfig;
 import org.cloudfoundry.identity.uaa.provider.KeyProviderProvisioning;
 import org.cloudfoundry.identity.uaa.util.JsonUtils;
-import org.cloudfoundry.identity.uaa.zone.IdentityZoneHolder;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
@@ -70,7 +69,7 @@ public class JwtBearerAssertionTokenAuthenticatorTest {
         String token = new MockAssertionToken().mockAssertionToken(DEVICE_1_CLIENT_ID, DEVICE_1_ID,
                 currentTime, 600, TENANT_ID, AUDIENCE);
         KeyProviderConfig mockConfig = new KeyProviderConfig("test-zone-guid", "any-client");
-        when(keyProviderConfigProvisioner.retrieve()).thenReturn(mockConfig);
+        when(keyProviderConfigProvisioner.findActive()).thenReturn(mockConfig);
         String header = new MockClientAssertionHeader().mockSignedHeader(this.currentTimeSecs, DEVICE_1_ID, TENANT_ID);
         this.tokenAuthenticator.setClientDetailsService(this.clientDetailsService);
 
@@ -87,7 +86,7 @@ public class JwtBearerAssertionTokenAuthenticatorTest {
         String token = new MockAssertionToken().mockAssertionToken(DEVICE_1_CLIENT_ID, DEVICE_1_ID,
                 currentTime, 600, TENANT_ID, AUDIENCE);
         KeyProviderConfig mockConfig = new KeyProviderConfig("test-zone-guid", "any-client");
-        when(keyProviderConfigProvisioner.retrieve()).thenReturn(null);
+        when(keyProviderConfigProvisioner.findActive()).thenReturn(null);
         String header = new MockClientAssertionHeader().mockSignedHeader(this.currentTimeSecs, DEVICE_1_ID, TENANT_ID);
         this.tokenAuthenticator.setClientDetailsService(this.clientDetailsService);
 
