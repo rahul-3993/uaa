@@ -8,13 +8,26 @@ import java.util.Objects;
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class KeyProviderConfig {
+    private String id;
     private String clientId;
     private String dcsTenantId;
-    private String zoneId;
+    private String identityZoneId;
 
     //TODO maybe add dcs url
 
+    public KeyProviderConfig() {
+        this.clientId = null;
+        this.dcsTenantId = null;
+    }
+
     public KeyProviderConfig(String clientId, String dcsTenantId) {
+        this.clientId = clientId;
+        this.dcsTenantId = dcsTenantId;
+    }
+
+    public KeyProviderConfig(String id, String identityZoneId, String clientId, String dcsTenantId) {
+        this.id = id;
+        this.identityZoneId = identityZoneId;
         this.clientId = clientId;
         this.dcsTenantId = dcsTenantId;
     }
@@ -35,12 +48,12 @@ public class KeyProviderConfig {
         this.dcsTenantId = dcsTenantId;
     }
 
-    public String getZoneId() {
-        return zoneId;
+    public String getIdentityZoneId() {
+        return identityZoneId;
     }
 
-    public void setZoneId(String zoneId) {
-        this.zoneId = zoneId;
+    public void setIdentityZoneId(String zoneId) {
+        this.identityZoneId = zoneId;
     }
 
     @Override
@@ -50,11 +63,19 @@ public class KeyProviderConfig {
         KeyProviderConfig that = (KeyProviderConfig) o;
         return Objects.equals(clientId, that.clientId) &&
                 Objects.equals(dcsTenantId, that.dcsTenantId) &&
-                Objects.equals(zoneId, that.zoneId);
+                Objects.equals(identityZoneId, that.identityZoneId);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(clientId, dcsTenantId, zoneId);
+        return Objects.hash(clientId, dcsTenantId, identityZoneId);
+    }
+
+    public String getId() {
+        return id;
+    }
+
+    public void setId(String id) {
+        this.id = id;
     }
 }

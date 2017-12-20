@@ -28,7 +28,6 @@ import org.junit.Test;
 import org.junit.rules.ExpectedException;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mockito;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.BindingResult;
 
@@ -181,9 +180,26 @@ public class IdentityZoneEndpointsTests {
     }
 
     @Test
-    public void testCreateKeyProviderConfigValidatesZoneIdForSystemZone() throws Exception{
+    public void testGetKeyProviderConfigValidatesZoneId() throws Exception{
+        String invalidZoneId = IdentityZoneHolder.get().getId() + "_OTHER";
         expection.expect(ZoneDoesNotExistsException.class);
         expection.expectMessage("Invalid zoneId " + IdentityZoneHolder.get().getId());
-        ResponseEntity<KeyProviderConfig> responseEntity = endpoints.createOrUpdateKeyProviderConfig(new KeyProviderConfig("dcsClient", "dcsTenant"), IdentityZoneHolder.get().getId());
+        ResponseEntity<KeyProviderConfig> responseEntity = endpoints.retrieveKeyProviderConfig(invalidZoneId, "1");
+    }
+
+    @Test
+    public void testGetKeyProviderConfigListValidatesZoneId() throws Exception{
+        String invalidZoneId = IdentityZoneHolder.get().getId() + "_OTHER";
+        expection.expect(ZoneDoesNotExistsException.class);
+        expection.expectMessage("Invalid zoneId " + IdentityZoneHolder.get().getId());
+        ResponseEntity<KeyProviderConfig> responseEntity = endpoints.findKeyProviderConfigs(invalidZoneId);
+    }
+
+    @Test
+    public void testDeleteKeyProviderConfigValidatesZoneId() throws Exception{
+        String invalidZoneId = IdentityZoneHolder.get().getId() + "_OTHER";
+        expection.expect(ZoneDoesNotExistsException.class);
+        expection.expectMessage("Invalid zoneId " + IdentityZoneHolder.get().getId());
+        ResponseEntity<KeyProviderConfig> responseEntity = endpoints.deleteKeyProviderConfig(invalidZoneId, "1");
     }
 }
