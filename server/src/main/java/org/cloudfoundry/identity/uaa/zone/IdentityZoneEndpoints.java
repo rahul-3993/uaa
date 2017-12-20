@@ -67,6 +67,7 @@ import static java.util.Optional.ofNullable;
 import static org.springframework.http.HttpStatus.CONFLICT;
 import static org.springframework.http.HttpStatus.CREATED;
 import static org.springframework.http.HttpStatus.NOT_FOUND;
+import static org.springframework.http.HttpStatus.NO_CONTENT;
 import static org.springframework.http.HttpStatus.OK;
 import static org.springframework.http.HttpStatus.UNPROCESSABLE_ENTITY;
 import static org.springframework.web.bind.annotation.RequestMethod.DELETE;
@@ -405,11 +406,11 @@ public class IdentityZoneEndpoints implements ApplicationEventPublisherAware {
     }
 
     @RequestMapping(method = POST, value = "{identityZoneId}/key-provider-config")
-    public ResponseEntity<KeyProviderConfig> createOrUpdateKeyProviderConfig(@RequestBody KeyProviderConfig body, @PathVariable String identityZoneId) throws KeyProviderValidator.KeyProviderValidatorException {
+    public ResponseEntity<KeyProviderConfig> createKeyProviderConfig(@RequestBody KeyProviderConfig body, @PathVariable String identityZoneId) throws KeyProviderValidator.KeyProviderValidatorException {
         validateZoneId(identityZoneId);
         body.setIdentityZoneId(identityZoneId);
         keyProviderValidator.validate(body);
-        KeyProviderConfig keyProvider = keyProviderProvisioning.createOrUpdate(body);
+        KeyProviderConfig keyProvider = keyProviderProvisioning.create(body);
         return new ResponseEntity<>(keyProvider, CREATED);
     }
 

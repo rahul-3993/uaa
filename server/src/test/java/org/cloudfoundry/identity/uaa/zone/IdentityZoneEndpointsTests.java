@@ -176,7 +176,7 @@ public class IdentityZoneEndpointsTests {
         String invalidZoneId = IdentityZoneHolder.get().getId() + "_OTHER";
         expection.expect(ZoneDoesNotExistsException.class);
         expection.expectMessage("Invalid zoneId " + invalidZoneId);
-        ResponseEntity<KeyProviderConfig> responseEntity = endpoints.createOrUpdateKeyProviderConfig(new KeyProviderConfig("dcsClient", "dcsTenant"), invalidZoneId);
+        ResponseEntity<KeyProviderConfig> responseEntity = endpoints.createKeyProviderConfig(new KeyProviderConfig("dcsClient", "dcsTenant"), invalidZoneId);
     }
 
     @Test

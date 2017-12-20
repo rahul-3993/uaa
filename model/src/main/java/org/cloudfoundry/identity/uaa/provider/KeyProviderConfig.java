@@ -13,8 +13,6 @@ public class KeyProviderConfig {
     private String dcsTenantId;
     private String identityZoneId;
 
-    //TODO maybe add dcs url
-
     public KeyProviderConfig() {
         this.clientId = null;
         this.dcsTenantId = null;
