@@ -3,7 +3,6 @@ package org.cloudfoundry.identity.uaa.provider.token;
 import com.ge.predix.pki.device.spi.DevicePublicKeyProvider;
 import com.ge.predix.pki.device.spi.PublicKeyNotFoundException;
 import org.springframework.util.Base64Utils;
-import sun.reflect.generics.reflectiveObjects.NotImplementedException;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -128,8 +127,14 @@ public class MockKeyProvider implements DevicePublicKeyProvider {
 
     @Override
     public String getPublicKeyWithToken(String tenantId, String deviceId, String predixZoneId, String token) throws PublicKeyNotFoundException {
-        //TODO make sure to implement this method for testing when DCS changes are made to JwtBearerAssertionTokenAuthenticator is changed
-        throw new NotImplementedException();
-    }
+        String key = publicKeys.get(deviceId);
+        receivedZoneId = predixZoneId;
 
+        if (null == key) {
+            throw new PublicKeyNotFoundException();
+        } else {
+            // base64url encode this public key to replicate how real provider returns the key
+            return Base64Utils.encodeToString(key.getBytes());
+        }
+    }
 }
