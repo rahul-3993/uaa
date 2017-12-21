@@ -68,7 +68,7 @@ public class JwtBearerAssertionTokenAuthenticatorTest {
         long currentTime = System.currentTimeMillis();
         String token = new MockAssertionToken().mockAssertionToken(DEVICE_1_CLIENT_ID, DEVICE_1_ID,
                 currentTime, 600, TENANT_ID, AUDIENCE);
-        KeyProviderConfig mockConfig = new KeyProviderConfig("test-zone-guid", "any-client");
+        KeyProviderConfig mockConfig = new KeyProviderConfig("any-client", "test-dcs-zone-guid");
         when(keyProviderConfigProvisioner.findActive()).thenReturn(mockConfig);
         String header = new MockClientAssertionHeader().mockSignedHeader(this.currentTimeSecs, DEVICE_1_ID, TENANT_ID);
         this.tokenAuthenticator.setClientDetailsService(this.clientDetailsService);
@@ -77,7 +77,7 @@ public class JwtBearerAssertionTokenAuthenticatorTest {
 
         Assert.assertEquals(DEVICE_1_CLIENT_ID, authn.getPrincipal());
         Assert.assertEquals(true, authn.isAuthenticated());
-        Assert.assertEquals("test-zone-guid", mockPublicKeyProvider.receivedZoneId);
+        Assert.assertEquals("test-dcs-zone-guid", mockPublicKeyProvider.receivedZoneId);
     }
 
     @Test
