@@ -1,14 +1,14 @@
 package org.cloudfoundry.identity.uaa.provider.token;
 
-import java.util.ArrayList;
-import java.util.Base64;
-import java.util.Collections;
-import java.util.Map;
-
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.ge.predix.pki.device.spi.DevicePublicKeyProvider;
+import com.ge.predix.pki.device.spi.PublicKeyNotFoundException;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.cloudfoundry.identity.uaa.oauth.client.ClientConstants;
 import org.cloudfoundry.identity.uaa.oauth.token.ClaimConstants;
+import org.cloudfoundry.identity.uaa.provider.KeyProviderConfig;
+import org.cloudfoundry.identity.uaa.provider.KeyProviderProvisioning;
 import org.cloudfoundry.identity.uaa.util.JsonUtils;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -23,9 +23,10 @@ import org.springframework.security.oauth2.provider.ClientDetails;
 import org.springframework.security.oauth2.provider.ClientDetailsService;
 import org.springframework.util.StringUtils;
 
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.ge.predix.pki.device.spi.DevicePublicKeyProvider;
-import com.ge.predix.pki.device.spi.PublicKeyNotFoundException;
+import java.util.ArrayList;
+import java.util.Base64;
+import java.util.Collections;
+import java.util.Map;
 
 public class JwtBearerAssertionTokenAuthenticator {
 
@@ -36,6 +37,7 @@ public class JwtBearerAssertionTokenAuthenticator {
     private final ClientAssertionHeaderAuthenticator headerAuthenticator;
 
     private final String issuerURL;
+    private KeyProviderProvisioning keyProviderConfigProvisioner;
 
     public JwtBearerAssertionTokenAuthenticator(final String issuerURL, final int clientHeaderTTL) {
         this.issuerURL = issuerURL;
@@ -213,7 +215,11 @@ public class JwtBearerAssertionTokenAuthenticator {
             // Predix CAAS url base64URL decodes the public key.
             String tenantId = (String) claims.get(ClaimConstants.TENANT_ID);
             String deviceId = (String) claims.get(ClaimConstants.SUB);
-            base64UrlEncodedPublicKey = this.clientPublicKeyProvider.getPublicKey(tenantId, deviceId);
+
+            KeyProviderConfig keyProviderConfig = keyProviderConfigProvisioner.findActive();
+            String predixZoneId = keyProviderConfig != null ? keyProviderConfig.getDcsTenantId() : "";
+
+            base64UrlEncodedPublicKey = this.clientPublicKeyProvider.getPublicKey(tenantId, deviceId, predixZoneId);
             this.logger.debug("Public Key for tenant: " + base64UrlEncodedPublicKey);
             return new String(Base64.getUrlDecoder().decode(base64UrlEncodedPublicKey));
         } catch (PublicKeyNotFoundException e) {
@@ -281,5 +287,9 @@ public class JwtBearerAssertionTokenAuthenticator {
         if (currentTime > expWithSkewMillis) {
             throw new InvalidTokenException("Token is expired");
         }
+    }
+
+    public void setKeyProviderProvisioning(KeyProviderProvisioning keyProviderConfigProvisioner) {
+        this.keyProviderConfigProvisioner = keyProviderConfigProvisioner;
     }
 }

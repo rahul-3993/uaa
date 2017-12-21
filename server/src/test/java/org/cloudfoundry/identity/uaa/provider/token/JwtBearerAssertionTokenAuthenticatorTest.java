@@ -1,7 +1,23 @@
 package org.cloudfoundry.identity.uaa.provider.token;
 
-import static org.mockito.Mockito.when;
-import static org.springframework.security.jwt.codec.Codecs.concat;
+import com.ge.predix.pki.device.spi.DevicePublicKeyProvider;
+import com.ge.predix.pki.device.spi.PublicKeyNotFoundException;
+import org.bouncycastle.openssl.PEMWriter;
+import org.cloudfoundry.identity.uaa.oauth.client.ClientConstants;
+import org.cloudfoundry.identity.uaa.provider.KeyProviderConfig;
+import org.cloudfoundry.identity.uaa.provider.KeyProviderProvisioning;
+import org.cloudfoundry.identity.uaa.util.JsonUtils;
+import org.junit.Assert;
+import org.junit.Before;
+import org.junit.Test;
+import org.mockito.Mockito;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.AuthenticationException;
+import org.springframework.security.jwt.codec.Codecs;
+import org.springframework.security.oauth2.common.exceptions.InvalidClientException;
+import org.springframework.security.oauth2.provider.ClientDetailsService;
+import org.springframework.security.oauth2.provider.client.BaseClientDetails;
+import sun.reflect.generics.reflectiveObjects.NotImplementedException;
 
 import java.io.IOException;
 import java.io.StringWriter;
@@ -15,22 +31,8 @@ import java.security.Signature;
 import java.security.interfaces.RSAPrivateKey;
 import java.util.Base64;
 
-import org.bouncycastle.openssl.PEMWriter;
-import org.cloudfoundry.identity.uaa.oauth.client.ClientConstants;
-import org.cloudfoundry.identity.uaa.util.JsonUtils;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
-import org.mockito.Mockito;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.AuthenticationException;
-import org.springframework.security.jwt.codec.Codecs;
-import org.springframework.security.oauth2.common.exceptions.InvalidClientException;
-import org.springframework.security.oauth2.provider.ClientDetailsService;
-import org.springframework.security.oauth2.provider.client.BaseClientDetails;
-
-import com.ge.predix.pki.device.spi.DevicePublicKeyProvider;
-import com.ge.predix.pki.device.spi.PublicKeyNotFoundException;
+import static org.mockito.Mockito.when;
+import static org.springframework.security.jwt.codec.Codecs.concat;
 
 public class JwtBearerAssertionTokenAuthenticatorTest {
 
@@ -47,10 +49,14 @@ public class JwtBearerAssertionTokenAuthenticatorTest {
     private ClientDetailsService clientDetailsService = Mockito.mock(ClientDetailsService.class);
     
     private long currentTimeSecs;
+    private MockKeyProvider mockPublicKeyProvider;
+    private KeyProviderProvisioning keyProviderConfigProvisioner = Mockito.mock(KeyProviderProvisioning.class);
 
     @Before
     public void beforeMethod() {
-        this.tokenAuthenticator.setClientPublicKeyProvider(new MockKeyProvider());
+        mockPublicKeyProvider = new MockKeyProvider();
+        this.tokenAuthenticator.setClientPublicKeyProvider(mockPublicKeyProvider);
+        this.tokenAuthenticator.setKeyProviderProvisioning(keyProviderConfigProvisioner);
         BaseClientDetails testUaaClient = new BaseClientDetails(DEVICE_1_CLIENT_ID, null, null, null, null, null);
         testUaaClient.addAdditionalInformation(ClientConstants.ALLOWED_DEVICE_ID, DEVICE_1_ID);
         when(this.clientDetailsService.loadClientByClientId(DEVICE_1_CLIENT_ID)) .thenReturn(testUaaClient);
@@ -62,11 +68,32 @@ public class JwtBearerAssertionTokenAuthenticatorTest {
         long currentTime = System.currentTimeMillis();
         String token = new MockAssertionToken().mockAssertionToken(DEVICE_1_CLIENT_ID, DEVICE_1_ID,
                 currentTime, 600, TENANT_ID, AUDIENCE);
+        KeyProviderConfig mockConfig = new KeyProviderConfig("any-client", "test-dcs-zone-guid");
+        when(keyProviderConfigProvisioner.findActive()).thenReturn(mockConfig);
         String header = new MockClientAssertionHeader().mockSignedHeader(this.currentTimeSecs, DEVICE_1_ID, TENANT_ID);
         this.tokenAuthenticator.setClientDetailsService(this.clientDetailsService);
+
         Authentication authn = this.tokenAuthenticator.authenticate(token, header, MockKeyProvider.DEVICE1_PUBLIC_KEY);
+
         Assert.assertEquals(DEVICE_1_CLIENT_ID, authn.getPrincipal());
         Assert.assertEquals(true, authn.isAuthenticated());
+        Assert.assertEquals("test-dcs-zone-guid", mockPublicKeyProvider.receivedZoneId);
+    }
+
+    @Test
+    public void testNoKeyProviderConfig() {
+        long currentTime = System.currentTimeMillis();
+        String token = new MockAssertionToken().mockAssertionToken(DEVICE_1_CLIENT_ID, DEVICE_1_ID,
+                currentTime, 600, TENANT_ID, AUDIENCE);
+        when(keyProviderConfigProvisioner.findActive()).thenReturn(null);
+        String header = new MockClientAssertionHeader().mockSignedHeader(this.currentTimeSecs, DEVICE_1_ID, TENANT_ID);
+        this.tokenAuthenticator.setClientDetailsService(this.clientDetailsService);
+
+        Authentication authn = this.tokenAuthenticator.authenticate(token, header, MockKeyProvider.DEVICE1_PUBLIC_KEY);
+
+        Assert.assertEquals(DEVICE_1_CLIENT_ID, authn.getPrincipal());
+        Assert.assertEquals(true, authn.isAuthenticated());
+        Assert.assertEquals("", mockPublicKeyProvider.receivedZoneId);
     }
 
     @Test
@@ -76,7 +103,9 @@ public class JwtBearerAssertionTokenAuthenticatorTest {
                 currentTime, 600, TENANT_ID, new String[] {"https://other-aud.com/path", AUDIENCE});
         String header = new MockClientAssertionHeader().mockSignedHeader(this.currentTimeSecs, DEVICE_1_ID, TENANT_ID);
         this.tokenAuthenticator.setClientDetailsService(this.clientDetailsService);
+
         Authentication authn = this.tokenAuthenticator.authenticate(token, header, MockKeyProvider.DEVICE1_PUBLIC_KEY);
+
         Assert.assertEquals(DEVICE_1_CLIENT_ID, authn.getPrincipal());
         Assert.assertEquals(true, authn.isAuthenticated());
     }
@@ -223,13 +252,19 @@ public class JwtBearerAssertionTokenAuthenticatorTest {
         }
         
         @Override
-        public String getPublicKey(final String tenantId, final String deviceId) throws PublicKeyNotFoundException {
+        public String getPublicKey(final String tenantId, final String deviceId, final String predixZoneId) throws PublicKeyNotFoundException {
             try {
                 byte[] publicKey = Base64.getUrlEncoder().encode(getPEMPublicKey(this.testPair.getPublic()));
                 return new String(publicKey, UTF8);
             } catch (IOException e) {
                 throw new PublicKeyNotFoundException(e);
             }
+        }
+
+        @Override
+        public String getPublicKeyWithToken(final String tenantId, final String deviceId, final String predixZoneId, final String token) throws PublicKeyNotFoundException {
+            //TODO make sure to implement this method for testing when DCS changes are made to JwtBearerAssertionTokenAuthenticator is changed
+            throw new NotImplementedException();
         }
 
         private static byte[] getPEMPublicKey(PublicKey publicKey) throws IOException {
@@ -360,7 +395,12 @@ public class JwtBearerAssertionTokenAuthenticatorTest {
     public void testPublicKeyNotFound() {
         class NotFoundKeyProvider implements DevicePublicKeyProvider {
             @Override
-            public String getPublicKey(final String tenantId, final String deviceId) throws PublicKeyNotFoundException {
+            public String getPublicKey(final String tenantId, final String deviceId, final String predixZoneId) throws PublicKeyNotFoundException {
+                throw new PublicKeyNotFoundException();
+            }
+
+            @Override
+            public String getPublicKeyWithToken(final String tenantId, final String deviceId, final String predixZoneId, final String token) throws PublicKeyNotFoundException {
                 throw new PublicKeyNotFoundException();
             }
 
@@ -374,7 +414,12 @@ public class JwtBearerAssertionTokenAuthenticatorTest {
     public void testPublicKeyIsNull() {
         class NullKeyProvider implements DevicePublicKeyProvider {
             @Override
-            public String getPublicKey(final String tenantId, final String deviceId) throws PublicKeyNotFoundException {
+            public String getPublicKey(final String tenantId, final String deviceId, final String predixZoneId) throws PublicKeyNotFoundException {
+                return null;
+            }
+
+            @Override
+            public String getPublicKeyWithToken(final String tenantId, final String deviceId, final String predixZoneId,  final String token) throws PublicKeyNotFoundException {
                 return null;
             }
 

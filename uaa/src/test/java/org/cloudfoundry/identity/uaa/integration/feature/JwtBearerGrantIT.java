@@ -2,7 +2,10 @@ package org.cloudfoundry.identity.uaa.integration.feature;
 
 import static org.junit.Assert.assertEquals;
 
+import java.net.URI;
 import java.util.Base64;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
@@ -11,9 +14,13 @@ import org.cloudfoundry.identity.uaa.integration.util.IntegrationTestUtils;
 import org.cloudfoundry.identity.uaa.oauth.OauthGrant;
 import org.cloudfoundry.identity.uaa.oauth.client.ClientConstants;
 import org.cloudfoundry.identity.uaa.oauth.token.ClaimConstants;
+import org.cloudfoundry.identity.uaa.provider.KeyProviderConfig;
 import org.cloudfoundry.identity.uaa.provider.token.MockAssertionToken;
 import org.cloudfoundry.identity.uaa.provider.token.MockClientAssertionHeader;
+import org.cloudfoundry.identity.uaa.provider.token.MockKeyProvider;
 import org.cloudfoundry.identity.uaa.util.JsonUtils;
+import org.cloudfoundry.identity.uaa.zone.IdentityZone;
+import org.cloudfoundry.identity.uaa.zone.IdentityZoneConfiguration;
 import org.junit.Assert;
 import org.junit.Ignore;
 import org.junit.Rule;
@@ -26,6 +33,8 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.jwt.Jwt;
 import org.springframework.security.jwt.JwtHelper;
 import org.springframework.security.oauth2.client.OAuth2RestTemplate;
@@ -52,6 +61,8 @@ public class JwtBearerGrantIT {
     private final static String DEVICE_ID = "d10";
     private final static String DEVICE_CLIENT_ID = "c1";
     private static final String AUDIENCE = "http://localhost:8080/uaa/oauth/token";
+    //TODO fill out when DCS deploys multitenant
+    private static final String DCS_TEST_INSTANCE_ID = "";
 
     @Value("${integration.test.base_url}")
     private String baseUrl;
@@ -74,13 +85,17 @@ public class JwtBearerGrantIT {
     }
 
     private void createUaaClientForDevice() throws Exception {
-        createUaaClientForDevice(DEVICE_ID);
+        createUaaClientForDevice(DEVICE_ID, this.baseUrl);
     }
 
-    private void createUaaClientForDevice(final String deviceId) throws Exception {
+    private void createUaaClientForDevice(String uaaUrl) throws Exception {
+        createUaaClientForDevice(DEVICE_ID, uaaUrl);
+    }
+
+    private void createUaaClientForDevice(final String deviceId, final String uaaUrl) throws Exception {
         // register client for jwt-bearer grant
         this.adminClient = (OAuth2RestTemplate) IntegrationTestUtils.getClientCredentialsTemplate(
-                IntegrationTestUtils.getClientCredentialsResource(this.baseUrl, new String[0], "admin", "adminsecret"));
+                IntegrationTestUtils.getClientCredentialsResource(uaaUrl, new String[0], "admin", "adminsecret"));
         BaseClientDetails client = new BaseClientDetails(DEVICE_CLIENT_ID, "none", "uaa.none", OauthGrant.JWT_BEARER,
                 CONFIGURED_SCOPE, null);
         // authorize device for test client
@@ -111,7 +126,7 @@ public class JwtBearerGrantIT {
 
     @Test
     public void testJwtBearerGrantForUnauthorizedDeviceId() throws Exception {
-        createUaaClientForDevice("unauthorized-device");
+        createUaaClientForDevice("unauthorized-device", this.baseUrl);
         // create bearer token
         String token = new MockAssertionToken().mockAssertionToken(DEVICE_CLIENT_ID, DEVICE_ID,
                 System.currentTimeMillis(), 600, TENANT_ID, AUDIENCE);
@@ -279,11 +294,38 @@ public class JwtBearerGrantIT {
         doJwtBearerGrantRequest(getHttpHeaders());
     }
 
-    private void doJwtBearerGrantRequest(final HttpHeaders headers) throws Exception {
-        createUaaClientForDevice();
+    @Test
+    @Ignore
+    //TODO enable when DCS deploys multitenant
+    public void testJwtBearerGrantSuccessZonifiedDCS() throws Exception {
+        IdentityZoneConfiguration config = new IdentityZoneConfiguration();
+        IdentityZone zone = IntegrationTestUtils.createZoneOrUpdateSubdomain(adminClient, this.baseUrl, "testzone1", "testzone1", config);
+        String zoneUrl = baseUrl.replace("localhost", zone.getSubdomain() + ".localhost");
+        BaseClientDetails zoneAdminClient = new BaseClientDetails();
+        zoneAdminClient.setClientId("admin");
+        zoneAdminClient.setClientSecret("adminsecret");
+        IntegrationTestUtils.createClientAsZoneAdmin(adminClient.getAccessToken().getValue(), baseUrl, zone.getId(), zoneAdminClient);
+
+        BaseClientDetails dcsClient = new BaseClientDetails();
+        dcsClient.setClientId("dcsClient");
+        dcsClient.setClientSecret("dcsisawesome");
+        dcsClient.setAuthorities(Collections.singleton(new SimpleGrantedAuthority("pki.cert.key")));
+        dcsClient.setAuthorizedGrantTypes(Collections.singleton("client_credentials"));
+        IntegrationTestUtils.createClient(adminClient.getAccessToken().getValue(), zoneUrl, dcsClient);
+        configureKeyProviderInZone(zoneUrl, zone.getId(), dcsClient.getClientId());
+
+        doJwtBearerGrantRequest(getHttpHeaders(), zoneUrl, zoneAdminClient, new MockAssertionToken(MockKeyProvider.ZONE1_PRIVATE_KEY));
+    }
+
+    private void configureKeyProviderInZone(String zoneUrl, String zoneId, String dcsClientId) {
+        adminClient.postForEntity(zoneUrl + "/identity-zones/" + zoneId + "/key-provider-config", new KeyProviderConfig(dcsClientId, DCS_TEST_INSTANCE_ID), KeyProviderConfig.class);
+    }
+
+    private void doJwtBearerGrantRequest(final HttpHeaders headers, final String uaaUrl, final BaseClientDetails client, MockAssertionToken assertionToken) throws Exception {
+        createUaaClientForDevice(uaaUrl);
 
         // create bearer token
-        String token = new MockAssertionToken().mockAssertionToken(DEVICE_CLIENT_ID, DEVICE_ID,
+        String token = assertionToken.mockAssertionToken(DEVICE_CLIENT_ID, DEVICE_ID,
                 System.currentTimeMillis(), 600, TENANT_ID, AUDIENCE);
         // call uaa/oauth/token
         LinkedMultiValueMap<String, String> formData = new LinkedMultiValueMap<String, String>();
@@ -292,23 +334,30 @@ public class JwtBearerGrantIT {
 
         HttpEntity<LinkedMultiValueMap<String, String>> requestEntity = new HttpEntity<>(formData, headers);
 
-        ResponseEntity<OAuth2AccessToken> response = this.tokenRestTemplate.postForEntity(this.baseUrl + "/oauth/token",
+        ResponseEntity<OAuth2AccessToken> response = this.tokenRestTemplate.postForEntity(uaaUrl + "/oauth/token",
                 requestEntity, OAuth2AccessToken.class);
         // verify access token received
         OAuth2AccessToken accessToken = response.getBody();
         assertAccessToken(accessToken);
-        
+
         MultiValueMap<String, String> tokenFormData = new LinkedMultiValueMap<>();
         tokenFormData.add("token", accessToken.getValue());
 
-        String clientCreds = "app:appclientsecret";
+        String clientCreds = client.getClientId() + ":" + client.getClientSecret();
         String base64ClientCreds = Base64.getEncoder().encodeToString(clientCreds.getBytes());
         headers.set("Authorization", "Basic " + base64ClientCreds);
 
-        ResponseEntity<Map> checkTokenResponse = new RestTemplate().exchange(this.baseUrl + "/check_token",
+        ResponseEntity<Map> checkTokenResponse = new RestTemplate().exchange(uaaUrl + "/check_token",
                 HttpMethod.POST, new HttpEntity<>(tokenFormData, headers), Map.class);
         assertEquals(checkTokenResponse.getStatusCode(), HttpStatus.OK);
         IntegrationTestUtils.deleteClient(this.adminClient, this.baseUrl, DEVICE_CLIENT_ID);
+    }
+
+    private void doJwtBearerGrantRequest(final HttpHeaders headers) throws Exception {
+        BaseClientDetails appClient = new BaseClientDetails();
+        appClient.setClientId("app");
+        appClient.setClientSecret("appclientsecret");
+        doJwtBearerGrantRequest(headers, this.baseUrl, appClient, new MockAssertionToken());
     }
 
     @Ignore
