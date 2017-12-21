@@ -3,6 +3,7 @@ package org.cloudfoundry.identity.uaa.provider.token;
 import com.ge.predix.pki.device.spi.DevicePublicKeyProvider;
 import com.ge.predix.pki.device.spi.PublicKeyNotFoundException;
 import org.bouncycastle.openssl.PEMWriter;
+import org.cloudfoundry.identity.uaa.oauth.OauthGrant;
 import org.cloudfoundry.identity.uaa.oauth.client.ClientConstants;
 import org.cloudfoundry.identity.uaa.provider.KeyProviderConfig;
 import org.cloudfoundry.identity.uaa.provider.KeyProviderProvisioning;
@@ -14,9 +15,14 @@ import org.mockito.Mockito;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.jwt.codec.Codecs;
+import org.springframework.security.oauth2.common.OAuth2AccessToken;
+import org.springframework.security.oauth2.common.OAuth2RefreshToken;
 import org.springframework.security.oauth2.common.exceptions.InvalidClientException;
 import org.springframework.security.oauth2.provider.ClientDetailsService;
+import org.springframework.security.oauth2.provider.TokenGranter;
+import org.springframework.security.oauth2.provider.TokenRequest;
 import org.springframework.security.oauth2.provider.client.BaseClientDetails;
+import org.springframework.security.oauth2.provider.client.ClientCredentialsTokenGranter;
 import sun.reflect.generics.reflectiveObjects.NotImplementedException;
 
 import java.io.IOException;
@@ -30,7 +36,14 @@ import java.security.PublicKey;
 import java.security.Signature;
 import java.security.interfaces.RSAPrivateKey;
 import java.util.Base64;
+import java.util.Date;
+import java.util.Map;
+import java.util.Set;
 
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.jwt.codec.Codecs.concat;
 
@@ -51,25 +64,31 @@ public class JwtBearerAssertionTokenAuthenticatorTest {
     private long currentTimeSecs;
     private MockKeyProvider mockPublicKeyProvider;
     private KeyProviderProvisioning keyProviderConfigProvisioner = Mockito.mock(KeyProviderProvisioning.class);
+    private TokenGranter mockTokenGranter = Mockito.mock(ClientCredentialsTokenGranter.class);
 
     @Before
     public void beforeMethod() {
         mockPublicKeyProvider = new MockKeyProvider();
         this.tokenAuthenticator.setClientPublicKeyProvider(mockPublicKeyProvider);
         this.tokenAuthenticator.setKeyProviderProvisioning(keyProviderConfigProvisioner);
+        this.tokenAuthenticator.setDcsEndpointTokenGranter(mockTokenGranter);
         BaseClientDetails testUaaClient = new BaseClientDetails(DEVICE_1_CLIENT_ID, null, null, null, null, null);
         testUaaClient.addAdditionalInformation(ClientConstants.ALLOWED_DEVICE_ID, DEVICE_1_ID);
-        when(this.clientDetailsService.loadClientByClientId(DEVICE_1_CLIENT_ID)) .thenReturn(testUaaClient);
+        when(this.clientDetailsService.loadClientByClientId(DEVICE_1_CLIENT_ID)).thenReturn(testUaaClient);
         this.currentTimeSecs =  System.currentTimeMillis()/1000;
     }
 
     @Test
-    public void testSuccess() {
+    public void testSuccessWithKeyProvider() {
         long currentTime = System.currentTimeMillis();
         String token = new MockAssertionToken().mockAssertionToken(DEVICE_1_CLIENT_ID, DEVICE_1_ID,
                 currentTime, 600, TENANT_ID, AUDIENCE);
-        KeyProviderConfig mockConfig = new KeyProviderConfig("any-client", "test-dcs-zone-guid");
+        BaseClientDetails dcsClient = new BaseClientDetails();
+        dcsClient.setClientId("dcsClient");
+        KeyProviderConfig mockConfig = new KeyProviderConfig(dcsClient.getClientId(), "test-dcs-zone-guid");
         when(keyProviderConfigProvisioner.findActive()).thenReturn(mockConfig);
+        when(mockTokenGranter.grant(eq(OauthGrant.CLIENT_CREDENTIALS), any(TokenRequest.class))).thenReturn(getMockToken());
+        when(this.clientDetailsService.loadClientByClientId(dcsClient.getClientId())).thenReturn(dcsClient);
         String header = new MockClientAssertionHeader().mockSignedHeader(this.currentTimeSecs, DEVICE_1_ID, TENANT_ID);
         this.tokenAuthenticator.setClientDetailsService(this.clientDetailsService);
 
@@ -78,6 +97,86 @@ public class JwtBearerAssertionTokenAuthenticatorTest {
         Assert.assertEquals(DEVICE_1_CLIENT_ID, authn.getPrincipal());
         Assert.assertEquals(true, authn.isAuthenticated());
         Assert.assertEquals("test-dcs-zone-guid", mockPublicKeyProvider.receivedZoneId);
+    }
+
+    @Test
+    public void testKeyProviderConfigWithNullClientIdFallsBackToGlobalConfig() {
+        long currentTime = System.currentTimeMillis();
+        String token = new MockAssertionToken().mockAssertionToken(DEVICE_1_CLIENT_ID, DEVICE_1_ID,
+                currentTime, 600, TENANT_ID, AUDIENCE);
+        KeyProviderConfig mockConfig = new KeyProviderConfig(null, "test-dcs-zone-guid");
+        when(keyProviderConfigProvisioner.findActive()).thenReturn(mockConfig);
+        String header = new MockClientAssertionHeader().mockSignedHeader(this.currentTimeSecs, DEVICE_1_ID, TENANT_ID);
+        this.tokenAuthenticator.setClientDetailsService(this.clientDetailsService);
+
+        Authentication authn = this.tokenAuthenticator.authenticate(token, header, MockKeyProvider.DEVICE1_PUBLIC_KEY);
+
+        verify(mockTokenGranter, never()).grant(eq(OauthGrant.CLIENT_CREDENTIALS), any());
+        Assert.assertEquals(DEVICE_1_CLIENT_ID, authn.getPrincipal());
+        Assert.assertEquals(true, authn.isAuthenticated());
+        Assert.assertEquals("", mockPublicKeyProvider.receivedZoneId);
+    }
+
+    @Test
+    public void testKeyProviderConfigWithNonExistentClientIdFallsBackToGlobalConfig() {
+        long currentTime = System.currentTimeMillis();
+        String token = new MockAssertionToken().mockAssertionToken(DEVICE_1_CLIENT_ID, DEVICE_1_ID,
+                currentTime, 600, TENANT_ID, AUDIENCE);
+        KeyProviderConfig mockConfig = new KeyProviderConfig("not-a-real-client", "test-dcs-zone-guid");
+        when(keyProviderConfigProvisioner.findActive()).thenReturn(mockConfig);
+        String header = new MockClientAssertionHeader().mockSignedHeader(this.currentTimeSecs, DEVICE_1_ID, TENANT_ID);
+        this.tokenAuthenticator.setClientDetailsService(this.clientDetailsService);
+
+        Authentication authn = this.tokenAuthenticator.authenticate(token, header, MockKeyProvider.DEVICE1_PUBLIC_KEY);
+
+        verify(mockTokenGranter, never()).grant(eq(OauthGrant.CLIENT_CREDENTIALS), any());
+        Assert.assertEquals(DEVICE_1_CLIENT_ID, authn.getPrincipal());
+        Assert.assertEquals(true, authn.isAuthenticated());
+        Assert.assertEquals("", mockPublicKeyProvider.receivedZoneId);
+    }
+
+    private OAuth2AccessToken getMockToken() {
+        return new OAuth2AccessToken() {
+            @Override
+            public Map<String, Object> getAdditionalInformation() {
+                return null;
+            }
+
+            @Override
+            public Set<String> getScope() {
+                return null;
+            }
+
+            @Override
+            public OAuth2RefreshToken getRefreshToken() {
+                return null;
+            }
+
+            @Override
+            public String getTokenType() {
+                return null;
+            }
+
+            @Override
+            public boolean isExpired() {
+                return false;
+            }
+
+            @Override
+            public Date getExpiration() {
+                return null;
+            }
+
+            @Override
+            public int getExpiresIn() {
+                return 0;
+            }
+
+            @Override
+            public String getValue() {
+                return "tokenstring";
+            }
+        };
     }
 
     @Test

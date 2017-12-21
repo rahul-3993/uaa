@@ -36,6 +36,7 @@ public class JdbcKeyProviderProvisioning implements KeyProviderProvisioning, Sys
         KeyProviderConfig keyProviderConfig;
 
         try{
+            logger.debug("Retrieving key provider " + keyProviderId + " for zone: " + IdentityZoneHolder.get().getId());
             keyProviderConfig = jdbcTemplate.queryForObject(SELECT_KEY_PROVIDER_CONFIG_BY_ZONE_AND_ID, mapper, keyProviderId, IdentityZoneHolder.get().getId());
         } catch(EmptyResultDataAccessException e) {
             throw new KeyProviderNotFoundException("Key provider does not exist with id: " + keyProviderId);
@@ -47,6 +48,7 @@ public class JdbcKeyProviderProvisioning implements KeyProviderProvisioning, Sys
     public KeyProviderConfig findActive() {
         KeyProviderConfig keyProviderConfig;
         try{
+            logger.debug("Retrieving key provider for zone: " + IdentityZoneHolder.get().getId());
             keyProviderConfig = jdbcTemplate.queryForObject(SELECT_KEY_PROVIDER_CONFIG_BY_ZONE, mapper, IdentityZoneHolder.get().getId());
         } catch(EmptyResultDataAccessException e) {
             return null;
@@ -60,12 +62,14 @@ public class JdbcKeyProviderProvisioning implements KeyProviderProvisioning, Sys
         if( findActive() != null ) {
          throw new KeyProviderAlreadyExistsException("Key provider already exists for this zone.");
         }
+        logger.debug("Creating key provider for zone: " + IdentityZoneHolder.get().getId());
         jdbcTemplate.update(INSERT_KEY_PROVIDER_CONFIG, id,  IdentityZoneHolder.get().getId(), config.getClientId(), config.getDcsTenantId());
         return retrieve(id);
     }
 
     @Override
     public int delete(String keyProviderId) {
+        logger.debug("Deleting key provider " + keyProviderId + " for zone: " + IdentityZoneHolder.get().getId());
         return jdbcTemplate.update(DELETE_KEY_PROVIDER_CONFIG_BY_ZONE_AND_ID, keyProviderId, IdentityZoneHolder.get().getId());
     }
 
