@@ -4,6 +4,7 @@ import com.ge.predix.pki.device.spi.DevicePublicKeyProvider;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.cloudfoundry.identity.uaa.oauth.OauthGrant;
+import org.cloudfoundry.identity.uaa.provider.KeyProviderProvisioning;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.core.Authentication;
@@ -29,6 +30,7 @@ public class JwtBearerAssertionAuthenticationFilter extends OncePerRequestFilter
 
     private ClientDetailsService clientDetailsService;
     private DevicePublicKeyProvider publicKeyProvider;
+    private KeyProviderProvisioning keyProviderProvisioning;
     private AuthenticationEntryPoint oauthAuthenticationEntryPoint;
     private String proxyPublicKey;
     private TokenGranter dcsEndpointTokenGranter;
@@ -93,6 +95,10 @@ public class JwtBearerAssertionAuthenticationFilter extends OncePerRequestFilter
         this.publicKeyProvider = publicKeyProvider;
     }
 
+    public void setKeyProviderProvisioning(final KeyProviderProvisioning keyProviderProvisioning) {
+        this.keyProviderProvisioning = keyProviderProvisioning;
+    }
+
     public void setDcsEndpointTokenGranter(final TokenGranter dcsEndpointTokenGranter) {
         this.dcsEndpointTokenGranter = dcsEndpointTokenGranter;
     }
@@ -103,6 +109,7 @@ public class JwtBearerAssertionAuthenticationFilter extends OncePerRequestFilter
         tokenAuthenticator.setClientDetailsService(this.clientDetailsService);
         tokenAuthenticator.setClientPublicKeyProvider(this.publicKeyProvider);
         tokenAuthenticator.setDcsEndpointTokenGranter(this.dcsEndpointTokenGranter);
+        tokenAuthenticator.setKeyProviderProvisioning(this.keyProviderProvisioning);
 
         if (this.enforceClientAssertionHeader) {
             return tokenAuthenticator.authenticate(jwtAssertion,
