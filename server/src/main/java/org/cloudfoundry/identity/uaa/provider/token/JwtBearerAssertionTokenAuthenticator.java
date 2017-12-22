@@ -41,7 +41,7 @@ public class JwtBearerAssertionTokenAuthenticator {
     private final ClientAssertionHeaderAuthenticator headerAuthenticator;
 
     private final String issuerURL;
-    private KeyProviderProvisioning keyProviderConfigProvisioner;
+    private KeyProviderProvisioning keyProviderProvisioning;
     private TokenGranter dcsEndpointTokenGranter;
 
     public JwtBearerAssertionTokenAuthenticator(final String issuerURL, final int clientHeaderTTL) {
@@ -221,7 +221,7 @@ public class JwtBearerAssertionTokenAuthenticator {
             String tenantId = (String) claims.get(ClaimConstants.TENANT_ID);
             String deviceId = (String) claims.get(ClaimConstants.SUB);
 
-            KeyProviderConfig keyProviderConfig = keyProviderConfigProvisioner.findActive();
+            KeyProviderConfig keyProviderConfig = keyProviderProvisioning.findActive();
             String predixZoneId = keyProviderConfig != null ? keyProviderConfig.getDcsTenantId() : "";
             if (StringUtils.hasText(predixZoneId)) {
                 ClientDetails dcsClient = clientDetailsService.loadClientByClientId(keyProviderConfig.getClientId());
@@ -307,8 +307,8 @@ public class JwtBearerAssertionTokenAuthenticator {
         }
     }
 
-    public void setKeyProviderProvisioning(KeyProviderProvisioning keyProviderConfigProvisioner) {
-        this.keyProviderConfigProvisioner = keyProviderConfigProvisioner;
+    public void setKeyProviderProvisioning(KeyProviderProvisioning keyProviderProvisioning) {
+        this.keyProviderProvisioning = keyProviderProvisioning;
     }
 
     public void setDcsEndpointTokenGranter(TokenGranter dcsEndpointTokenGranter) {

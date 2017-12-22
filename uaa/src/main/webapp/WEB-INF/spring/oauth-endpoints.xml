@@ -222,6 +222,7 @@
         class="org.cloudfoundry.identity.uaa.provider.token.JwtBearerAssertionAuthenticationFilter">
         <property name="clientDetailsService" ref="jdbcClientDetailsService" />
         <property name="publicKeyProvider" ref="publicKeyProvider" />
+        <property name="keyProviderProvisioning" ref="keyProviderProvisioning" />
         <property name="authenticationEntryPoint" ref="oauthAuthenticationEntryPoint" />
         <property name="dcsEndpointTokenGranter" ref="oauth2TokenGranter" />
         <property name="proxyPublicKey" value="${device.assertion.proxy-public-key:override-in-uaa-yml}" />
