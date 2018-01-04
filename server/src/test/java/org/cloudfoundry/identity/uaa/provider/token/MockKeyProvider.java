@@ -1,16 +1,20 @@
 package org.cloudfoundry.identity.uaa.provider.token;
 
+import com.ge.predix.pki.device.spi.DevicePublicKeyProvider;
+import com.ge.predix.pki.device.spi.PublicKeyNotFoundException;
+import org.springframework.util.Base64Utils;
+
 import java.util.HashMap;
 import java.util.Map;
 
-import org.springframework.util.Base64Utils;
-
-import com.ge.predix.pki.device.spi.DevicePublicKeyProvider;
-import com.ge.predix.pki.device.spi.PublicKeyNotFoundException;
-
 public class MockKeyProvider implements DevicePublicKeyProvider {
 
+
     Map<String, String> publicKeys = new HashMap<>();
+
+
+    //TODO generate key
+    public static final String ZONE1_PRIVATE_KEY = "TODO";
 
     static final String INCORRECT_TOKEN_SIGNING_KEY = "-----BEGIN RSA PRIVATE KEY-----\n"
     + "MIIEowIBAAKCAQEAvBdlBa3I4sQNfwATpJ6I2aw5AfYqUqoc22fYpUg8hpUq2iXd\n"
@@ -99,6 +103,8 @@ public class MockKeyProvider implements DevicePublicKeyProvider {
     
     public static final String DEVICE_1 = "d1";
     public static final String DEVICE_2 = "d2";
+
+    public String receivedZoneId;
     
     public MockKeyProvider() {
         //no test cases use tenant id for now
@@ -106,10 +112,11 @@ public class MockKeyProvider implements DevicePublicKeyProvider {
     }
     
     @Override
-    public String getPublicKey(String tenantId, String deviceId) throws PublicKeyNotFoundException {
+    public String getPublicKey(String tenantId, String deviceId, String predixZoneId) throws PublicKeyNotFoundException {
         
         String key = publicKeys.get(deviceId);
-        
+        receivedZoneId = predixZoneId;
+
         if (null == key) {
             throw new PublicKeyNotFoundException();
         } else {
@@ -118,4 +125,16 @@ public class MockKeyProvider implements DevicePublicKeyProvider {
         }
     }
 
+    @Override
+    public String getPublicKeyWithToken(String tenantId, String deviceId, String predixZoneId, String token) throws PublicKeyNotFoundException {
+        String key = publicKeys.get(deviceId);
+        receivedZoneId = predixZoneId;
+
+        if (null == key) {
+            throw new PublicKeyNotFoundException();
+        } else {
+            // base64url encode this public key to replicate how real provider returns the key
+            return Base64Utils.encodeToString(key.getBytes());
+        }
+    }
 }

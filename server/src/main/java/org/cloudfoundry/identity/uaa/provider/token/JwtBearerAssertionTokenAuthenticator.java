@@ -1,14 +1,15 @@
 package org.cloudfoundry.identity.uaa.provider.token;
 
-import java.util.ArrayList;
-import java.util.Base64;
-import java.util.Collections;
-import java.util.Map;
-
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.ge.predix.pki.device.spi.DevicePublicKeyProvider;
+import com.ge.predix.pki.device.spi.PublicKeyNotFoundException;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.cloudfoundry.identity.uaa.oauth.OauthGrant;
 import org.cloudfoundry.identity.uaa.oauth.client.ClientConstants;
 import org.cloudfoundry.identity.uaa.oauth.token.ClaimConstants;
+import org.cloudfoundry.identity.uaa.provider.KeyProviderConfig;
+import org.cloudfoundry.identity.uaa.provider.KeyProviderProvisioning;
 import org.cloudfoundry.identity.uaa.util.JsonUtils;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -18,14 +19,18 @@ import org.springframework.security.jwt.Jwt;
 import org.springframework.security.jwt.JwtHelper;
 import org.springframework.security.jwt.crypto.sign.RsaVerifier;
 import org.springframework.security.jwt.crypto.sign.SignatureVerifier;
+import org.springframework.security.oauth2.common.OAuth2AccessToken;
 import org.springframework.security.oauth2.common.exceptions.InvalidTokenException;
 import org.springframework.security.oauth2.provider.ClientDetails;
 import org.springframework.security.oauth2.provider.ClientDetailsService;
+import org.springframework.security.oauth2.provider.TokenGranter;
+import org.springframework.security.oauth2.provider.TokenRequest;
 import org.springframework.util.StringUtils;
 
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.ge.predix.pki.device.spi.DevicePublicKeyProvider;
-import com.ge.predix.pki.device.spi.PublicKeyNotFoundException;
+import java.util.ArrayList;
+import java.util.Base64;
+import java.util.Collections;
+import java.util.Map;
 
 public class JwtBearerAssertionTokenAuthenticator {
 
@@ -36,6 +41,8 @@ public class JwtBearerAssertionTokenAuthenticator {
     private final ClientAssertionHeaderAuthenticator headerAuthenticator;
 
     private final String issuerURL;
+    private KeyProviderProvisioning keyProviderProvisioning;
+    private TokenGranter dcsEndpointTokenGranter;
 
     public JwtBearerAssertionTokenAuthenticator(final String issuerURL, final int clientHeaderTTL) {
         this.issuerURL = issuerURL;
@@ -213,7 +220,24 @@ public class JwtBearerAssertionTokenAuthenticator {
             // Predix CAAS url base64URL decodes the public key.
             String tenantId = (String) claims.get(ClaimConstants.TENANT_ID);
             String deviceId = (String) claims.get(ClaimConstants.SUB);
-            base64UrlEncodedPublicKey = this.clientPublicKeyProvider.getPublicKey(tenantId, deviceId);
+
+            KeyProviderConfig keyProviderConfig = keyProviderProvisioning.findActive();
+            String predixZoneId = keyProviderConfig != null ? keyProviderConfig.getDcsTenantId() : "";
+            if (StringUtils.hasText(predixZoneId)) {
+                ClientDetails dcsClient = clientDetailsService.loadClientByClientId(keyProviderConfig.getClientId());
+                if(dcsClient != null) {
+                    //generate a token from this UAA
+                    TokenRequest tokenRequest = new TokenRequest(null, dcsClient.getClientId(),
+                            Collections.singleton("pki.cert.key"), OauthGrant.CLIENT_CREDENTIALS);
+                    OAuth2AccessToken dcsAccessToken = dcsEndpointTokenGranter.grant(OauthGrant.CLIENT_CREDENTIALS, tokenRequest);
+                    base64UrlEncodedPublicKey = this.clientPublicKeyProvider.getPublicKeyWithToken(tenantId, deviceId,
+                            predixZoneId, dcsAccessToken.getValue());
+                    this.logger.debug("Public Key for tenant: " + base64UrlEncodedPublicKey);
+                    return new String(Base64.getUrlDecoder().decode(base64UrlEncodedPublicKey));
+                }
+            }
+            //fallback to global settings for dcs call
+            base64UrlEncodedPublicKey = this.clientPublicKeyProvider.getPublicKey(tenantId, deviceId, "");
             this.logger.debug("Public Key for tenant: " + base64UrlEncodedPublicKey);
             return new String(Base64.getUrlDecoder().decode(base64UrlEncodedPublicKey));
         } catch (PublicKeyNotFoundException e) {
@@ -281,5 +305,13 @@ public class JwtBearerAssertionTokenAuthenticator {
         if (currentTime > expWithSkewMillis) {
             throw new InvalidTokenException("Token is expired");
         }
+    }
+
+    public void setKeyProviderProvisioning(KeyProviderProvisioning keyProviderProvisioning) {
+        this.keyProviderProvisioning = keyProviderProvisioning;
+    }
+
+    public void setDcsEndpointTokenGranter(TokenGranter dcsEndpointTokenGranter) {
+        this.dcsEndpointTokenGranter = dcsEndpointTokenGranter;
     }
 }
