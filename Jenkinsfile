@@ -26,12 +26,6 @@ pipeline {
                     checkout scm
                 }
                 sh '''#!/bin/bash -ex
-                    source uaa-cf-release/config-local/set-env.sh
-                    unset HTTPS_PROXY
-                    unset HTTP_PROXY
-                    unset http_proxy
-                    unset https_proxy
-                    unset GRADLE_OPTS
                     pushd uaa
                         ./gradlew clean assemble
                     popd
@@ -55,12 +49,6 @@ pipeline {
             }
             steps {
                 sh '''#!/bin/bash -ex
-                        source uaa-cf-release/config-local/set-env.sh
-                        unset HTTPS_PROXY
-                        unset HTTP_PROXY
-                        unset http_proxy
-                        unset https_proxy
-                        unset GRADLE_OPTS
                         pushd uaa
                             ./gradlew --continue :cloudfoundry-identity-server:test
                         popd
@@ -81,12 +69,6 @@ pipeline {
             }
             steps {
                 sh '''#!/bin/bash -ex
-            source uaa-cf-release/config-local/set-env.sh
-            unset HTTPS_PROXY
-            unset HTTP_PROXY
-            unset http_proxy
-            unset https_proxy
-            unset GRADLE_OPTS
             pushd uaa
                 apt-get -qy install lsof
                 ./scripts/travis/install-ldap-certs.sh
@@ -109,16 +91,6 @@ pipeline {
             }
             steps {
                 sh '''#!/bin/bash -ex
-            source uaa-cf-release/config-local/set-env.sh
-            unset HTTPS_PROXY
-            unset HTTP_PROXY
-            unset http_proxy
-            unset https_proxy
-            unset GRADLE_OPTS
-            unset DEFAULT_JVM_OPTS
-            unset JAVA_PROXY_OPTS
-            unset PROXY_PORT
-            unset PROXY_HOST
             cat /etc/hosts
             curl -v http://simplesamlphp2.cfapps.io/saml2/idp/metadata.php
             curl -v http://simplesamlphp2.cfapps.io/saml2/idp/metadata.php
@@ -142,6 +114,10 @@ pipeline {
             }
         }
         stage('Deploy to RC') {
+            when {
+                expression { false }
+            }
+
             environment {
                 CF_CREDENTIALS = credentials('CF_CREDENTIALS_CF3')
                 ADMIN_CLIENT_SECRET = credentials('CF3_RELEASE_CANDIDATE_ADMIN_CLIENT_SECRET')
