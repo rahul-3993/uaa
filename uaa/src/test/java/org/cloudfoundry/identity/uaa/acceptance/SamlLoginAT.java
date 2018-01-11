@@ -39,6 +39,8 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.openqa.selenium.By;
+import org.openqa.selenium.OutputType;
+import org.openqa.selenium.TakesScreenshot;
 import org.openqa.selenium.WebDriver;
 import org.opensaml.xml.ConfigurationException;
 import org.slf4j.Logger;
@@ -152,6 +154,15 @@ public class SamlLoginAT {
 
         IdentityProvider<SamlIdentityProviderDefinition> provider = createGESSOIdentityProvider("gefssstg");
         this.webDriver.get(this.baseUrl + firstUrl);
+        logger.info("I am going crazy");
+        logger.info("URL: " + baseUrl + firstUrl);
+        logger.info("Current URL: " + webDriver.getCurrentUrl());
+        logger.info("Begin Page source");
+        logger.info(this.webDriver.getPageSource());
+        logger.info("End Page source");
+        logger.info("Begin screenshot");
+        logger.info(((TakesScreenshot)webDriver).getScreenshotAs(OutputType.BASE64));
+        logger.info("End Screenshot");
         this.webDriver.findElement(By.xpath("//a[text()='" + provider.getConfig().getLinkText() + "']")).click();
         logger.info(this.webDriver.getCurrentUrl());
         String page = this.webDriver.getPageSource();

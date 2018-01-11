@@ -60,6 +60,7 @@ pipeline {
                 echo "APP_VERSION is:$APP_VERSION"
                 export DEPLOY_BRANCH_SUFFIX=$APP_VERSION
                 source uaa-cf-release/config-${DEPLOYMENT_TYPE}/set-env.sh
+                export NEW_APP_NAME=uaa-cf3-release-candidate-12
                 unset HTTPS_PROXY
                 unset HTTP_PROXY
                 unset http_proxy
@@ -73,8 +74,18 @@ pipeline {
                     export UAA_CONFIG_COMMIT=`git rev-parse HEAD`
                     cf -v
                     ruby -v
-                    ./ci_deploy.sh
-
+                    #./ci_deploy.sh
+                    cf login -a $CF_ENDPOINT -u ${CF_USERNAME} -p ${CF_PASSWORD} -o ${CF_ORG} -s ${CF_SPACE}
+                    #Acceptance tests go here
+                    if [ x$RUN_ACCEPTANCE_TESTS == xtrue ]; then
+                        echo "Time to run acceptance tests ..."
+                        if [ -e config-$DEPLOYMENT_TYPE/sso_metadata.xml ]; then
+                            ./uaa-acceptance-tests.sh
+                        else
+                            ./uaa-acceptance-tests-basic.sh
+                        fi
+                        echo "Acceptance tests passed"
+                    fi
                     if [ $DEPLOYMENT_TYPE != 'perf-vpc-sb' -a $DEPLOYMENT_TYPE != 'perf-asv-sb' -a $DEPLOYMENT_TYPE != 'perf-cf3' -a $DEPLOYMENT_TYPE != 'perf-azr-usw' -a $DEPLOYMENT_TYPE != 'cf3-integration' -a $DEPLOYMENT_TYPE != 'asv-pr-db-mig-test' ]; then
                         ./uaa-sb-acceptance-tests.sh
                     fi
