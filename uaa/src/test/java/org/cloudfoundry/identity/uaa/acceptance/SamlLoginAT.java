@@ -154,17 +154,17 @@ public class SamlLoginAT {
 
         IdentityProvider<SamlIdentityProviderDefinition> provider = createGESSOIdentityProvider("gefssstg");
         this.webDriver.get(this.baseUrl + firstUrl);
-        logger.info("I am going crazy");
-        logger.info("URL: " + baseUrl + firstUrl);
-        logger.info("Current URL: " + webDriver.getCurrentUrl());
         logger.info("Begin Page source");
         logger.info(this.webDriver.getPageSource());
-        logger.info("End Page source");
-        logger.info("Begin screenshot");
-        logger.info(((TakesScreenshot)webDriver).getScreenshotAs(OutputType.BASE64));
-        logger.info("End Screenshot");
-        this.webDriver.findElement(By.xpath("//a[text()='" + provider.getConfig().getLinkText() + "']")).click();
+        logger.info("a[text()='" + provider.getConfig().getLinkText() + "'");
+        logger.info("Text: " + webDriver.findElement(By.xpath("//a[text()='" + provider.getConfig().getLinkText() + "']")).getText());
+        logger.info("Tag name: " + webDriver.findElement(By.xpath("//a[text()='" + provider.getConfig().getLinkText() + "']")).getTagName());
+        logger.info("String: " + webDriver.findElement(By.xpath("//a[text()='" + provider.getConfig().getLinkText() + "']")).toString());
         logger.info(this.webDriver.getCurrentUrl());
+        webDriver.get("https://uaa-acceptance-zone-cf3-release-candidate.predix-uaa-dev.run.aws-usw02-dev.ice.predix.io/saml/discovery?returnIDParam=idp&entityID=uaa-acceptance-zone-cf3-release-candidate.cloudfoundry-saml-login&idp=gefssstg&isPassive=true");
+        logger.info("URL: " + webDriver.getCurrentUrl());
+        logger.info("Screenshot: " + ((TakesScreenshot)webDriver).getScreenshotAs(OutputType.BASE64));
+        this.webDriver.findElement(By.xpath("//a[text()='" + provider.getConfig().getLinkText() + "']")).click();
         String page = this.webDriver.getPageSource();
         logger.info(page);
         this.webDriver.findElement(By.xpath("//h1[contains(text(), 'GE Single Sign On')]"));
