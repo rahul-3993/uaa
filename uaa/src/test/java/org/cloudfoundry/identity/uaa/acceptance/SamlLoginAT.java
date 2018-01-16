@@ -66,7 +66,7 @@ import com.fasterxml.jackson.core.type.TypeReference;
 @ContextConfiguration(classes = DefaultIntegrationTestConfig.class)
 public class SamlLoginAT {
 
-    private static final String SAML_ENTITY_ID = "gefssstg";
+    private static final String SAML_ENTITY_ID = "gefssprd";
 
     @Rule
     public ScreenshotOnFail screenShootRule = new ScreenshotOnFail();
@@ -152,7 +152,7 @@ public class SamlLoginAT {
     private void testGESSOLogin(String firstUrl, String lookfor) throws Exception {
         Assert.assertTrue("Expected acceptance zone subdomain to exist", findZoneInUaa());
 
-        IdentityProvider<SamlIdentityProviderDefinition> provider = createGESSOIdentityProvider("gefssstg");
+        IdentityProvider<SamlIdentityProviderDefinition> provider = createGESSOIdentityProvider(SAML_ENTITY_ID);
         this.webDriver.get(this.baseUrl + firstUrl);
         logger.info("Begin Page source");
         logger.info(this.webDriver.getPageSource());
@@ -161,7 +161,6 @@ public class SamlLoginAT {
         logger.info("Tag name: " + webDriver.findElement(By.xpath("//a[text()='" + provider.getConfig().getLinkText() + "']")).getTagName());
         logger.info("String: " + webDriver.findElement(By.xpath("//a[text()='" + provider.getConfig().getLinkText() + "']")).toString());
         logger.info(this.webDriver.getCurrentUrl());
-        webDriver.get("https://uaa-acceptance-zone-cf3-release-candidate.predix-uaa-dev.run.aws-usw02-dev.ice.predix.io/saml/discovery?returnIDParam=idp&entityID=uaa-acceptance-zone-cf3-release-candidate.cloudfoundry-saml-login&idp=gefssstg&isPassive=true");
         logger.info("URL: " + webDriver.getCurrentUrl());
         logger.info("Screenshot: " + ((TakesScreenshot)webDriver).getScreenshotAs(OutputType.BASE64));
         this.webDriver.findElement(By.xpath("//a[text()='" + provider.getConfig().getLinkText() + "']")).click();
