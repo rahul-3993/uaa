@@ -1,0 +1,27 @@
+#!/usr/bin/env groovy
+def devcloudArtServer = Artifactory.server('devcloud')
+pipeline {
+    agent {
+        label 'dind'
+    }
+    environment {
+        COMPLIANCEENABLED = true
+    }
+    options {
+        skipDefaultCheckout()
+        buildDiscarder(logRotator(artifactDaysToKeepStr: '1', artifactNumToKeepStr: '1', daysToKeepStr: '5', numToKeepStr: '10'))
+    }
+    stages{
+        stage('Check SSO urls') {
+            steps {
+                sh '''#!/bin/bash -ex
+                    curl 'https://fss.gecompany.com' -i || true
+                    curl -i "https://ssocentralck.registrar.ge.com/PfIdpIntegSmAuth/pfstdworkerredirect.jsp?fedHost=https://fss.gecompany.com/fss&resumePath=%2Fidp%2FC7oC3%2FresumeSAML20%2Fidp%2FSSO.ping" -L | grep -i "Location" || true
+                    curl -i "https://rsologin.ssogen2.corporate.ge.com" || true
+                    curl -i "https://smloginmap.ssogen2.corporate.ge.com" || true
+                '''
+            
+            }
+        }
+    }
+}
