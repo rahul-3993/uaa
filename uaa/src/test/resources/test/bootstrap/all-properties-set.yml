@@ -405,6 +405,8 @@ login:
         showSamlLoginLink: true
         skipSslValidation: true
     signatureAlgorithm: SHA256
+    global:
+      signatureAlgorithm: SHA512
     wantAssertionSigned: false
     signRequest: false
   selfServiceLinksEnabled: false

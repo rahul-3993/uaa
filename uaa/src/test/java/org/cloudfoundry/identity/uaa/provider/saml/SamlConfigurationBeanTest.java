@@ -7,13 +7,14 @@ import org.opensaml.xml.Configuration;
 import org.opensaml.xml.security.BasicSecurityConfiguration;
 import org.opensaml.xml.signature.SignatureConstants;
 
+import static org.cloudfoundry.identity.uaa.zone.SamlConfig.SignatureAlgorithm.*;
 import static org.junit.Assert.assertEquals;
 
 public class SamlConfigurationBeanTest extends InjectedMockContextTest {
   @Test
   public void testSHA1SignatureAlgorithm() throws Exception {
     SamlConfigurationBean samlConfigurationBean = new SamlConfigurationBean();
-    samlConfigurationBean.setSignatureAlgorithm(SamlConfigurationBean.SignatureAlgorithm.SHA1);
+    samlConfigurationBean.setSignatureAlgorithm(SHA1);
     samlConfigurationBean.afterPropertiesSet();
 
     BasicSecurityConfiguration config = (BasicSecurityConfiguration) Configuration.getGlobalSecurityConfiguration();
@@ -24,7 +25,7 @@ public class SamlConfigurationBeanTest extends InjectedMockContextTest {
   @Test
   public void testSHA256SignatureAlgorithm() throws Exception {
     SamlConfigurationBean samlConfigurationBean = new SamlConfigurationBean();
-    samlConfigurationBean.setSignatureAlgorithm(SamlConfigurationBean.SignatureAlgorithm.SHA256 );
+    samlConfigurationBean.setSignatureAlgorithm(SHA256 );
     samlConfigurationBean.afterPropertiesSet();
 
     BasicSecurityConfiguration config = (BasicSecurityConfiguration) Configuration.getGlobalSecurityConfiguration();
@@ -35,7 +36,7 @@ public class SamlConfigurationBeanTest extends InjectedMockContextTest {
   @Test
   public void testSHA512SignatureAlgorithm() throws Exception {
     SamlConfigurationBean samlConfigurationBean = new SamlConfigurationBean();
-    samlConfigurationBean.setSignatureAlgorithm(SamlConfigurationBean.SignatureAlgorithm.SHA512 );
+    samlConfigurationBean.setSignatureAlgorithm(SHA512 );
     samlConfigurationBean.afterPropertiesSet();
 
     BasicSecurityConfiguration config = (BasicSecurityConfiguration) Configuration.getGlobalSecurityConfiguration();
