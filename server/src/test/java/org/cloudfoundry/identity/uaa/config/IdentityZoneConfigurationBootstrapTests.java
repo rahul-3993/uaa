@@ -27,6 +27,7 @@ import java.util.List;
 import java.util.Map;
 
 import static org.cloudfoundry.identity.uaa.oauth.token.TokenConstants.TokenFormat.JWT;
+import static org.cloudfoundry.identity.uaa.zone.SamlConfig.SignatureAlgorithm.SHA512;
 import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.junit.Assert.*;
 
@@ -220,5 +221,15 @@ public class IdentityZoneConfigurationBootstrapTests extends JdbcTestBase {
         bootstrap.afterPropertiesSet();
         IdentityZoneConfiguration config = provisioning.retrieve(IdentityZone.getUaa().getId()).getConfig();
         assertTrue(config.isIdpDiscoveryEnabled());
+    }
+
+    @Test
+    public void testSamlSignatureAlgorithm() throws Exception{
+        bootstrap.setSamlSignatureAlgorithm(SHA512);
+
+        bootstrap.afterPropertiesSet();
+
+        IdentityZoneConfiguration config = provisioning.retrieve(IdentityZone.getUaa().getId()).getConfig();
+        assertEquals(SHA512, config.getSamlConfig().getSignatureAlgorithm());
     }
 }

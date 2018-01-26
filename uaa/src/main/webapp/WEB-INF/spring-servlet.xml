@@ -35,7 +35,13 @@
         <property name="yaml" value="${environmentYamlKey}" />
     </bean>
 
-    <bean id="identityZoneValidator" class="org.cloudfoundry.identity.uaa.zone.GeneralIdentityZoneValidator" />
+    <bean id="identityZoneValidator" class="org.cloudfoundry.identity.uaa.zone.GeneralIdentityZoneValidator">
+        <constructor-arg ref="identityZoneConfigValidator"/>
+    </bean>
+
+    <bean id="identityZoneConfigValidator" class="org.cloudfoundry.identity.uaa.zone.GeneralIdentityZoneConfigurationValidator">
+        <property name="defaultSamlSignatureAlgorithm" ref="globalSamlSignatureAlgorithm" />
+    </bean>
 
     <bean id="sessionCookieConfig" class="org.cloudfoundry.identity.uaa.web.UaaSessionCookieConfig">
         <property name="comment" value="${servlet.session-cookie.comment:#{null}}"/>
@@ -523,6 +529,7 @@
         <property name="samlSpPrivateKey" value="${login.serviceProviderKey:#{null}}" />
         <property name="samlSpPrivateKeyPassphrase" value="${login.serviceProviderKeyPassword:#{null}}" />
         <property name="samlSpCertificate" value="${login.serviceProviderCertificate:#{null}}" />
+        <property name="samlSignatureAlgorithm" ref="defaultUaaSamlSignatureAlgorithm" />
         <property name="activeKeyId" value="${login.saml.activeKeyId:#{null}}"/>
         <property name="samlKeys"
                   value="#{@config['login']==null ? null :
