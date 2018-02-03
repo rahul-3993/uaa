@@ -281,7 +281,6 @@ public class IdentityZoneEndpoints implements ApplicationEventPublisherAware {
         if(body.getConfig().getSamlConfig() != null && body.getConfig().getSamlConfig().getSignatureAlgorithm() == null) {
             body.getConfig().getSamlConfig().setSignatureAlgorithm(defaultSamlSignatureAlgorithm);
         }
-
         try {
             body = validator.validate(body, IdentityZoneValidator.Mode.MODIFY);
         } catch (InvalidIdentityZoneDetailsException ex) {
