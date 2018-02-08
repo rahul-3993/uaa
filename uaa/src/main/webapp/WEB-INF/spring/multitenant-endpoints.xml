@@ -51,6 +51,7 @@
         <constructor-arg ref="keyProviderProvisioning"/>
         <constructor-arg ref="keyProviderValidator"/>
         <property name="validator" ref="identityZoneValidator"/>
+        <property name="defaultSamlSignatureAlgorithm" ref="globalSamlSignatureAlgorithm"/>
     </bean>
 
     <bean id="zoneEndpointsClientDetailsValidator"

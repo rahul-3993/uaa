@@ -22,6 +22,7 @@ import org.cloudfoundry.identity.uaa.zone.IdentityZoneConfiguration;
 import org.cloudfoundry.identity.uaa.zone.IdentityZoneProvisioning;
 import org.cloudfoundry.identity.uaa.zone.IdentityZoneValidator;
 import org.cloudfoundry.identity.uaa.zone.InvalidIdentityZoneDetailsException;
+import static org.cloudfoundry.identity.uaa.zone.SamlConfig.SignatureAlgorithm;
 import org.cloudfoundry.identity.uaa.zone.TokenPolicy;
 import org.springframework.beans.factory.InitializingBean;
 
@@ -44,6 +45,7 @@ public class IdentityZoneConfigurationBootstrap implements InitializingBean {
     private String homeRedirect = null;
     private Map<String,Object> selfServiceLinks;
     private List<String> logoutRedirectWhitelist;
+    private SignatureAlgorithm samlSignatureAlgorithm;
     private String logoutRedirectParameterName;
     private String logoutDefaultRedirectUrl;
     private boolean logoutDisableRedirectParameter = true;
@@ -83,6 +85,7 @@ public class IdentityZoneConfigurationBootstrap implements InitializingBean {
         definition.getSamlConfig().setCertificate(samlSpCertificate);
         definition.getSamlConfig().setPrivateKey(samlSpPrivateKey);
         definition.getSamlConfig().setPrivateKeyPassword(samlSpPrivateKeyPassphrase);
+        definition.getSamlConfig().setSignatureAlgorithm(samlSignatureAlgorithm);
         definition.setIdpDiscoveryEnabled(idpDiscoveryEnabled);
         definition.setAccountChooserEnabled(accountChooserEnabled);
 
@@ -225,4 +228,7 @@ public class IdentityZoneConfigurationBootstrap implements InitializingBean {
         this.defaultUserGroups = defaultUserGroups;
     }
 
+    public void setSamlSignatureAlgorithm(SignatureAlgorithm signatureAlgorithm) {
+        this.samlSignatureAlgorithm = signatureAlgorithm;
+    }
 }
