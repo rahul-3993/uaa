@@ -1,9 +1,7 @@
 #!/usr/bin/env groovy
 def devcloudArtServer = Artifactory.server('devcloud')
 pipeline {
-    agent {
-        label 'dind'
-    }
+    agent none
     environment {
         COMPLIANCEENABLED = true
     }
@@ -12,15 +10,51 @@ pipeline {
         buildDiscarder(logRotator(artifactDaysToKeepStr: '1', artifactNumToKeepStr: '1', daysToKeepStr: '5', numToKeepStr: '10'))
     }
     stages{
-        stage('Check SSO urls') {
+//        stage('Check SSO urls') {
+//            agent {
+//                label 'dind'
+//            }
+//            steps {
+//                sh '''#!/bin/bash -ex
+//                    curl 'https://fss.gecompany.com' -i || true
+//                    curl -i "https://ssocentralck.registrar.ge.com/PfIdpIntegSmAuth/pfstdworkerredirect.jsp?fedHost=https://fss.gecompany.com/fss&resumePath=%2Fidp%2FC7oC3%2FresumeSAML20%2Fidp%2FSSO.ping" -L | grep -i "Location" || true
+//                    curl -i "https://rsologin.ssogen2.corporate.ge.com" || true
+//                    curl -i "https://smloginmap.ssogen2.corporate.ge.com" || true
+//                '''
+//
+//            }
+//        }
+        stage('Acceptance Tests') {
+            agent{
+                docker {
+                    image 'repo.ci.build.ge.com:8443/predix-security/uaa-ci-testing:0.0.7'
+                    label 'dind'
+                    args '-v /var/lib/docker/.gradle:/root/.gradle'
+                }
+            }
             steps {
+                dir('uaa') {
+                    checkout scm
+                }
+                dir('uaa-cf-release') {
+                    git changelog: false, credentialsId: 'github.build.ge.com', poll: false, url: 'https://github.build.ge.com/predix/uaa-cf-release.git', branch: 'delete/sso_propel_status'
+                }
                 sh '''#!/bin/bash -ex
-                    curl 'https://fss.gecompany.com' -i || true
-                    curl -i "https://ssocentralck.registrar.ge.com/PfIdpIntegSmAuth/pfstdworkerredirect.jsp?fedHost=https://fss.gecompany.com/fss&resumePath=%2Fidp%2FC7oC3%2FresumeSAML20%2Fidp%2FSSO.ping" -L | grep -i "Location" || true
-                    curl -i "https://rsologin.ssogen2.corporate.ge.com" || true
-                    curl -i "https://smloginmap.ssogen2.corporate.ge.com" || true
+                export DEPLOYMENT_TYPE=cf3-release-candidate
+                source uaa-cf-release/config-${DEPLOYMENT_TYPE}/set-env.sh
+                unset HTTPS_PROXY
+                unset HTTP_PROXY
+                unset http_proxy
+                unset https_proxy
+                unset GRADLE_OPTS
+                pushd uaa-cf-release
+                ./uaa-acceptance-tests.sh
                 '''
-            
+            }
+            post{
+                always {
+                    archiveArtifacts 'uaa/uaa/build/reports/tests/acceptanceTest/**'
+                }
             }
         }
     }
