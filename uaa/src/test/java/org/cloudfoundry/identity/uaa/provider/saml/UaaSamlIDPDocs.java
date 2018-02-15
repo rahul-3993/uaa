@@ -32,6 +32,7 @@ import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 import static org.cloudfoundry.identity.uaa.mock.util.MockMvcUtils.createUserInZone;
 import static org.cloudfoundry.identity.uaa.mock.util.MockMvcUtils.getUaaSecurityContext;
 import static org.cloudfoundry.identity.uaa.mock.util.MockMvcUtils.updateIdentityZone;
+import static org.cloudfoundry.identity.uaa.zone.SamlConfig.SignatureAlgorithm.SHA256;
 import static org.hamcrest.Matchers.containsString;
 import static org.springframework.http.MediaType.APPLICATION_JSON;
 import static org.springframework.restdocs.headers.HeaderDocumentation.headerWithName;
@@ -148,6 +149,7 @@ public class UaaSamlIDPDocs extends InjectedMockContextTest {
     @Test
     public void document_idp_initiated_flow() throws Exception {
         IdentityZone zone = createZone();
+        zone.getConfig().getSamlConfig().setSignatureAlgorithm(SHA256);
         updateIdentityZone(zone, getWebApplicationContext());
         ScimUser marissa = new ScimUser(null, "marissa", "", "");
         marissa.setPassword("secret");

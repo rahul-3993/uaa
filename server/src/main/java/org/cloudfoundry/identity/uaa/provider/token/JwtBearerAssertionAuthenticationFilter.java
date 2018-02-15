@@ -1,15 +1,10 @@
 package org.cloudfoundry.identity.uaa.provider.token;
 
-import java.io.IOException;
-
-import javax.servlet.FilterChain;
-import javax.servlet.ServletException;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
-
+import com.ge.predix.pki.device.spi.DevicePublicKeyProvider;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.cloudfoundry.identity.uaa.oauth.OauthGrant;
+import org.cloudfoundry.identity.uaa.provider.KeyProviderProvisioning;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.core.Authentication;
@@ -17,12 +12,17 @@ import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.common.util.OAuth2Utils;
 import org.springframework.security.oauth2.provider.ClientDetailsService;
+import org.springframework.security.oauth2.provider.TokenGranter;
 import org.springframework.security.oauth2.provider.error.OAuth2AuthenticationEntryPoint;
 import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.util.StringUtils;
 import org.springframework.web.filter.OncePerRequestFilter;
 
-import com.ge.predix.pki.device.spi.DevicePublicKeyProvider;
+import javax.servlet.FilterChain;
+import javax.servlet.ServletException;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+import java.io.IOException;
 
 public class JwtBearerAssertionAuthenticationFilter extends OncePerRequestFilter {
     private static final String PREDIX_CLIENT_ASSERTION_HEADER = "Predix-Client-Assertion";
@@ -30,8 +30,10 @@ public class JwtBearerAssertionAuthenticationFilter extends OncePerRequestFilter
 
     private ClientDetailsService clientDetailsService;
     private DevicePublicKeyProvider publicKeyProvider;
+    private KeyProviderProvisioning keyProviderProvisioning;
     private AuthenticationEntryPoint oauthAuthenticationEntryPoint;
     private String proxyPublicKey;
+    private TokenGranter dcsEndpointTokenGranter;
 
     @Value("${ENFORCE_CLIENT_ASSERTION_HEADER:true}")
     private boolean enforceClientAssertionHeader;
@@ -93,11 +95,21 @@ public class JwtBearerAssertionAuthenticationFilter extends OncePerRequestFilter
         this.publicKeyProvider = publicKeyProvider;
     }
 
+    public void setKeyProviderProvisioning(final KeyProviderProvisioning keyProviderProvisioning) {
+        this.keyProviderProvisioning = keyProviderProvisioning;
+    }
+
+    public void setDcsEndpointTokenGranter(final TokenGranter dcsEndpointTokenGranter) {
+        this.dcsEndpointTokenGranter = dcsEndpointTokenGranter;
+    }
+
     private Authentication authenticateJwtAssertion(final HttpServletRequest request, String jwtAssertion) {
         JwtBearerAssertionTokenAuthenticator tokenAuthenticator = new JwtBearerAssertionTokenAuthenticator(
                 request.getRequestURL().toString(), this.clientAssertionHeaderTTL);
         tokenAuthenticator.setClientDetailsService(this.clientDetailsService);
         tokenAuthenticator.setClientPublicKeyProvider(this.publicKeyProvider);
+        tokenAuthenticator.setDcsEndpointTokenGranter(this.dcsEndpointTokenGranter);
+        tokenAuthenticator.setKeyProviderProvisioning(this.keyProviderProvisioning);
 
         if (this.enforceClientAssertionHeader) {
             return tokenAuthenticator.authenticate(jwtAssertion,

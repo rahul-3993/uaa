@@ -16,6 +16,8 @@ import org.cloudfoundry.identity.uaa.oauth.client.ClientConstants;
 import org.cloudfoundry.identity.uaa.provider.IdentityProvider;
 import org.cloudfoundry.identity.uaa.provider.IdentityProviderProvisioning;
 import org.cloudfoundry.identity.uaa.provider.JdbcIdentityProviderProvisioning;
+import org.cloudfoundry.identity.uaa.provider.JdbcKeyProviderProvisioning;
+import org.cloudfoundry.identity.uaa.provider.KeyProviderConfig;
 import org.cloudfoundry.identity.uaa.scim.ScimGroup;
 import org.cloudfoundry.identity.uaa.scim.ScimGroupExternalMember;
 import org.cloudfoundry.identity.uaa.scim.ScimGroupExternalMembershipManager;
@@ -32,19 +34,21 @@ import org.cloudfoundry.identity.uaa.test.TestApplicationEventListener;
 import org.cloudfoundry.identity.uaa.util.JsonUtils;
 import org.cloudfoundry.identity.uaa.util.KeyWithCertTest;
 import org.cloudfoundry.identity.uaa.util.SetServerNameRequestPostProcessor;
+import org.cloudfoundry.identity.uaa.zone.BrandingInformation;
+import org.cloudfoundry.identity.uaa.zone.BrandingInformation.Banner;
 import org.cloudfoundry.identity.uaa.zone.IdentityZone;
 import org.cloudfoundry.identity.uaa.zone.IdentityZoneConfiguration;
+import org.cloudfoundry.identity.uaa.zone.IdentityZoneEndpoints;
 import org.cloudfoundry.identity.uaa.zone.IdentityZoneHolder;
 import org.cloudfoundry.identity.uaa.zone.IdentityZoneProvisioning;
 import org.cloudfoundry.identity.uaa.zone.IdentityZoneSwitchingFilter;
 import org.cloudfoundry.identity.uaa.zone.JdbcIdentityZoneProvisioning;
 import org.cloudfoundry.identity.uaa.zone.MultitenancyFixture;
 import org.cloudfoundry.identity.uaa.zone.SamlConfig;
+import org.cloudfoundry.identity.uaa.zone.SamlConfig.SignatureAlgorithm;
 import org.cloudfoundry.identity.uaa.zone.TokenPolicy;
 import org.cloudfoundry.identity.uaa.zone.UserConfig;
 import org.cloudfoundry.identity.uaa.zone.ZoneManagementScopes;
-import org.cloudfoundry.identity.uaa.zone.BrandingInformation;
-import org.cloudfoundry.identity.uaa.zone.BrandingInformation.Banner;
 import org.cloudfoundry.identity.uaa.zone.event.IdentityZoneModifiedEvent;
 import org.hamcrest.Matchers;
 import org.junit.After;
@@ -75,6 +79,7 @@ import static org.cloudfoundry.identity.uaa.constants.OriginKeys.UAA;
 import static org.cloudfoundry.identity.uaa.mock.util.MockMvcUtils.CookieCsrfPostProcessor.cookieCsrf;
 import static org.cloudfoundry.identity.uaa.oauth.token.TokenConstants.TokenFormat.JWT;
 import static org.cloudfoundry.identity.uaa.oauth.token.TokenConstants.TokenFormat.OPAQUE;
+import static org.cloudfoundry.identity.uaa.zone.SamlConfig.SignatureAlgorithm.SHA1;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.core.Is.is;
@@ -86,6 +91,13 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
+import static org.springframework.http.HttpStatus.CONFLICT;
+import static org.springframework.http.HttpStatus.CREATED;
+import static org.springframework.http.HttpStatus.FORBIDDEN;
+import static org.springframework.http.HttpStatus.NOT_FOUND;
+import static org.springframework.http.HttpStatus.OK;
+import static org.springframework.http.HttpStatus.UNAUTHORIZED;
+import static org.springframework.http.HttpStatus.UNPROCESSABLE_ENTITY;
 import static org.springframework.http.MediaType.APPLICATION_JSON;
 import static org.springframework.http.MediaType.TEXT_HTML_VALUE;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
@@ -159,6 +171,7 @@ public class IdentityZoneEndpointsMockMvcTests extends InjectedMockContextTest {
     private ScimUser uaaAdminUser;
     private String uaaAdminClientToken;
     private String uaaAdminUserToken;
+    private SignatureAlgorithm globalDefaultSamlSignatureAlgorithm;
 
     @Before
     public void setUp() throws Exception {
@@ -183,6 +196,7 @@ public class IdentityZoneEndpointsMockMvcTests extends InjectedMockContextTest {
         ScimGroupMembershipManager membershipManager = getWebApplicationContext().getBean(ScimGroupMembershipManager.class);
         String groupId = groupProvisioning.getByName("uaa.admin", IdentityZone.getUaa().getId()).getId();
         membershipManager.addMember(groupId, new ScimGroupMember(uaaAdminUser.getId()), IdentityZone.getUaa().getId());
+        globalDefaultSamlSignatureAlgorithm = getWebApplicationContext().getBean("globalSamlSignatureAlgorithm", SignatureAlgorithm.class);
 
 
         uaaAdminUserToken = testClient.getUserOAuthAccessToken(
@@ -275,7 +289,7 @@ public class IdentityZoneEndpointsMockMvcTests extends InjectedMockContextTest {
 
     public IdentityZone createZoneUsingToken(String token) throws Exception {
         return createZone(generator.generate().toLowerCase(),
-                          HttpStatus.CREATED,
+                          CREATED,
                           token,
                           new IdentityZoneConfiguration());
     }
@@ -313,14 +327,14 @@ public class IdentityZoneEndpointsMockMvcTests extends InjectedMockContextTest {
     public void update_zone_as_with_uaa_admin() throws Exception {
         IdentityZone zone = createZoneUsingToken(uaaAdminClientToken);
         for (String token : Arrays.asList(uaaAdminClientToken, uaaAdminUserToken)) {
-            updateZone(zone, HttpStatus.OK, token);
+            updateZone(zone, OK, token);
         }
     }
 
     @Test
     public void create_zone_using_no_token() throws Exception {
         createZone(generator.generate().toLowerCase(),
-                   HttpStatus.UNAUTHORIZED,
+                   UNAUTHORIZED,
                    "",
                    new IdentityZoneConfiguration());
     }
@@ -370,11 +384,11 @@ public class IdentityZoneEndpointsMockMvcTests extends InjectedMockContextTest {
     public void create_zone_no_links() throws Exception {
         String id = generator.generate().toLowerCase();
         IdentityZoneConfiguration zoneConfiguration = new IdentityZoneConfiguration();
-        IdentityZone created = createZone(id, HttpStatus.CREATED, identityClientToken, zoneConfiguration);
+        IdentityZone created = createZone(id, CREATED, identityClientToken, zoneConfiguration);
         assertNull(created.getConfig().getLinks().getHomeRedirect());
         assertNull(created.getConfig().getLinks().getSelfService().getSignup());
         assertNull(created.getConfig().getLinks().getSelfService().getPasswd());
-        IdentityZone retrieved = getIdentityZone(id, HttpStatus.OK, identityClientToken);
+        IdentityZone retrieved = getIdentityZone(id, OK, identityClientToken);
         assertNull(retrieved.getConfig().getLinks().getHomeRedirect());
         assertNull(retrieved.getConfig().getLinks().getSelfService().getSignup());
         assertNull(retrieved.getConfig().getLinks().getSelfService().getPasswd());
@@ -387,11 +401,11 @@ public class IdentityZoneEndpointsMockMvcTests extends InjectedMockContextTest {
         zoneConfiguration.getLinks().setHomeRedirect("/home");
         zoneConfiguration.getLinks().getSelfService().setSignup("/signup");
         zoneConfiguration.getLinks().getSelfService().setPasswd("/passwd");
-        IdentityZone created = createZone(id, HttpStatus.CREATED, identityClientToken, zoneConfiguration);
+        IdentityZone created = createZone(id, CREATED, identityClientToken, zoneConfiguration);
         assertEquals("/home", created.getConfig().getLinks().getHomeRedirect());
         assertEquals("/signup", created.getConfig().getLinks().getSelfService().getSignup());
         assertEquals("/passwd", created.getConfig().getLinks().getSelfService().getPasswd());
-        IdentityZone retrieved = getIdentityZone(id, HttpStatus.OK, identityClientToken);
+        IdentityZone retrieved = getIdentityZone(id, OK, identityClientToken);
         assertEquals("/home", retrieved.getConfig().getLinks().getHomeRedirect());
         assertEquals("/signup", retrieved.getConfig().getLinks().getSelfService().getSignup());
         assertEquals("/passwd", retrieved.getConfig().getLinks().getSelfService().getPasswd());
@@ -400,7 +414,7 @@ public class IdentityZoneEndpointsMockMvcTests extends InjectedMockContextTest {
         zoneConfiguration.getLinks().setHomeRedirect(null);
         zoneConfiguration.getLinks().getSelfService().setSignup(null);
         zoneConfiguration.getLinks().getSelfService().setPasswd(null);
-        IdentityZone updated = updateZone(created, HttpStatus.OK, identityClientToken);
+        IdentityZone updated = updateZone(created, OK, identityClientToken);
         assertNull(updated.getConfig().getLinks().getHomeRedirect());
         assertNull(updated.getConfig().getLinks().getSelfService().getSignup());
         assertNull(updated.getConfig().getLinks().getSelfService().getPasswd());
@@ -411,8 +425,8 @@ public class IdentityZoneEndpointsMockMvcTests extends InjectedMockContextTest {
     @Test
     public void testGetZoneAsIdentityClient() throws Exception {
         String id = generator.generate();
-        IdentityZone created = createZone(id, HttpStatus.CREATED, identityClientToken, new IdentityZoneConfiguration());
-        IdentityZone retrieved = getIdentityZone(id, HttpStatus.OK, identityClientToken);
+        IdentityZone created = createZone(id, CREATED, identityClientToken, new IdentityZoneConfiguration());
+        IdentityZone retrieved = getIdentityZone(id, OK, identityClientToken);
         assertEquals(created.getId(), retrieved.getId());
         assertEquals(created.getName(), retrieved.getName());
         assertEquals(created.getSubdomain(), retrieved.getSubdomain());
@@ -422,7 +436,7 @@ public class IdentityZoneEndpointsMockMvcTests extends InjectedMockContextTest {
     @Test
     public void test_bootstrapped_system_scopes() throws Exception {
         String id = generator.generate();
-        createZone(id, HttpStatus.CREATED, identityClientToken, new IdentityZoneConfiguration());
+        createZone(id, CREATED, identityClientToken, new IdentityZoneConfiguration());
         List<String> groups = getWebApplicationContext().getBean(JdbcScimGroupProvisioning.class)
             .retrieveAll(id).stream().map(g -> g.getDisplayName()).collect(Collectors.toList());
 
@@ -439,7 +453,7 @@ public class IdentityZoneEndpointsMockMvcTests extends InjectedMockContextTest {
     @Test
     public void testGetZonesAsIdentityClient() throws Exception {
         String id = generator.generate();
-        IdentityZone created = createZone(id, HttpStatus.CREATED, identityClientToken, new IdentityZoneConfiguration());
+        IdentityZone created = createZone(id, CREATED, identityClientToken, new IdentityZoneConfiguration());
 
         getMockMvc().perform(
             get("/identity-zones/")
@@ -471,7 +485,7 @@ public class IdentityZoneEndpointsMockMvcTests extends InjectedMockContextTest {
     @Test
     public void testGetZoneThatDoesntExist() throws Exception {
         String id = generator.generate();
-        getIdentityZone(id, HttpStatus.NOT_FOUND, identityClientToken);
+        getIdentityZone(id, NOT_FOUND, identityClientToken);
     }
 
     @Test
@@ -481,7 +495,7 @@ public class IdentityZoneEndpointsMockMvcTests extends InjectedMockContextTest {
 
     public IdentityZone createZoneReturn() throws Exception {
         String id = generator.generate();
-        IdentityZone zone = createZone(id, HttpStatus.CREATED, identityClientToken, new IdentityZoneConfiguration());
+        IdentityZone zone = createZone(id, CREATED, identityClientToken, new IdentityZoneConfiguration());
         assertEquals(id, zone.getId());
         assertEquals(id.toLowerCase(), zone.getSubdomain());
         assertFalse(zone.getConfig().getTokenPolicy().isRefreshTokenUnique());
@@ -511,17 +525,86 @@ public class IdentityZoneEndpointsMockMvcTests extends InjectedMockContextTest {
     }
 
     @Test
+    public void testCreateWithSamlConfig() throws Exception {
+        String id = generator.generate();
+        SamlConfig samlConfig = new SamlConfig();
+        SignatureAlgorithm uaaDefaultSignatureAlgorthm = getWebApplicationContext().getBean("defaultUaaSamlSignatureAlgorithm", SignatureAlgorithm.class);
+        samlConfig.setSignatureAlgorithm(SignatureAlgorithm.SHA512);
+        IdentityZoneConfiguration zoneConfiguration = new IdentityZoneConfiguration();
+        zoneConfiguration.setSamlConfig(samlConfig);
+        IdentityZone zone = createZone(id, HttpStatus.CREATED, identityClientToken, zoneConfiguration);
+        IdentityZone uaaZone = IdentityZoneHolder.getUaaZone();
+
+        assertEquals(SignatureAlgorithm.SHA512, zone.getConfig().getSamlConfig().getSignatureAlgorithm());
+        assertEquals(uaaDefaultSignatureAlgorthm, uaaZone.getConfig().getSamlConfig().getSignatureAlgorithm());
+    }
+
+    @Test
+    public void testDefaultSignatureAlgorithmFromGlobalDefault() throws Exception{
+        IdentityZoneEndpoints zoneEndpoints = getWebApplicationContext().getBean(IdentityZoneEndpoints.class);
+        SignatureAlgorithm originalDefaultSignatureAlgorithm = getWebApplicationContext().getBean("globalSamlSignatureAlgorithm", SignatureAlgorithm.class);
+        zoneEndpoints.setDefaultSamlSignatureAlgorithm(SignatureAlgorithm.SHA512);
+        String id = new RandomValueStringGenerator(5).generate();
+
+        IdentityZone zone = createZone(id, HttpStatus.CREATED, identityClientToken, new IdentityZoneConfiguration().setSamlConfig(new SamlConfig()));
+
+        assertEquals(SignatureAlgorithm.SHA512, zone.getConfig().getSamlConfig().getSignatureAlgorithm());
+
+        zoneEndpoints.setDefaultSamlSignatureAlgorithm(originalDefaultSignatureAlgorithm);
+    }
+
+    @Test
+    public void testCreateWithInvalidSamlSigningAlgorithm() throws Exception {
+        String zoneId = generator.generate();
+        String requestBody = "{\"id\":\""+zoneId+"\", \"subdomain\":\""+zoneId+"\", \"name\":\"testCreateZone "+zoneId+"\", \"config\": {\"samlConfig\" : {\"signatureAlgorithm\" : \"SHA_INVALID\"}}}";
+
+        MvcResult mvcResult = getMockMvc().perform(
+                post("/identity-zones")
+                        .header("Authorization", "Bearer" + identityClientToken)
+                        .header("Content-Type", APPLICATION_JSON)
+                        .content(requestBody)).andExpect(status().isUnprocessableEntity()).andReturn();
+
+        assertThat(mvcResult.getResponse().getContentAsString(), containsString("Invalid SAML signatureAlgorithm."));
+    }
+
+
+    @Test
+    public void testCreateWithSHA1WhenGlobalDefaultIsSHA256() throws Exception{
+        String zoneId = generator.generate();
+        SamlConfig samlConfig = new SamlConfig();
+        samlConfig.setSignatureAlgorithm(SHA1);
+        IdentityZoneConfiguration zoneConfiguration = new IdentityZoneConfiguration();
+        zoneConfiguration.setSamlConfig(samlConfig);
+
+        createZone(zoneId, HttpStatus.UNPROCESSABLE_ENTITY, identityClientToken, zoneConfiguration);
+    }
+
+    @Test
+    public void zoneUpdateCanDowngradeSignatureAlgorithmToSHA1() throws Exception{
+        String id = new RandomValueStringGenerator(6).generate();
+        IdentityZoneEndpoints zoneEndpoints = getWebApplicationContext().getBean(IdentityZoneEndpoints.class);
+        zoneEndpoints.setDefaultSamlSignatureAlgorithm(SignatureAlgorithm.SHA512);
+        IdentityZone zone = createZone(id, HttpStatus.CREATED, identityClientToken, new IdentityZoneConfiguration().setSamlConfig(new SamlConfig()));
+        zone.getConfig().getSamlConfig().setSignatureAlgorithm(SHA1);
+
+        IdentityZone updatedZone = updateZone(zone, HttpStatus.OK, identityClientToken);
+
+        assertEquals(SHA1, updatedZone.getConfig().getSamlConfig().getSignatureAlgorithm());
+        zoneEndpoints.setDefaultSamlSignatureAlgorithm(globalDefaultSamlSignatureAlgorithm);
+    }
+
+    @Test
     public void updateZoneCreatesGroups() throws Exception {
         IdentityZone zone = createZoneReturn();
         List<String> zoneGroups = new LinkedList(zone.getConfig().getUserConfig().getDefaultGroups());
 
         //test two times with the same groups
-        zone = updateZone(zone, HttpStatus.OK, identityClientToken);
+        zone = updateZone(zone, OK, identityClientToken);
 
         zoneGroups.add("updated.group.1");
         zoneGroups.add("updated.group.2");
         zone.getConfig().getUserConfig().setDefaultGroups(zoneGroups);
-        zone = updateZone(zone, HttpStatus.OK, identityClientToken);
+        zone = updateZone(zone, OK, identityClientToken);
 
         //validate that default groups got created
         ScimGroupProvisioning groupProvisioning = getWebApplicationContext().getBean(ScimGroupProvisioning.class);
@@ -569,7 +652,7 @@ public class IdentityZoneEndpointsMockMvcTests extends InjectedMockContextTest {
     @Test
     public void testCreateZoneInsufficientScope() throws Exception {
         String id = new RandomValueStringGenerator().generate();
-        createZone(id, HttpStatus.FORBIDDEN, lowPriviledgeToken, new IdentityZoneConfiguration());
+        createZone(id, FORBIDDEN, lowPriviledgeToken, new IdentityZoneConfiguration());
 
         assertEquals(0, zoneModifiedEventListener.getEventCount());
     }
@@ -577,7 +660,7 @@ public class IdentityZoneEndpointsMockMvcTests extends InjectedMockContextTest {
     @Test
     public void testCreateZoneNoToken() throws Exception {
         String id = new RandomValueStringGenerator().generate();
-        createZone(id, HttpStatus.UNAUTHORIZED, "", new IdentityZoneConfiguration());
+        createZone(id, UNAUTHORIZED, "", new IdentityZoneConfiguration());
 
         assertEquals(0, zoneModifiedEventListener.getEventCount());
     }
@@ -585,7 +668,7 @@ public class IdentityZoneEndpointsMockMvcTests extends InjectedMockContextTest {
 
     @Test
     public void testCreateZoneWithoutID() throws Exception {
-        IdentityZone zone = createZone("", HttpStatus.CREATED, identityClientToken, new IdentityZoneConfiguration());
+        IdentityZone zone = createZone("", CREATED, identityClientToken, new IdentityZoneConfiguration());
         assertTrue(hasText(zone.getId()));
         checkZoneAuditEventInUaa(1, AuditEventType.IdentityZoneCreatedEvent);
     }
@@ -596,14 +679,14 @@ public class IdentityZoneEndpointsMockMvcTests extends InjectedMockContextTest {
         String id = new RandomValueStringGenerator().generate();
         IdentityZone identityZone = getIdentityZone(id);
         //zone doesn't exist and we don't have the token scope
-        updateZone(identityZone, HttpStatus.FORBIDDEN, lowPriviledgeToken);
+        updateZone(identityZone, FORBIDDEN, lowPriviledgeToken);
 
         assertEquals(0, zoneModifiedEventListener.getEventCount());
     }
 
     @Test
     public void testUpdateUaaIsForbidden() throws Exception {
-        updateZone(IdentityZone.getUaa(), HttpStatus.FORBIDDEN, identityClientToken);
+        updateZone(IdentityZone.getUaa(), FORBIDDEN, identityClientToken);
         assertEquals(0, zoneModifiedEventListener.getEventCount());
     }
 
@@ -611,7 +694,7 @@ public class IdentityZoneEndpointsMockMvcTests extends InjectedMockContextTest {
     public void testUpdateNonExistentReturns404() throws Exception {
         String id = generator.generate();
         IdentityZone identityZone = getIdentityZone(id);
-        updateZone(identityZone, HttpStatus.NOT_FOUND, identityClientToken);
+        updateZone(identityZone, NOT_FOUND, identityClientToken);
 
         assertEquals(0, zoneModifiedEventListener.getEventCount());
     }
@@ -620,11 +703,11 @@ public class IdentityZoneEndpointsMockMvcTests extends InjectedMockContextTest {
     public void testUpdateWithSameDataReturns200() throws Exception {
         String id = generator.generate();
 
-        IdentityZone created = createZone(id, HttpStatus.CREATED, identityClientToken, new IdentityZoneConfiguration());
+        IdentityZone created = createZone(id, CREATED, identityClientToken, new IdentityZoneConfiguration());
 
         checkZoneAuditEventInUaa(1, AuditEventType.IdentityZoneCreatedEvent);
 
-        updateZone(created, HttpStatus.OK, identityClientToken);
+        updateZone(created, OK, identityClientToken);
         checkZoneAuditEventInUaa(2, AuditEventType.IdentityZoneModifiedEvent);
     }
 
@@ -632,13 +715,14 @@ public class IdentityZoneEndpointsMockMvcTests extends InjectedMockContextTest {
     public void testUpdateWithDifferentDataReturns200() throws Exception {
         String id = generator.generate();
 
-        IdentityZone created = createZone(id, HttpStatus.CREATED, identityClientToken, new IdentityZoneConfiguration());
+        IdentityZone created = createZone(id, CREATED, identityClientToken, new IdentityZoneConfiguration());
         checkZoneAuditEventInUaa(1, AuditEventType.IdentityZoneCreatedEvent);
         created.setDescription("updated description");
         IdentityZoneConfiguration definition = new IdentityZoneConfiguration(new TokenPolicy(3600, 7200));
+        definition.getSamlConfig().setSignatureAlgorithm(globalDefaultSamlSignatureAlgorithm);
         created.setConfig(definition);
 
-        IdentityZone updated = updateZone(created, HttpStatus.OK, identityClientToken);
+        IdentityZone updated = updateZone(created, OK, identityClientToken);
         assertEquals("updated description", updated.getDescription());
         assertEquals(JsonUtils.writeValueAsString(definition), JsonUtils.writeValueAsString(updated.getConfig()));
         checkZoneAuditEventInUaa(2, AuditEventType.IdentityZoneModifiedEvent);
@@ -648,7 +732,7 @@ public class IdentityZoneEndpointsMockMvcTests extends InjectedMockContextTest {
     public void testCreateAndUpdateDoesNotReturnKeys() throws Exception {
         String id = generator.generate();
 
-        IdentityZone created = createZone(id, HttpStatus.CREATED, identityClientToken, new IdentityZoneConfiguration());
+        IdentityZone created = createZone(id, CREATED, identityClientToken, new IdentityZoneConfiguration());
         assertEquals(Collections.EMPTY_MAP, created.getConfig().getTokenPolicy().getKeys());
         assertEquals("kid", created.getConfig().getTokenPolicy().getActiveKeyId());
         assertNull(created.getConfig().getSamlConfig().getPrivateKey());
@@ -669,7 +753,7 @@ public class IdentityZoneEndpointsMockMvcTests extends InjectedMockContextTest {
         definition.setSamlConfig(samlConfig);
         created.setConfig(definition);
 
-        IdentityZone updated = updateZone(created, HttpStatus.OK, identityClientToken);
+        IdentityZone updated = updateZone(created, OK, identityClientToken);
         assertEquals("updated description", updated.getDescription());
         assertEquals(Collections.EMPTY_MAP, updated.getConfig().getTokenPolicy().getKeys());
         assertEquals("key1", updated.getConfig().getTokenPolicy().getActiveKeyId());
@@ -682,7 +766,7 @@ public class IdentityZoneEndpointsMockMvcTests extends InjectedMockContextTest {
     public void testUpdateIgnoresKeysWhenNotPresentInPayload() throws Exception {
         String id = generator.generate();
 
-        IdentityZone created = createZone(id, HttpStatus.CREATED, identityClientToken, new IdentityZoneConfiguration());
+        IdentityZone created = createZone(id, CREATED, identityClientToken, new IdentityZoneConfiguration());
         IdentityZone retrieve = provisioning.retrieve(created.getId());
 
         Map<String, String> keys = new HashMap<>();
@@ -692,7 +776,7 @@ public class IdentityZoneEndpointsMockMvcTests extends InjectedMockContextTest {
 
         created.setDescription("updated description");
         created.getConfig().getTokenPolicy().setKeys(null);
-        IdentityZone updated = updateZone(created, HttpStatus.OK, identityClientToken);
+        IdentityZone updated = updateZone(created, OK, identityClientToken);
         retrieve = provisioning.retrieve(created.getId());
         assertEquals(keys.toString(), retrieve.getConfig().getTokenPolicy().getKeys().toString());
     }
@@ -701,7 +785,7 @@ public class IdentityZoneEndpointsMockMvcTests extends InjectedMockContextTest {
     public void testUpdateWithInvalidSamlKeyCertPair() throws Exception {
         String id = generator.generate();
 
-        IdentityZone created = createZone(id, HttpStatus.CREATED, identityClientToken, new IdentityZoneConfiguration());
+        IdentityZone created = createZone(id, CREATED, identityClientToken, new IdentityZoneConfiguration());
 
         String samlPrivateKey = "-----BEGIN RSA PRIVATE KEY-----\n" +
             "Proc-Type: 4,ENCRYPTED\n" +
@@ -754,33 +838,33 @@ public class IdentityZoneEndpointsMockMvcTests extends InjectedMockContextTest {
         samlConfig.setPrivateKey(samlPrivateKey);
         samlConfig.setPrivateKeyPassword(samlKeyPassphrase);
         samlConfig.setCertificate(samlCertificate);
-        updateZone(created, HttpStatus.UNPROCESSABLE_ENTITY, identityClientToken);
+        updateZone(created, UNPROCESSABLE_ENTITY, identityClientToken);
     }
 
     @Test
     public void testUpdateWithPartialSamlKeyCertPair() throws Exception {
         String id = generator.generate();
 
-        IdentityZone created = createZone(id, HttpStatus.CREATED, identityClientToken, new IdentityZoneConfiguration());
+        IdentityZone created = createZone(id, CREATED, identityClientToken, new IdentityZoneConfiguration());
 
         SamlConfig samlConfig = created.getConfig().getSamlConfig();
         samlConfig.setPrivateKey(serviceProviderKey);
         samlConfig.setPrivateKeyPassword(null);
         samlConfig.setCertificate(serviceProviderCertificate);
-        updateZone(created, HttpStatus.UNPROCESSABLE_ENTITY, identityClientToken);
+        updateZone(created, UNPROCESSABLE_ENTITY, identityClientToken);
 
         samlConfig = created.getConfig().getSamlConfig();
         samlConfig.setPrivateKey(null);
         samlConfig.setPrivateKeyPassword(serviceProviderKeyPassword);
         samlConfig.setCertificate(serviceProviderCertificate);
-        updateZone(created, HttpStatus.UNPROCESSABLE_ENTITY, identityClientToken);
+        updateZone(created, UNPROCESSABLE_ENTITY, identityClientToken);
     }
 
     @Test
     public void testUpdateWithEmptySamlKeyCertPairRetainsCurrentValue() throws Exception {
         String id = generator.generate();
 
-        IdentityZone created = createZone(id, HttpStatus.CREATED, identityClientToken, new IdentityZoneConfiguration());
+        IdentityZone created = createZone(id, CREATED, identityClientToken, new IdentityZoneConfiguration());
         created.getConfig().getTokenPolicy().setKeys(new HashMap<>(Collections.singletonMap("kid", "key")));
 
         SamlConfig samlConfig = created.getConfig().getSamlConfig();
@@ -790,7 +874,7 @@ public class IdentityZoneEndpointsMockMvcTests extends InjectedMockContextTest {
 
         samlConfig.setPrivateKey(null);
         samlConfig.setPrivateKeyPassword(null);
-        updateZone(created, HttpStatus.OK, identityClientToken);
+        updateZone(created, OK, identityClientToken);
 
         IdentityZone updated = provisioning.retrieve(created.getId());
         SamlConfig updatedSamlConfig = updated.getConfig().getSamlConfig();
@@ -804,7 +888,7 @@ public class IdentityZoneEndpointsMockMvcTests extends InjectedMockContextTest {
     public void testUpdateWithNewSamlCertNoKeyIsUnprocessableEntity() throws Exception {
         String id = generator.generate();
 
-        IdentityZone created = createZone(id, HttpStatus.CREATED, identityClientToken, new IdentityZoneConfiguration());
+        IdentityZone created = createZone(id, CREATED, identityClientToken, new IdentityZoneConfiguration());
 
         SamlConfig samlConfig = created.getConfig().getSamlConfig();
 
@@ -813,14 +897,14 @@ public class IdentityZoneEndpointsMockMvcTests extends InjectedMockContextTest {
         samlConfig.setCertificate(KeyWithCertTest.invalidCert);
         samlConfig.setPrivateKey(null);
         samlConfig.setPrivateKeyPassword(null);
-        updateZone(created, HttpStatus.UNPROCESSABLE_ENTITY, identityClientToken);
+        updateZone(created, UNPROCESSABLE_ENTITY, identityClientToken);
     }
 
     @Test
     public void testUpdateWithNewKeyNoCertIsUnprocessableEntity() throws Exception {
         String id = generator.generate();
 
-        IdentityZone created = createZone(id, HttpStatus.CREATED, identityClientToken, new IdentityZoneConfiguration());
+        IdentityZone created = createZone(id, CREATED, identityClientToken, new IdentityZoneConfiguration());
 
         SamlConfig samlConfig = created.getConfig().getSamlConfig();
 
@@ -829,21 +913,21 @@ public class IdentityZoneEndpointsMockMvcTests extends InjectedMockContextTest {
         samlConfig.setCertificate(null);
         samlConfig.setPrivateKey(serviceProviderKey);
         samlConfig.setPrivateKeyPassword(serviceProviderKeyPassword);
-        updateZone(created, HttpStatus.UNPROCESSABLE_ENTITY, identityClientToken);
+        updateZone(created, UNPROCESSABLE_ENTITY, identityClientToken);
     }
 
     @Test
     public void testUpdateZoneWithExistingSubdomain() throws Exception {
         String id1 = generator.generate();
-        IdentityZone created1 = createZone(id1, HttpStatus.CREATED, identityClientToken, new IdentityZoneConfiguration());
+        IdentityZone created1 = createZone(id1, CREATED, identityClientToken, new IdentityZoneConfiguration());
         checkZoneAuditEventInUaa(1, AuditEventType.IdentityZoneCreatedEvent);
 
         String id2 = generator.generate();
-        IdentityZone created2 = createZone(id2, HttpStatus.CREATED, identityClientToken, new IdentityZoneConfiguration());
+        IdentityZone created2 = createZone(id2, CREATED, identityClientToken, new IdentityZoneConfiguration());
         checkZoneAuditEventInUaa(2, AuditEventType.IdentityZoneCreatedEvent);
 
         created1.setSubdomain(created2.getSubdomain());
-        updateZone(created1, HttpStatus.CONFLICT, identityClientToken);
+        updateZone(created1, CONFLICT, identityClientToken);
         checkZoneAuditEventInUaa(2, AuditEventType.IdentityZoneCreatedEvent);
     }
 
@@ -851,7 +935,7 @@ public class IdentityZoneEndpointsMockMvcTests extends InjectedMockContextTest {
     public void testUpdateZoneNoToken() throws Exception {
         String id = new RandomValueStringGenerator().generate();
         IdentityZone identityZone = getIdentityZone(id);
-        updateZone(identityZone, HttpStatus.UNAUTHORIZED, "");
+        updateZone(identityZone, UNAUTHORIZED, "");
 
         assertEquals(0, zoneModifiedEventListener.getEventCount());
     }
@@ -860,7 +944,7 @@ public class IdentityZoneEndpointsMockMvcTests extends InjectedMockContextTest {
     public void testUpdateZoneInsufficientScope() throws Exception {
         String id = new RandomValueStringGenerator().generate();
         IdentityZone identityZone = getIdentityZone(id);
-        updateZone(identityZone, HttpStatus.FORBIDDEN, lowPriviledgeToken);
+        updateZone(identityZone, FORBIDDEN, lowPriviledgeToken);
 
         assertEquals(0, zoneModifiedEventListener.getEventCount());
     }
@@ -868,11 +952,11 @@ public class IdentityZoneEndpointsMockMvcTests extends InjectedMockContextTest {
     @Test
     public void testCreateDuplicateZoneReturns409() throws Exception {
         String id = generator.generate();
-        createZone(id, HttpStatus.CREATED, identityClientToken, new IdentityZoneConfiguration());
+        createZone(id, CREATED, identityClientToken, new IdentityZoneConfiguration());
 
         checkZoneAuditEventInUaa(1, AuditEventType.IdentityZoneCreatedEvent);
 
-        createZone(id, HttpStatus.CONFLICT, identityClientToken, new IdentityZoneConfiguration());
+        createZone(id, CONFLICT, identityClientToken, new IdentityZoneConfiguration());
 
         assertEquals(1, zoneModifiedEventListener.getEventCount());
     }
@@ -934,6 +1018,7 @@ public class IdentityZoneEndpointsMockMvcTests extends InjectedMockContextTest {
         samlConfig.setCertificate(samlCertificate);
         samlConfig.setPrivateKey(samlPrivateKey);
         samlConfig.setPrivateKeyPassword(samlKeyPassphrase);
+        samlConfig.setSignatureAlgorithm(SignatureAlgorithm.SHA256);
 
         IdentityZoneConfiguration definition = new IdentityZoneConfiguration(tokenPolicy);
         identityZone.setConfig(definition.setSamlConfig(samlConfig));
@@ -1394,7 +1479,7 @@ public class IdentityZoneEndpointsMockMvcTests extends InjectedMockContextTest {
         JdbcTemplate template = getWebApplicationContext().getBean(JdbcTemplate.class);
 
         String id = generator.generate();
-        IdentityZone zone = createZone(id, HttpStatus.CREATED, identityClientToken, new IdentityZoneConfiguration());
+        IdentityZone zone = createZone(id, CREATED, identityClientToken, new IdentityZoneConfiguration());
 
         //create zone and clients
         BaseClientDetails client = new BaseClientDetails("limited-client", null, "openid", "authorization_code",
@@ -1534,7 +1619,7 @@ public class IdentityZoneEndpointsMockMvcTests extends InjectedMockContextTest {
     @Test
     public void testDeleteZonePublishesEvent() throws Exception {
         String id = generator.generate();
-        IdentityZone zone = createZone(id, HttpStatus.CREATED, identityClientToken, new IdentityZoneConfiguration());
+        IdentityZone zone = createZone(id, CREATED, identityClientToken, new IdentityZoneConfiguration());
 
         uaaEventListener.clearEvents();
 
@@ -1565,7 +1650,7 @@ public class IdentityZoneEndpointsMockMvcTests extends InjectedMockContextTest {
     @Test
     public void testCreateAndDeleteLimitedClientInNewZoneUsingZoneEndpoint() throws Exception {
         String id = generator.generate();
-        IdentityZone zone = createZone(id, HttpStatus.CREATED, identityClientToken, new IdentityZoneConfiguration());
+        IdentityZone zone = createZone(id, CREATED, identityClientToken, new IdentityZoneConfiguration());
         BaseClientDetails client = new BaseClientDetails("limited-client", null, "openid", "authorization_code",
                                                          "uaa.resource");
         client.setClientSecret("secret");
@@ -1638,7 +1723,7 @@ public class IdentityZoneEndpointsMockMvcTests extends InjectedMockContextTest {
     @Test
     public void testCreateAdminClientInNewZoneUsingZoneEndpointReturns400() throws Exception {
         String id = generator.generate();
-        IdentityZone zone = createZone(id, HttpStatus.CREATED, identityClientToken, new IdentityZoneConfiguration());
+        IdentityZone zone = createZone(id, CREATED, identityClientToken, new IdentityZoneConfiguration());
         BaseClientDetails client = new BaseClientDetails("admin-client", null, null, "client_credentials",
                                                          "clients.write");
         client.setClientSecret("secret");
@@ -1850,7 +1935,7 @@ public class IdentityZoneEndpointsMockMvcTests extends InjectedMockContextTest {
         ScimUser user = createUser(scimWriteToken, null);
 
         String id = generator.generate().toLowerCase();
-        IdentityZone identityZone = createZone(id, HttpStatus.CREATED, identityClientToken, new IdentityZoneConfiguration());
+        IdentityZone identityZone = createZone(id, CREATED, identityClientToken, new IdentityZoneConfiguration());
 
         for (String displayName : Arrays.asList("read", "admin")) {
             ScimGroup group = new ScimGroup();
@@ -1901,6 +1986,204 @@ public class IdentityZoneEndpointsMockMvcTests extends InjectedMockContextTest {
         assertNull(zoneResult.getConfig().getSamlConfig().getPrivateKeyPassword());
         assertEquals(Collections.EMPTY_MAP, zoneResult.getConfig().getTokenPolicy().getKeys());
         assertEquals("kid", zoneResult.getConfig().getTokenPolicy().getActiveKeyId());
+    }
+
+    @Test
+    public void testCreateKeyProviderConfigDeniedForSystemZone() throws Exception {
+        KeyProviderConfig keyProviderConfig = new KeyProviderConfig("clientId", "dcsTenantId");
+        getMockMvc().perform(
+                post("/identity-zones/" + IdentityZoneHolder.getUaaZone().getId() + "/key-provider-config")
+                        .header("Authorization", "Bearer " + adminToken)
+                        .contentType(APPLICATION_JSON)
+                        .accept(APPLICATION_JSON)
+                        .content(JsonUtils.writeValueAsString(keyProviderConfig)))
+                .andExpect(status().isForbidden())
+                .andReturn().getResponse();
+    }
+
+    @Test
+    public void testGetKeyProviderConfigDeniedForSystemZone() throws Exception {
+        getMockMvc().perform(
+                get("/identity-zones/" + IdentityZoneHolder.getUaaZone().getId() + "/key-provider-config/1")
+                        .header("Authorization", "Bearer " + adminToken)
+                        .contentType(APPLICATION_JSON)
+                        .accept(APPLICATION_JSON))
+                .andExpect(status().isForbidden())
+                .andReturn().getResponse();
+    }
+
+    @Test
+    public void testFindKeyProviderConfigDeniedForSystemZone() throws Exception {
+        getMockMvc().perform(
+                get("/identity-zones/" + IdentityZoneHolder.getUaaZone().getId() + "/key-provider-config")
+                        .header("Authorization", "Bearer " + adminToken)
+                        .contentType(APPLICATION_JSON)
+                        .accept(APPLICATION_JSON))
+                .andExpect(status().isForbidden())
+                .andReturn().getResponse();
+    }
+
+
+    @Test
+    public void testDeleteKeyProviderConfigDeniedForSystemZone() throws Exception {
+        getMockMvc().perform(
+                delete("/identity-zones/" + IdentityZoneHolder.getUaaZone().getId() + "/key-provider-config/1")
+                        .header("Authorization", "Bearer " + adminToken)
+                        .contentType(APPLICATION_JSON)
+                        .accept(APPLICATION_JSON))
+                .andExpect(status().isForbidden())
+                .andReturn().getResponse();
+    }
+
+    @Test
+    public void testDeleteKeyProviderConfig() throws Exception {
+        String identityZoneId = new RandomValueStringGenerator(5).generate();
+        String keyProviderId = keyProviderSetup(identityZoneId, CREATED, CREATED, adminToken);
+        getMockMvc().perform(
+                delete("/identity-zones/" + identityZoneId + "/key-provider-config/" + keyProviderId)
+                        .header("Authorization", "Bearer " + adminToken)
+                        .header("X-Identity-Zone-Id", identityZoneId)
+                        .contentType(APPLICATION_JSON)
+                        .accept(APPLICATION_JSON))
+                .andExpect(status().isNoContent())
+                .andReturn().getResponse();
+    }
+
+    @Test
+    public void testDeleteKeyProviderConfigWithLowPrivilegeTokenIsForbidden() throws Exception {
+        String identityZoneId = new RandomValueStringGenerator(5).generate();
+        String keyProviderId = keyProviderSetup(identityZoneId, CREATED, CREATED, adminToken);
+        getMockMvc().perform(
+                delete("/identity-zones/" + identityZoneId + "/key-provider-config/" + keyProviderId)
+                        .header("Authorization", "Bearer " + lowPriviledgeToken)
+                        .header("X-Identity-Zone-Id", identityZoneId)
+                        .contentType(APPLICATION_JSON)
+                        .accept(APPLICATION_JSON))
+                .andExpect(status().isForbidden())
+                .andReturn().getResponse();
+    }
+
+    @Test
+    public void testCreateKeyProviderConfigWithLowPrivilegeIsForbidden() throws Exception {
+        keyProviderSetup(new RandomValueStringGenerator(5).generate(), FORBIDDEN, CREATED, lowPriviledgeToken);
+    }
+
+    @Test
+    public void testCreateKeyProviderConfig() throws Exception {
+        keyProviderSetup(new RandomValueStringGenerator(5).generate(), CREATED, CREATED, adminToken);
+    }
+
+    @Test
+    public void testCreateKeyProviderConfigAlreadyExists() throws Exception{
+        String zoneId = new RandomValueStringGenerator(5).generate();
+        keyProviderSetup(zoneId, CREATED, CREATED, adminToken);
+        keyProviderSetup(zoneId, CONFLICT, CONFLICT, adminToken);
+
+    }
+
+    @Test
+    public void testFindActiveKeyProviderForZone() throws Exception{
+        String identityZoneId = new RandomValueStringGenerator(5).generate();
+        String keyProviderId = keyProviderSetup(identityZoneId, CREATED, CREATED, adminToken);
+        assertNotNull(keyProviderId);
+        MockHttpServletResponse response = getMockMvc().perform(
+                get("/identity-zones/" + identityZoneId + "/key-provider-config")
+                        .header("Authorization", "Bearer " + adminToken)
+                        .header("X-Identity-Zone-Id", identityZoneId)
+                        .accept(APPLICATION_JSON))
+                .andExpect(status().isOk()).andReturn().getResponse();
+
+        assertEquals(keyProviderId, JsonUtils.readValue(response.getContentAsString(), KeyProviderConfig.class).getId());
+    }
+
+
+    @Test
+    public void testFindActiveKeyProviderForZoneWithLowPrivilegeTokenIsForbidden() throws Exception{
+        String identityZoneId = new RandomValueStringGenerator(5).generate();
+        String keyProviderId = keyProviderSetup(identityZoneId, CREATED, CREATED, adminToken);
+        assertNotNull(keyProviderId);
+        MockHttpServletResponse response = getMockMvc().perform(
+                get("/identity-zones/" + identityZoneId + "/key-provider-config")
+                        .header("Authorization", "Bearer " + lowPriviledgeToken)
+                        .header("X-Identity-Zone-Id", identityZoneId)
+                        .accept(APPLICATION_JSON))
+                .andExpect(status().isForbidden()).andReturn().getResponse();
+    }
+
+    @Test
+    public void testGetKeyProvider() throws Exception{
+        String identityZoneId = new RandomValueStringGenerator(5).generate();
+        String keyProviderId = keyProviderSetup(identityZoneId, CREATED, CREATED, adminToken);
+        assertNotNull(keyProviderId);
+        MockHttpServletResponse response = getMockMvc().perform(
+                get("/identity-zones/" + identityZoneId + "/key-provider-config/" + keyProviderId)
+                        .header("Authorization", "Bearer " + adminToken)
+                        .header("X-Identity-Zone-Id", identityZoneId)
+                        .accept(APPLICATION_JSON))
+                .andExpect(status().isOk()).andReturn().getResponse();
+
+        assertEquals(keyProviderId, JsonUtils.readValue(response.getContentAsString(), KeyProviderConfig.class).getId());
+    }
+
+    @Test
+    public void testGetKeyProviderWithLowPrivilegeTokenIsForbidden() throws Exception{
+        String identityZoneId = new RandomValueStringGenerator(5).generate();
+        String keyProviderId = keyProviderSetup(identityZoneId, CREATED, CREATED, adminToken);
+        assertNotNull(keyProviderId);
+        MockHttpServletResponse response = getMockMvc().perform(
+                get("/identity-zones/" + identityZoneId + "/key-provider-config/" + keyProviderId)
+                        .header("Authorization", "Bearer " + lowPriviledgeToken)
+                        .header("X-Identity-Zone-Id", identityZoneId)
+                        .accept(APPLICATION_JSON))
+                .andExpect(status().isForbidden()).andReturn().getResponse();
+    }
+
+    @Test
+    public void testDeleteZoneAlsoDeletesKeyProviders() throws Exception{
+        String identityZoneId = new RandomValueStringGenerator(5).generate();
+        JdbcKeyProviderProvisioning jdbcKeyProviderProvisioning = getWebApplicationContext().getBean(JdbcKeyProviderProvisioning.class);
+        String currentZoneId = IdentityZoneHolder.get().getId();
+        String keyProviderId = keyProviderSetup(identityZoneId, CREATED, CREATED, adminToken);
+        IdentityZoneHolder.get().setId(identityZoneId);
+        assertEquals(keyProviderId, jdbcKeyProviderProvisioning.findActive().getId());
+        MockMvcUtils.deleteIdentityZone(identityZoneId, getMockMvc());
+
+        assertNull(jdbcKeyProviderProvisioning.findActive());
+
+        IdentityZoneHolder.get().setId(currentZoneId);
+    }
+    private String keyProviderSetup(String identityZoneId, HttpStatus createKeyProviderStatus, HttpStatus zoneCreateStatus, String token) throws Exception {
+        createZone(identityZoneId, zoneCreateStatus, adminToken, new IdentityZoneConfiguration());
+        BaseClientDetails client = new BaseClientDetails();
+        client.setClientId("client1");
+        client.setClientSecret("test");
+        client.setAuthorizedGrantTypes(Collections.singleton("client_credentials"));
+        getMockMvc().perform(
+                post("/oauth/clients")
+                        .header("Authorization", "Bearer " + adminToken)
+                        .header("X-Identity-Zone-Id", identityZoneId)
+                        .contentType(APPLICATION_JSON)
+                        .accept(APPLICATION_JSON)
+                        .content(JsonUtils.writeValueAsString(client)))
+                .andReturn().getResponse();
+
+        KeyProviderConfig keyProviderConfig = new KeyProviderConfig(null, IdentityZoneHolder.get().getId(),
+                client.getClientId(), "dcsTenantId");
+        MockHttpServletResponse response = getMockMvc().perform(
+                post("/identity-zones/" + identityZoneId + "/key-provider-config")
+                        .header("Authorization", "Bearer " + token)
+                        .header("X-Identity-Zone-Id", identityZoneId)
+                        .contentType(APPLICATION_JSON)
+                        .accept(APPLICATION_JSON)
+                        .content(JsonUtils.writeValueAsString(keyProviderConfig)))
+                .andReturn().getResponse();
+        assertEquals(createKeyProviderStatus.value(), response.getStatus());
+        try {
+            return JsonUtils.readValue(response.getContentAsString(), KeyProviderConfig.class).getId();
+        } catch (Exception e) {
+            //No provider returned for expected http status like CONFLICT
+            return null;
+        }
     }
 
     private IdentityZone getIdentityZone(String id, HttpStatus expect, String token) throws Exception {

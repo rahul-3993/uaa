@@ -42,6 +42,7 @@ import org.cloudfoundry.identity.uaa.provider.UaaIdentityProviderDefinition;
 import org.cloudfoundry.identity.uaa.provider.saml.BootstrapSamlIdentityProviderConfigurator;
 import org.cloudfoundry.identity.uaa.provider.saml.LoginSamlEntryPoint;
 import org.cloudfoundry.identity.uaa.provider.saml.ZoneAwareMetadataGenerator;
+import org.cloudfoundry.identity.uaa.provider.saml.ZoneAwareSamlSecurityConfiguration;
 import org.cloudfoundry.identity.uaa.resources.jdbc.SimpleSearchQueryConverter;
 import org.cloudfoundry.identity.uaa.scim.ScimGroup;
 import org.cloudfoundry.identity.uaa.scim.ScimGroupExternalMember;
@@ -119,6 +120,8 @@ import static org.cloudfoundry.identity.uaa.oauth.token.TokenConstants.TokenForm
 import static org.cloudfoundry.identity.uaa.oauth.token.TokenConstants.TokenFormat.OPAQUE;
 import static org.cloudfoundry.identity.uaa.provider.ExternalIdentityProviderDefinition.FAMILY_NAME_ATTRIBUTE_NAME;
 import static org.cloudfoundry.identity.uaa.provider.ExternalIdentityProviderDefinition.GIVEN_NAME_ATTRIBUTE_NAME;
+import static org.cloudfoundry.identity.uaa.zone.SamlConfig.SignatureAlgorithm.SHA256;
+import static org.cloudfoundry.identity.uaa.zone.SamlConfig.SignatureAlgorithm.SHA512;
 import static org.hamcrest.CoreMatchers.hasItems;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.Matchers.comparesEqualTo;
@@ -748,8 +751,10 @@ public class BootstrapTests {
         passcode = prompts.get(2);
         assertEquals("One Time Code ( Get one at https://login.some.test.domain.com:555/uaa/passcode )", passcode.getDetails()[1]);
 
-        assertEquals(SignatureConstants.ALGO_ID_SIGNATURE_RSA_SHA256, Configuration.getGlobalSecurityConfiguration().getSignatureAlgorithmURI("RSA"));
-        assertEquals(SignatureConstants.ALGO_ID_DIGEST_SHA256, Configuration.getGlobalSecurityConfiguration().getSignatureReferenceDigestMethod());
+        assertEquals(SHA256, context.getBean("defaultUaaSamlSignatureAlgorithm", SamlConfig.SignatureAlgorithm.class));
+        assertEquals(SHA512, context.getBean("globalSamlSignatureAlgorithm", SamlConfig.SignatureAlgorithm.class));
+        assertEquals(SignatureConstants.ALGO_ID_SIGNATURE_RSA_SHA256, context.getBean(ZoneAwareSamlSecurityConfiguration.class).getSignatureAlgorithmURI("RSA"));
+        assertEquals(SignatureConstants.ALGO_ID_DIGEST_SHA256, context.getBean(ZoneAwareSamlSecurityConfiguration.class).getSignatureReferenceDigestMethod());
 
         ScimGroupProvisioning scimGroupProvisioning = context.getBean("scimGroupProvisioning", ScimGroupProvisioning.class);
         List<ScimGroup> scimGroups = scimGroupProvisioning.retrieveAll(IdentityZoneHolder.get().getId());
