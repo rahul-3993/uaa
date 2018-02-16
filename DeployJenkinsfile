@@ -74,8 +74,10 @@ pipeline {
                     ruby -v
                     ./ci_deploy.sh
 
-                    if [ $DEPLOYMENT_TYPE != 'perf-vpc-sb' -a $DEPLOYMENT_TYPE != 'perf-asv-sb' -a $DEPLOYMENT_TYPE != 'perf-cf3' -a $DEPLOYMENT_TYPE != 'perf-azr-usw' -a $DEPLOYMENT_TYPE != 'cf3-integration' -a $DEPLOYMENT_TYPE != 'asv-pr-db-mig-test' ]; then
-                        ./uaa-sb-acceptance-tests.sh
+                    if [ x$RUN_ACCEPTANCE_TESTS == xtrue ]; then
+                        if [ $DEPLOYMENT_TYPE != 'perf-vpc-sb' -a $DEPLOYMENT_TYPE != 'perf-asv-sb' -a $DEPLOYMENT_TYPE != 'perf-cf3' -a $DEPLOYMENT_TYPE != 'perf-azr-usw' -a $DEPLOYMENT_TYPE != 'cf3-integration' -a $DEPLOYMENT_TYPE != 'asv-pr-db-mig-test' ]; then
+                            ./uaa-sb-acceptance-tests.sh
+                        fi
                     fi
                 popd
                 touch uaa-release.properties
