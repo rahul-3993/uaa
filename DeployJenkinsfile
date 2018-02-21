@@ -10,7 +10,7 @@ pipeline {
         buildDiscarder(logRotator(artifactDaysToKeepStr: '1', artifactNumToKeepStr: '1', daysToKeepStr: '5', numToKeepStr: '10'))
     }
     parameters  {
-        choice(name: 'DEPLOYMENT_TYPE', choices:'cf3-release-candidate\ncf3-staging\ncf3-sysint\ncf3-integration\nvpc\njpn\neu-central\nazr-usw\nasv-pr\ngovw\nperf-vpc-sb\nperf-asv-sb\nperf-cf3\nvpc-db-mig-test\nasv-sb', description: 'This specifies which point of presence to deploy to')
+        choice(name: 'DEPLOYMENT_TYPE', choices:'cf3-release-candidate\ncf3-staging\ncf3-sysint\ncf3-integration\nvpc\njpn\neu-central\nazr-usw\nasv-pr\ngovw\nperf-vpc-sb\nperf-asv-sb\nperf-cf3\nperf-govcloud\nvpc-db-mig-test\nasv-sb', description: 'This specifies which point of presence to deploy to')
         booleanParam(name: 'MAP_ROUTES_TO_DEPLOYED_APP', defaultValue: true, description: 'Determines if the published routes are mapped to the newly deployed app. Defaults to true.')
         booleanParam(name: 'RUN_ACCEPTANCE_TESTS', defaultValue: true, description: 'Determines whether to run the acceptance test against the freshly deployed UAA.')
     }
@@ -74,7 +74,8 @@ pipeline {
                     ruby -v
                     ./ci_deploy.sh
 
-                    if [ $DEPLOYMENT_TYPE != 'perf-vpc-sb' -a $DEPLOYMENT_TYPE != 'perf-asv-sb' -a $DEPLOYMENT_TYPE != 'perf-cf3' -a $DEPLOYMENT_TYPE != 'perf-azr-usw' -a $DEPLOYMENT_TYPE != 'cf3-integration' -a $DEPLOYMENT_TYPE != 'asv-pr-db-mig-test' ]; then
+                    # run service broker acceptance tests
+                    if [ $DEPLOYMENT_TYPE != 'perf-vpc-sb' -a $DEPLOYMENT_TYPE != 'perf-asv-sb' -a $DEPLOYMENT_TYPE != 'perf-cf3' -a $DEPLOYMENT_TYPE != 'perf-azr-usw' -a $DEPLOYMENT_TYPE != 'perf-govcloud' -a $DEPLOYMENT_TYPE != 'cf3-integration' -a $DEPLOYMENT_TYPE != 'asv-pr-db-mig-test' ]; then
                         ./uaa-sb-acceptance-tests.sh
                     fi
                 popd
@@ -87,7 +88,23 @@ pipeline {
             }
             post{
                 always {
-                    archiveArtifacts 'uaa/uaa/build/reports/tests/acceptanceTest/**'
+                    junit testResults: 'uaa/uaa/build/test-results/**/*.xml', allowEmptyResults: true
+                    publishHTML target: [
+                        allowMissing: true,
+                        alwaysLinkToLastBuild: true,
+                        keepAll: true,
+                        reportDir: 'uaa/uaa/build/reports/tests/acceptanceTest',
+                        reportFiles: 'index.html',
+                        reportName: 'Acceptance Test Results'
+                    ]
+                    publishHTML target: [
+                        allowMissing: true,
+                        alwaysLinkToLastBuild: true,
+                        keepAll: true,
+                        reportDir: 'uaa/build/reports/jacoco/jacocoRootReportAcceptanceTest/html',
+                        reportFiles: 'index.html',
+                        reportName: 'Acceptance Test Code Coverage'
+                    ]
                 }
             }
         }
