@@ -137,7 +137,7 @@
     <!--  Use same entity id as SP, if not explicitly configured. -->
     <bean id="samlIdpAlias" class="java.lang.String">
         <constructor-arg
-            value="${login.saml.idp.entityIDAlias:${login.idp.entityID:${login.saml.entityIDAlias:${login.entityID:unit-test-idp}}}}" />
+            value="${login.saml.idp.entityIDAlias:${login.saml.entityIDAlias:${login.entityID:unit-test-idp}}}" />
     </bean>
 
     <bean id="samlIdpEntityID" class="java.lang.String">
