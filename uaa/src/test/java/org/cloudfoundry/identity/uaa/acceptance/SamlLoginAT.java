@@ -138,6 +138,7 @@ public class SamlLoginAT {
         testGESSOLogin("/login", "You should not see this page. Set up your redirect URI.");
         Long afterTest = System.currentTimeMillis();
         ScimUser user = IntegrationTestUtils.getUser(this.zoneAdminToken, this.baseUrl, SAML_ENTITY_ID, this.GESSOUsername);
+        logger.info("timing tests. Before: " + beforeTest + ", Last Login: " + user.getLastLogonTime() + ", After: " + afterTest);
         IntegrationTestUtils.validateUserLastLogon(user, beforeTest, afterTest);
     }
 
