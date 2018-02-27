@@ -51,6 +51,7 @@ import org.springframework.web.client.RestTemplate;
 import java.io.File;
 import java.util.List;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertThat;
 import static org.springframework.http.MediaType.APPLICATION_JSON_VALUE;
@@ -147,10 +148,10 @@ public class SamlLoginAT {
 
         IdentityProvider<SamlIdentityProviderDefinition> provider = createGESSOIdentityProvider(SAML_ENTITY_ID);
         this.webDriver.get(this.baseUrl + firstUrl);
-        logger.info(this.webDriver.getCurrentUrl());
-        logger.info(this.webDriver.getPageSource());
 //        this.webDriver.findElement(By.xpath("//a[text()='" + provider.getConfig().getLinkText() + "']")).click();
         this.webDriver.findElement(By.linkText(provider.getConfig().getLinkText())).click();
+        assertEquals(provider.getConfig().getLinkText(), this.webDriver.findElement(By.cssSelector(".saml-login .saml-login-link")).getText());
+        this.webDriver.findElement(By.cssSelector(".saml-login .saml-login-link")).click();
         logger.info(this.webDriver.getCurrentUrl());
         String page = this.webDriver.getPageSource();
         logger.info(page);
