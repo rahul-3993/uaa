@@ -26,7 +26,11 @@ import org.cloudfoundry.identity.uaa.provider.saml.idp.SamlTestUtils;
 import org.cloudfoundry.identity.uaa.scim.ScimUser;
 import org.cloudfoundry.identity.uaa.util.JsonUtils;
 import org.hamcrest.Matchers;
-import org.junit.*;
+import org.junit.Assert;
+import org.junit.Before;
+import org.junit.BeforeClass;
+import org.junit.Rule;
+import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.openqa.selenium.By;
 import org.openqa.selenium.WebDriver;
@@ -51,7 +55,6 @@ import org.springframework.web.client.RestTemplate;
 import java.io.File;
 import java.util.List;
 
-import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertThat;
 import static org.springframework.http.MediaType.APPLICATION_JSON_VALUE;
@@ -148,10 +151,11 @@ public class SamlLoginAT {
 
         IdentityProvider<SamlIdentityProviderDefinition> provider = createGESSOIdentityProvider(SAML_ENTITY_ID);
         this.webDriver.get(this.baseUrl + firstUrl);
-//        this.webDriver.findElement(By.xpath("//a[text()='" + provider.getConfig().getLinkText() + "']")).click();
-        this.webDriver.findElement(By.linkText(provider.getConfig().getLinkText())).click();
-        assertEquals(provider.getConfig().getLinkText(), this.webDriver.findElement(By.cssSelector(".saml-login .saml-login-link")).getText());
-        this.webDriver.findElement(By.cssSelector(".saml-login .saml-login-link")).click();
+        logger.info("reached " + this.webDriver.getTitle());
+        this.webDriver.findElement(By.xpath("//a[text()='" + provider.getConfig().getLinkText() + "']")).click();
+//        this.webDriver.findElement(By.linkText(provider.getConfig().getLinkText())).click();
+//        assertEquals(provider.getConfig().getLinkText(), this.webDriver.findElement(By.cssSelector(".saml-login .saml-login-link")).getText());
+//        this.webDriver.findElement(By.cssSelector(".saml-login .saml-login-link")).click();
         logger.info(this.webDriver.getCurrentUrl());
         String page = this.webDriver.getPageSource();
         logger.info(page);
