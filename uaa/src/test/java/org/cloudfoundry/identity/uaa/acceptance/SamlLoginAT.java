@@ -148,7 +148,8 @@ public class SamlLoginAT {
         this.webDriver.get(this.baseUrl + firstUrl);
         logger.info(this.webDriver.getCurrentUrl());
         logger.info(this.webDriver.getPageSource());
-        this.webDriver.findElement(By.xpath("//a[text()='" + provider.getConfig().getLinkText() + "']")).click();
+//        this.webDriver.findElement(By.xpath("//a[text()='" + provider.getConfig().getLinkText() + "']")).click();
+        this.webDriver.findElement(By.linkText(provider.getConfig().getLinkText())).click();
         logger.info(this.webDriver.getCurrentUrl());
         String page = this.webDriver.getPageSource();
         logger.info(page);
