@@ -7,31 +7,31 @@ import java.nio.file.Paths
 buildscript {
     apply from: file('shared_versions.gradle')
 
-  repositories {
-    mavenCentral()
-    //jcenter()
-    maven {
-      url 'https://repo.spring.io/plugins-release'
+    repositories {
+        mavenCentral()
+        //jcenter()
+        maven {
+          url 'https://repo.spring.io/plugins-release'
+        }
+        maven {
+          url 'https://plugins.gradle.org/m2/'
+        }
     }
-    maven {
-      url 'https://plugins.gradle.org/m2/'
-    }
-  }
 
-  dependencies {
-    classpath group: 'com.bmuschko', name: 'gradle-cargo-plugin', version: '2.2.3'
-    classpath group: 'org.jfrog.buildinfo', name: 'build-info-extractor-gradle', version: '2.2.4'
-    classpath group: 'org.kt3k.gradle.plugin', name: 'coveralls-gradle-plugin', version: '2.4.0'
-    classpath group: 'postgresql', name: 'postgresql', version:'9.1-901.jdbc3'
-    classpath group: 'com.microsoft.sqlserver', name: 'mssql-jdbc', version: '6.1.0.jre8'
-    classpath group: 'org.flywaydb', name: 'flyway-gradle-plugin', version: flywayVersion
-    classpath 'org.springframework.build.gradle:propdeps-plugin:0.0.7'
-    classpath 'org.asciidoctor:asciidoctor-gradle-plugin:1.5.3'
-    classpath ('org.springframework.cloud:spring-cloud-spring-service-connector:1.1.1.RELEASE') {
-        exclude (module: 'spring-asm')
+    dependencies {
+        classpath group: 'com.bmuschko', name: 'gradle-cargo-plugin', version: '2.2.3'
+        classpath group: 'org.jfrog.buildinfo', name: 'build-info-extractor-gradle', version: '2.2.4'
+        classpath group: 'org.kt3k.gradle.plugin', name: 'coveralls-gradle-plugin', version: '2.4.0'
+        classpath group: 'postgresql', name: 'postgresql', version:'9.1-901.jdbc3'
+        classpath group: 'com.microsoft.sqlserver', name: 'mssql-jdbc', version: '6.1.0.jre8'
+        classpath group: 'org.flywaydb', name: 'flyway-gradle-plugin', version: flywayVersion
+        classpath 'org.springframework.build.gradle:propdeps-plugin:0.0.7'
+        classpath 'org.asciidoctor:asciidoctor-gradle-plugin:1.5.3'
+        classpath ('org.springframework.cloud:spring-cloud-spring-service-connector:1.1.1.RELEASE') {
+            exclude (module: 'spring-asm')
+        }
+        classpath 'org.springframework.cloud:spring-cloud-cloudfoundry-connector:1.1.1.RELEASE'
     }
-    classpath 'org.springframework.cloud:spring-cloud-cloudfoundry-connector:1.1.1.RELEASE'
-  }
 }
 
 apply from: file('docker.gradle')
@@ -92,6 +92,13 @@ allprojects {
         maven {
             url 'https://build.shibboleth.net/nexus/content/repositories/releases/'
         }
+        maven {
+          credentials {
+            username geArtifactoryReader
+            password geArtifactoryReaderPassword
+          }
+          url 'https://devcloud.swcoe.ge.com/artifactory/predix-virtual'
+        }
     }
 }
 
@@ -101,20 +108,20 @@ apply plugin: 'org.flywaydb.flyway'
 apply plugin: 'jacoco'
 
 flyway {
-  switch (databaseType()) {
-    case 'postgresql':
-      driver = 'org.postgresql.Driver'
-      url = 'jdbc:postgresql:uaa'
-      user = 'root'
-      password = 'changeme'
-      break
-    case 'sqlserver':
-      driver = 'com.microsoft.sqlserver.jdbc.SQLServerDriver'
-      url = 'jdbc:sqlserver://localhost:1433;database=uaa;'
-      user = 'root'
-      password = 'changemeCHANGEME1234!'
-      break
-  }
+    switch (databaseType()) {
+        case 'postgresql':
+          driver = 'org.postgresql.Driver'
+          url = 'jdbc:postgresql:uaa'
+          user = 'root'
+          password = 'changeme'
+          break
+        case 'sqlserver':
+          driver = 'com.microsoft.sqlserver.jdbc.SQLServerDriver'
+          url = 'jdbc:sqlserver://localhost:1433;database=uaa;'
+          user = 'root'
+          password = 'changemeCHANGEME1234!'
+          break
+    }
 }
 
 flywayClean.enabled = Boolean.valueOf(System.getProperty("flyway.clean", "true"))
@@ -164,6 +171,11 @@ subprojects {
     targetCompatibility = 1.8
     test {
         jvmArgs += ["-Xmx1024m"]
+    }
+
+    tasks.withType(Test) {
+        systemProperties = System.properties
+        systemProperties['user.dir'] = workingDir
     }
 
     task integrationTest(type: Test) {
@@ -216,10 +228,10 @@ subprojects {
         }
     }
 
-  tasks.withType(Test) {
-    systemProperties = System.properties
-    systemProperties['user.dir'] = workingDir
-  }
+    tasks.withType(Test) {
+        systemProperties = System.properties
+        systemProperties['user.dir'] = workingDir
+    }
 
     install {
         repositories.mavenInstaller {
@@ -376,6 +388,17 @@ task integrationTest {
     finalizedBy cargoStopLocal
 }
 integrationTest.dependsOn subprojects.integrationTest
+
+task setupDegradedTestsForJwtBearerCloud(type: Exec) {
+  workingDir 'scripts'
+  commandLine './setupDegradedTestsForJwtBearer.sh'
+}
+
+task setupDegradedTestsForJwtBearerLocal(type: Exec, dependsOn: cargoStartLocal) {
+  workingDir 'scripts'
+  commandLine './setupDegradedTestsForJwtBearer.sh'
+  finalizedBy cargoStopLocal
+}
 
 test.dependsOn subprojects.test
 test.mustRunAfter integrationTest
