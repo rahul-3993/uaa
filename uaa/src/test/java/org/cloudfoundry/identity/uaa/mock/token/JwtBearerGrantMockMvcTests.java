@@ -61,7 +61,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import static org.springframework.util.StringUtils.hasText;
 
-@Ignore("auth0 went down June 7, 11:52am Pacific")
 public class JwtBearerGrantMockMvcTests extends AbstractTokenMockMvcTests {
 
     private static RandomValueStringGenerator generator = new RandomValueStringGenerator(12);
@@ -101,7 +100,11 @@ public class JwtBearerGrantMockMvcTests extends AbstractTokenMockMvcTests {
     @Ignore("GE Fork has its own JWT-bearer implementation")
     public void non_default_zone_jwt_grant () throws Exception {
         String subdomain = generator.generate().toLowerCase();
-        IdentityZone zone = MockMvcUtils.createOtherIdentityZoneAndReturnResult(subdomain, getMockMvc(), getWebApplicationContext(), null).getIdentityZone();
+        IdentityZone zone = MockMvcUtils.createOtherIdentityZoneAndReturnResult(subdomain,
+                                                                                getMockMvc(),
+                                                                                getWebApplicationContext(),
+                                                                                null,
+                                                                                false).getIdentityZone();
         createProvider(zone, getTokenVerificationKey(originZone.getIdentityZone()));
         perform_grant_in_zone(zone, getUaaIdToken(originZone.getIdentityZone(), originClient, originUser))
             .andExpect(status().isOk())
@@ -111,10 +114,8 @@ public class JwtBearerGrantMockMvcTests extends AbstractTokenMockMvcTests {
     @Test
     @Ignore("GE Fork has its own JWT-bearer implementation")
     public void defaultZoneJwtGrantWithInternalIdp () throws Exception {
-        BaseClientDetails defaultZoneClient = new BaseClientDetails(generator.generate(), "", "openid", "password", null);
+        BaseClientDetails defaultZoneClient = setUpClients(generator.generate(), "", "openid", "password", true);
         defaultZoneClient.setClientSecret(SECRET);
-
-        MockMvcUtils.createClient(getMockMvc(), adminToken, defaultZoneClient);
 
         IdentityZone defaultZone = IdentityZone.getUaa();
 
@@ -334,7 +335,7 @@ public class JwtBearerGrantMockMvcTests extends AbstractTokenMockMvcTests {
 
         JdbcIdentityProviderProvisioning provisioning = getWebApplicationContext().getBean(JdbcIdentityProviderProvisioning.class);
         provisioning.deleteByOrigin(originKey, zone.getId());
-        return provisioning.create(auth0Provider);
+        return provisioning.create(auth0Provider, auth0Provider.getIdentityZoneId());
     }
 
     public IdentityProvider<OIDCIdentityProviderDefinition> createOIDCProvider(IdentityZone zone, String tokenKey, String issuer, String relyingPartyId) throws Exception {
@@ -354,7 +355,7 @@ public class JwtBearerGrantMockMvcTests extends AbstractTokenMockMvcTests {
         identityProvider.setConfig(definition);
         IdentityZoneHolder.set(zone);
         try {
-            return getWebApplicationContext().getBean(JdbcIdentityProviderProvisioning.class).create(identityProvider);
+            return getWebApplicationContext().getBean(JdbcIdentityProviderProvisioning.class).create(identityProvider, zone.getId());
         } finally {
             IdentityZoneHolder.clear();
         }
