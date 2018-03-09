@@ -124,6 +124,8 @@ import static org.springframework.util.StringUtils.hasText;
 
 public class IntegrationTestUtils {
 
+    public static final String ZONE_NAME_TEMPLATE = "The Twiglet Zone[%s]";
+
     public static void updateUserToForcePasswordChange(RestTemplate restTemplate, String baseUrl, String adminToken, String userId) {
         updateUserToForcePasswordChange(restTemplate, baseUrl, adminToken, userId, null);
     }
@@ -1041,7 +1043,7 @@ public class IntegrationTestUtils {
         IdentityZone identityZone = new IdentityZone();
         identityZone.setId(id);
         identityZone.setSubdomain(subdomain);
-        identityZone.setName("The Twiglet Zone[" + id + "]");
+        identityZone.setName(String.format(ZONE_NAME_TEMPLATE, id));
         identityZone.setDescription("Like the Twilight Zone but tastier[" + id + "].");
         identityZone.setConfig(config);
         return identityZone;
