@@ -57,6 +57,8 @@ import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.oauth2.client.test.TestAccounts;
 import org.springframework.security.oauth2.common.util.RandomValueStringGenerator;
 import org.springframework.security.oauth2.provider.client.BaseClientDetails;
@@ -385,7 +387,6 @@ public class SamlLoginWithLocalIdpIT {
                                                                              CompositeAccessToken.class);
 
         assertEquals(HttpStatus.OK, token.getStatusCode());
-
         assertTrue(token.hasBody());
         provider.setActive(false);
         IntegrationTestUtils.updateIdentityProvider(this.baseUrl, this.serverRunning, provider);
@@ -523,6 +524,96 @@ public class SamlLoginWithLocalIdpIT {
             webDriver.get(logout + "/logout.do");
         }
 
+    }
+
+    @SuppressWarnings("unchecked")
+    @Test
+    public void testSamlLoginIncorrectAttributeMappingRemainUnchangedForShadowUser() throws Exception {
+        assumeTrue("Expected testzone1/2.localhost to resolve to 127.0.0.1", doesSupportZoneDNS());
+
+        //zone1 is IDP (create SP config and user here)
+        //zone2 is SP (create IDP config here)
+        //start at zone_1_url
+        //should land on zone_2_url
+
+        String zoneId1 = "testzone1";
+        String zoneId2 = "testzone2";
+
+        RestTemplate identityClient = getIdentityClient();
+        RestTemplate adminClient = getAdminClient();
+        String adminToken = IntegrationTestUtils.getClientCredentialsToken(baseUrl, "admin", "adminsecret");
+
+        IdentityZoneConfiguration configuration = new IdentityZoneConfiguration();
+        IdentityZone zone1 = IntegrationTestUtils.createZoneOrUpdateSubdomain(identityClient, baseUrl, zoneId1, zoneId1, configuration);
+        IdentityZone zone2 = IntegrationTestUtils.createZoneOrUpdateSubdomain(identityClient, baseUrl, zoneId2, zoneId2);
+
+        String email = new RandomValueStringGenerator().generate() + "@samltesting.org";
+        ScimUser idpUser = new ScimUser(null, email, "IDPFirst", "IDPLast");
+        idpUser.setPrimaryEmail(email);
+        idpUser.setPassword("secr3T");
+
+        ScimUser user = IntegrationTestUtils.createUser(adminToken, baseUrl, idpUser, zoneId1);
+        idpUser.setOrigin("testzone1.cloudfoundry-saml-login");
+        ScimUser shadowUser = IntegrationTestUtils.createUser(adminToken, baseUrl, idpUser, zoneId2);
+
+        String testZone1Url = baseUrl.replace("localhost", zoneId1 + ".localhost");
+        String testZone2Url = baseUrl.replace("localhost", zoneId2 + ".localhost");
+
+        SamlServiceProviderDefinition samlServiceProviderDefinition = createZone2SamlSpDefinition("cloudfoundry-saml-login");
+        getSamlServiceProvider(zoneId1,
+                adminToken,
+                samlServiceProviderDefinition,
+                "testzone2.cloudfoundry-saml-login",
+                "SP for Zone 2",
+                baseUrl
+        );
+
+        SamlIdentityProviderDefinition samlIdentityProviderDefinition = createZone1IdpDefinition("cloudfoundry-saml-login");
+        Map<String, Object> attributeMappings = new HashMap<>();
+        attributeMappings.put("email", "wrong_email_mapping");
+        attributeMappings.put("given_name", "wrong_given_name_mapping");
+        attributeMappings.put("family_name", "wrong_family_name_mapping");
+        samlIdentityProviderDefinition.setAttributeMappings(attributeMappings);
+        IdentityProvider provider = getSamlIdentityProvider(zoneId2,
+                adminToken,
+                samlIdentityProviderDefinition);
+
+        webDriver.get(baseUrl + "/logout.do");
+        webDriver.get(testZone1Url + "/logout.do");
+        webDriver.get(testZone2Url + "/logout.do");
+        webDriver.get(testZone2Url);
+        webDriver.findElement(By.xpath("//h1[contains(text(), 'Welcome to The Twiglet Zone[" + zoneId2 + "]!')]"));
+
+        webDriver.findElement(By.xpath("//a[text()='" + samlIdentityProviderDefinition.getLinkText() + "']")).click();
+        webDriver.findElement(By.xpath("//h1[contains(text(), 'Welcome to The Twiglet Zone[" + zoneId1 + "]!')]"));
+        webDriver.findElement(By.name("username")).clear();
+        webDriver.findElement(By.name("username")).sendKeys(idpUser.getUserName());
+        webDriver.findElement(By.name("password")).sendKeys("secr3T");
+        webDriver.findElement(By.xpath("//input[@value='Sign in']")).click();
+        assertThat(webDriver.findElement(By.cssSelector("h1")).getText(), containsString("Where to?"));
+        assertThat(webDriver.getCurrentUrl(), containsString(testZone2Url));
+
+        //create client as zone2 admin
+        BaseClientDetails zone2AdminClient = new BaseClientDetails();
+        zone2AdminClient.setClientId("admin");
+        zone2AdminClient.setClientSecret("adminsecret");
+        GrantedAuthority authority = new SimpleGrantedAuthority("uaa.admin");
+        zone2AdminClient.setAuthorities(Arrays.asList(authority));
+        zone2AdminClient.setAuthorizedGrantTypes(Arrays.asList("client_credentials"));
+
+        IntegrationTestUtils.createOrUpdateClient(adminToken, baseUrl, zoneId2, zone2AdminClient);
+        String zone2AdminToken = IntegrationTestUtils.getClientCredentialsToken(testZone2Url, "admin", "adminsecret");
+        ScimUser changedUser = IntegrationTestUtils.getUser(zone2AdminToken, testZone2Url, idpUser.getOrigin(), idpUser.getUserName());
+        assertEquals(idpUser.getPrimaryEmail(), changedUser.getPrimaryEmail());
+        assertEquals(idpUser.getFamilyName(), changedUser.getFamilyName());
+        assertEquals(idpUser.getGivenName(), changedUser.getGivenName());
+        for (String logout : Arrays.asList(baseUrl, testZone1Url, testZone2Url)) {
+            webDriver.get(logout + "/logout.do");
+        }
+
+        //cleanup
+        IntegrationTestUtils.deleteZone(this.baseUrl, zoneId1, adminToken);
+        IntegrationTestUtils.deleteZone(this.baseUrl, zoneId2, adminToken);
     }
 
     @SuppressWarnings("unchecked")
@@ -1024,7 +1115,7 @@ public class SamlLoginWithLocalIdpIT {
             WebElement element = elements.get(0);
             assertNotNull(element);
 
-        element.click();
+            element.click();
         try {
             webDriver.findElement(By.xpath("//h1[contains(text(), 'Welcome to The Twiglet Zone[" + idpZoneId + "]!')]"));
             webDriver.findElement(By.name("username")).clear();

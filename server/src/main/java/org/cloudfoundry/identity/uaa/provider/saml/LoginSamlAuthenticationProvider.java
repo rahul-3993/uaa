@@ -374,7 +374,11 @@ public class LoginSamlAuthenticationProvider extends SAMLAuthenticationProvider 
         }
         if (haveUserAttributesChanged(user, userWithSamlAttributes)) {
             userModified = true;
-            user = user.modifyAttributes(userWithSamlAttributes.getEmail(), userWithSamlAttributes.getGivenName(), userWithSamlAttributes.getFamilyName(), userWithSamlAttributes.getPhoneNumber());
+            String email = userWithSamlAttributes.getEmail() == null ? user.getEmail() : userWithSamlAttributes.getEmail();
+            String givenName = userWithSamlAttributes.getGivenName() == null ? user.getGivenName() : userWithSamlAttributes.getGivenName();
+            String familyName = userWithSamlAttributes.getFamilyName() == null ? user.getFamilyName() : userWithSamlAttributes.getFamilyName();
+            String phoneNumber = userWithSamlAttributes.getPhoneNumber() == null ? user.getFamilyName() : userWithSamlAttributes.getPhoneNumber();
+            user = user.modifyAttributes(email, givenName, familyName, phoneNumber);
         }
         publish(
             new ExternalGroupAuthorizationEvent(
@@ -410,20 +414,21 @@ public class LoginSamlAuthenticationProvider extends SAMLAuthenticationProvider 
             if (name.contains("@")) {
                 if (name.split("@").length == 2 && !name.startsWith("@") && !name.endsWith("@")) {
                     email = name;
-                } else {
-                    email = name.replaceAll("@", "") + "@unknown.org";
                 }
+//              else {
+//                  email = name.replaceAll("@", "") + "@unknown.org";
+//              }
             }
-            else {
-                email = name + "@unknown.org";
-            }
+//            else {
+//                email = name + "@unknown.org";
+//            }
         }
-        if (givenName == null) {
-            givenName = email.split("@")[0];
-        }
-        if (familyName == null) {
-            familyName = email.split("@")[1];
-        }
+//        if (givenName == null) {
+//            givenName = email.split("@")[0];
+//        }
+//        if (familyName == null) {
+//            familyName = email.split("@")[1];
+//        }
         return new UaaUser(
         new UaaUserPrototype()
             .withEmail(email)
