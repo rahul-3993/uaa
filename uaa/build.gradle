@@ -139,10 +139,10 @@ generateDocs {
 }
 
 integrationTest {
-  exclude 'org/cloudfoundry/identity/uaa/jwt/degraded/*.class'
   filter {
     exclude '**/*AT.class'
     exclude 'org/cloudfoundry/identity/uaa/degraded/*.class'
+    exclude 'org/cloudfoundry/identity/uaa/jwt/degraded/*.class'
     includeTestsMatching "org.cloudfoundry.identity.uaa.integration.*"
     includeTestsMatching "*IT"
   }
