@@ -16,6 +16,7 @@ import org.cloudfoundry.identity.uaa.scim.exception.ScimResourceAlreadyExistsExc
 import org.cloudfoundry.identity.uaa.scim.exception.ScimResourceNotFoundException;
 import org.cloudfoundry.identity.uaa.user.UaaAuthority;
 import org.cloudfoundry.identity.uaa.zone.IdentityZone;
+import org.cloudfoundry.identity.uaa.zone.IdentityZoneHolder;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
@@ -193,6 +194,14 @@ class JdbcScimUserProvisioningTests {
         user.addEmail("email");
         ScimUser created = jdbcScimUserProvisioning.createUser(user, "j7hyqpassX", currentIdentityZoneId);
         assertEquals(userName, created.getUserName());
+    }
+
+    @Test
+    void createUserReturnsBadRequestForInvalidUserName() {
+        String userName = "JOE_" + new RandomValueStringGenerator(400).generate().toLowerCase();
+        ScimUser user = new ScimUser(null, userName, "Jo", "User");
+        user.addEmail(userName);
+        assertThrows(InvalidScimResourceException.class, () -> jdbcScimUserProvisioning.createUser(user, "j7hyqpassX", IdentityZoneHolder.get().getId()));
     }
 
     @Test
