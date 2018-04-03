@@ -33,6 +33,7 @@ import org.cloudfoundry.identity.uaa.scim.util.ScimUtils;
 import org.cloudfoundry.identity.uaa.user.JdbcUaaUserDatabase;
 import org.cloudfoundry.identity.uaa.util.TimeService;
 import org.cloudfoundry.identity.uaa.util.TimeServiceImpl;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.dao.IncorrectResultSizeDataAccessException;
@@ -182,6 +183,7 @@ public class JdbcScimUserProvisioning extends AbstractQueryable<ScimUser>
         logger.debug("Creating new user: " + user.getUserName());
 
         final String id = UUID.randomUUID().toString();
+        final String identityZoneId = zoneId;
         final String origin = user.getOrigin();
 
         try {
@@ -209,7 +211,7 @@ public class JdbcScimUserProvisioning extends AbstractQueryable<ScimUser>
                     ps.setBoolean(11, user.isVerified());
                     ps.setString(12, origin);
                     ps.setString(13, hasText(user.getExternalId())?user.getExternalId():null);
-                    ps.setString(14, zoneId);
+                    ps.setString(14, identityZoneId);
                     ps.setString(15, user.getSalt());
 
                     ps.setTimestamp(16, getPasswordLastModifiedTimestamp(t));
@@ -221,15 +223,20 @@ public class JdbcScimUserProvisioning extends AbstractQueryable<ScimUser>
             });
         } catch (DuplicateKeyException e) {
             if (!isBatchCall) {
-                ScimUser existingUser = query("userName eq \"" + user.getUserName() + "\" and origin eq \"" + (hasText(user.getOrigin())? user.getOrigin() : OriginKeys.UAA) + "\"", zoneId).get(0);
-                Map<String,Object> userDetails = new HashMap<>();
+                ScimUser existingUser = query("userName eq \"" + user.getUserName() + "\" and origin eq \"" + (hasText(user.getOrigin()) ? user.getOrigin() : OriginKeys.UAA) + "\"", zoneId).get(0);
+                Map<String, Object> userDetails = new HashMap<>();
                 userDetails.put("active", existingUser.isActive());
                 userDetails.put("verified", existingUser.isVerified());
                 userDetails.put("user_id", existingUser.getId());
                 throw new ScimResourceAlreadyExistsException("Username already in use: " + existingUser.getUserName(), userDetails);
             }
             throw new ScimResourceAlreadyExistsException("Username already in use: " + user.getUserName());
+        } catch(DataIntegrityViolationException e) {
+            logger.debug("DataIntegrityViolationException thrown: ", e);
+            throw new InvalidScimResourceException("ScimUser:" + user.getUserName() + " is invalid and cannot be created. " +
+                    "Please validate the property values for size and type.");
         }
+
         return retrieve(id, zoneId);
     }
 
@@ -245,7 +252,7 @@ public class JdbcScimUserProvisioning extends AbstractQueryable<ScimUser>
         user.setPassword(passwordEncoder.encode(password));
         return create(user, zoneId);
     }
-    
+
     @Override
     public ScimUser createUser(ScimUser user, final String password, boolean isBatchCall, String zoneId) throws InvalidPasswordException,
                     InvalidScimResourceException {
