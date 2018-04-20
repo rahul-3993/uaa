@@ -12,6 +12,75 @@
  *******************************************************************************/
 package org.cloudfoundry.identity.uaa.login;
 
+import org.cloudfoundry.identity.uaa.authentication.UaaAuthentication;
+import org.cloudfoundry.identity.uaa.authentication.UaaPrincipal;
+import org.cloudfoundry.identity.uaa.codestore.ExpiringCode;
+import org.cloudfoundry.identity.uaa.codestore.ExpiringCodeStore;
+import org.cloudfoundry.identity.uaa.codestore.JdbcExpiringCodeStore;
+import org.cloudfoundry.identity.uaa.constants.OriginKeys;
+import org.cloudfoundry.identity.uaa.home.HomeController;
+import org.cloudfoundry.identity.uaa.mfa.MfaProvider;
+import org.cloudfoundry.identity.uaa.mock.InjectedMockContextTest;
+import org.cloudfoundry.identity.uaa.mock.util.MockMvcUtils;
+import org.cloudfoundry.identity.uaa.mock.util.MockMvcUtils.IdentityZoneCreationResult;
+import org.cloudfoundry.identity.uaa.oauth.client.ClientConstants;
+import org.cloudfoundry.identity.uaa.provider.AbstractIdentityProviderDefinition;
+import org.cloudfoundry.identity.uaa.provider.AbstractXOAuthIdentityProviderDefinition;
+import org.cloudfoundry.identity.uaa.provider.IdentityProvider;
+import org.cloudfoundry.identity.uaa.provider.IdentityProviderProvisioning;
+import org.cloudfoundry.identity.uaa.provider.JdbcIdentityProviderProvisioning;
+import org.cloudfoundry.identity.uaa.provider.LdapIdentityProviderDefinition;
+import org.cloudfoundry.identity.uaa.provider.LockoutPolicy;
+import org.cloudfoundry.identity.uaa.provider.OIDCIdentityProviderDefinition;
+import org.cloudfoundry.identity.uaa.provider.SamlIdentityProviderDefinition;
+import org.cloudfoundry.identity.uaa.provider.UaaIdentityProviderDefinition;
+import org.cloudfoundry.identity.uaa.provider.saml.BootstrapSamlIdentityProviderDataTests;
+import org.cloudfoundry.identity.uaa.scim.ScimUser;
+import org.cloudfoundry.identity.uaa.scim.ScimUserProvisioning;
+import org.cloudfoundry.identity.uaa.scim.jdbc.JdbcScimUserProvisioning;
+import org.cloudfoundry.identity.uaa.security.web.CookieBasedCsrfTokenRepository;
+import org.cloudfoundry.identity.uaa.security.web.CorsFilter;
+import org.cloudfoundry.identity.uaa.user.UaaAuthority;
+import org.cloudfoundry.identity.uaa.util.JsonUtils;
+import org.cloudfoundry.identity.uaa.util.SetServerNameRequestPostProcessor;
+import org.cloudfoundry.identity.uaa.web.LimitedModeUaaFilter;
+import org.cloudfoundry.identity.uaa.zone.BrandingInformation;
+import org.cloudfoundry.identity.uaa.zone.CorsConfiguration;
+import org.cloudfoundry.identity.uaa.zone.IdentityZone;
+import org.cloudfoundry.identity.uaa.zone.IdentityZoneConfiguration;
+import org.cloudfoundry.identity.uaa.zone.IdentityZoneHolder;
+import org.cloudfoundry.identity.uaa.zone.IdentityZoneProvisioning;
+import org.cloudfoundry.identity.uaa.zone.Links;
+import org.cloudfoundry.identity.uaa.zone.MultitenancyFixture;
+
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Test;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.mock.env.MockEnvironment;
+import org.springframework.mock.env.MockPropertySource;
+import org.springframework.mock.web.MockHttpServletRequest;
+import org.springframework.mock.web.MockHttpSession;
+import org.springframework.security.authentication.AnonymousAuthenticationToken;
+import org.springframework.security.core.context.SecurityContext;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.context.SecurityContextImpl;
+import org.springframework.security.crypto.codec.Base64;
+import org.springframework.security.oauth2.common.util.RandomValueStringGenerator;
+import org.springframework.security.oauth2.provider.client.BaseClientDetails;
+import org.springframework.security.web.PortResolverImpl;
+import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
+import org.springframework.security.web.savedrequest.DefaultSavedRequest;
+import org.springframework.security.web.savedrequest.SavedRequest;
+import org.springframework.test.web.servlet.MvcResult;
+import org.springframework.test.web.servlet.ResultMatcher;
+import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
+import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
+import org.springframework.util.ReflectionUtils;
+import org.springframework.util.StringUtils;
+import org.springframework.web.context.support.XmlWebApplicationContext;
+
 import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpSession;
 import java.lang.reflect.Field;
@@ -28,6 +97,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Properties;
+import java.util.UUID;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -64,6 +134,11 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assume.assumeFalse;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
+import static org.springframework.http.HttpHeaders.ACCEPT;
+import static org.springframework.http.HttpHeaders.ACCEPT_LANGUAGE;
+import static org.springframework.http.HttpHeaders.ACCESS_CONTROL_ALLOW_ORIGIN;
+import static org.springframework.http.HttpHeaders.AUTHORIZATION;
+import static org.springframework.http.HttpHeaders.CONTENT_TYPE;
 import static org.springframework.http.MediaType.APPLICATION_JSON;
 import static org.springframework.http.MediaType.TEXT_HTML;
 import static org.springframework.security.oauth2.common.util.OAuth2Utils.CLIENT_ID;
@@ -82,72 +157,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.view;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.xpath;
-import org.cloudfoundry.identity.uaa.authentication.UaaAuthentication;
-import org.cloudfoundry.identity.uaa.authentication.UaaPrincipal;
-import org.cloudfoundry.identity.uaa.codestore.ExpiringCode;
-import org.cloudfoundry.identity.uaa.codestore.ExpiringCodeStore;
-import org.cloudfoundry.identity.uaa.codestore.JdbcExpiringCodeStore;
-import org.cloudfoundry.identity.uaa.constants.OriginKeys;
-import org.cloudfoundry.identity.uaa.home.HomeController;
-import org.cloudfoundry.identity.uaa.mfa.MfaProvider;
-import org.cloudfoundry.identity.uaa.mock.InjectedMockContextTest;
-import org.cloudfoundry.identity.uaa.mock.util.MockMvcUtils;
-import org.cloudfoundry.identity.uaa.mock.util.MockMvcUtils.IdentityZoneCreationResult;
-import org.cloudfoundry.identity.uaa.oauth.client.ClientConstants;
-import org.cloudfoundry.identity.uaa.provider.AbstractIdentityProviderDefinition;
-import org.cloudfoundry.identity.uaa.provider.AbstractXOAuthIdentityProviderDefinition;
-import org.cloudfoundry.identity.uaa.provider.IdentityProvider;
-import org.cloudfoundry.identity.uaa.provider.IdentityProviderProvisioning;
-import org.cloudfoundry.identity.uaa.provider.JdbcIdentityProviderProvisioning;
-import org.cloudfoundry.identity.uaa.provider.LdapIdentityProviderDefinition;
-import org.cloudfoundry.identity.uaa.provider.LockoutPolicy;
-import org.cloudfoundry.identity.uaa.provider.OIDCIdentityProviderDefinition;
-import org.cloudfoundry.identity.uaa.provider.SamlIdentityProviderDefinition;
-import org.cloudfoundry.identity.uaa.provider.UaaIdentityProviderDefinition;
-import org.cloudfoundry.identity.uaa.provider.saml.BootstrapSamlIdentityProviderDataTests;
-import org.cloudfoundry.identity.uaa.scim.ScimUser;
-import org.cloudfoundry.identity.uaa.scim.ScimUserProvisioning;
-import org.cloudfoundry.identity.uaa.scim.jdbc.JdbcScimUserProvisioning;
-import org.cloudfoundry.identity.uaa.security.web.CookieBasedCsrfTokenRepository;
-import org.cloudfoundry.identity.uaa.security.web.CorsFilter;
-import org.cloudfoundry.identity.uaa.user.UaaAuthority;
-import org.cloudfoundry.identity.uaa.util.JsonUtils;
-import org.cloudfoundry.identity.uaa.util.SetServerNameRequestPostProcessor;
-import org.cloudfoundry.identity.uaa.web.LimitedModeUaaFilter;
-import org.cloudfoundry.identity.uaa.zone.BrandingInformation;
-import org.cloudfoundry.identity.uaa.zone.IdentityZone;
-import org.cloudfoundry.identity.uaa.zone.IdentityZoneConfiguration;
-import org.cloudfoundry.identity.uaa.zone.IdentityZoneHolder;
-import org.cloudfoundry.identity.uaa.zone.IdentityZoneProvisioning;
-import org.cloudfoundry.identity.uaa.zone.Links;
-import org.cloudfoundry.identity.uaa.zone.MultitenancyFixture;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.MediaType;
-import org.springframework.mock.env.MockEnvironment;
-import org.springframework.mock.env.MockPropertySource;
-import org.springframework.mock.web.MockHttpServletRequest;
-import org.springframework.mock.web.MockHttpSession;
-import org.springframework.security.authentication.AnonymousAuthenticationToken;
-import org.springframework.security.core.context.SecurityContext;
-import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.core.context.SecurityContextImpl;
-import org.springframework.security.crypto.codec.Base64;
-import org.springframework.security.oauth2.common.util.RandomValueStringGenerator;
-import org.springframework.security.oauth2.provider.client.BaseClientDetails;
-import org.springframework.security.web.PortResolverImpl;
-import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
-import org.springframework.security.web.savedrequest.DefaultSavedRequest;
-import org.springframework.security.web.savedrequest.SavedRequest;
-import org.springframework.test.web.servlet.MvcResult;
-import org.springframework.test.web.servlet.ResultMatcher;
-import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
-import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
-import org.springframework.util.ReflectionUtils;
-import org.springframework.util.StringUtils;
-import org.springframework.web.context.support.XmlWebApplicationContext;
 
 public class LoginMockMvcTests extends InjectedMockContextTest {
 
@@ -167,6 +176,7 @@ public class LoginMockMvcTests extends InjectedMockContextTest {
     private IdentityZoneConfiguration identityZoneConfiguration;
     private Links globalLinks;
     private IdentityZone identityZone;
+    private IdentityZoneProvisioning identityZoneProvisioning;
 
 
     @Before
@@ -181,8 +191,9 @@ public class LoginMockMvcTests extends InjectedMockContextTest {
             originalProperties.put(s, propertySource.getProperty(s));
         }
         adminToken = MockMvcUtils.getClientCredentialsOAuthAccessToken(getMockMvc(), "admin", "adminsecret", null, null);
-        originalConfiguration = getWebApplicationContext().getBean(IdentityZoneProvisioning.class).retrieve(getUaa().getId()).getConfig();
-        identityZoneConfiguration = getWebApplicationContext().getBean(IdentityZoneProvisioning.class).retrieve(getUaa().getId()).getConfig();
+        identityZoneProvisioning = getWebApplicationContext().getBean(IdentityZoneProvisioning.class);
+        originalConfiguration = identityZoneProvisioning.retrieve(getUaa().getId()).getConfig();
+        identityZoneConfiguration = identityZoneProvisioning.retrieve(getUaa().getId()).getConfig();
         bootstrapMfaProvider();
     }
 
@@ -2066,6 +2077,147 @@ public class LoginMockMvcTests extends InjectedMockContextTest {
         httpHeaders.add("Access-Control-Request-Method", "GET");
         httpHeaders.add("Origin", "fuzzybunnies.com");
         getMockMvc().perform(options("/logout.do").headers(httpHeaders)).andExpect(status().isForbidden());
+    }
+
+    @Test
+    public void testNullCorsPolicyConfigurationsforNonDefaultZone() throws Exception {
+        String subdomain = "testzone"+ generator.generate();
+        IdentityZone zone = new IdentityZone();
+        zone.getConfig().getTokenPolicy().setKeys(Collections.singletonMap(subdomain+"_key", "key_for_"+subdomain));
+        zone.getConfig().getCorsPolicy().setDefaultConfiguration(null);
+        zone.getConfig().getCorsPolicy().setXhrConfiguration(null);
+        zone.setId(UUID.randomUUID().toString());
+        zone.setName(subdomain);
+        zone.setSubdomain(subdomain);
+        zone.setDescription(subdomain);
+        identityZoneProvisioning.create(zone);
+        IdentityZoneHolder.set(zone);
+
+        HttpHeaders httpHeaders = new HttpHeaders();
+        httpHeaders.add("Access-Control-Request-Headers", "Accept");
+        httpHeaders.add("Access-Control-Request-Method", "GET");
+        httpHeaders.add("Origin", "localhost");
+        getMockMvc().perform(options("/logout.do").headers(httpHeaders)).andExpect(status().isOk());
+
+        httpHeaders.add("X-Requested-With", "XMLHttpRequest");
+        getMockMvc().perform(options("/logout.do").headers(httpHeaders)).andExpect(status().isOk());
+
+    }
+
+    @Test
+    public void testDefaultCorsPolicyforNonDefaultZone() throws Exception {
+        String subdomain = "testzone"+ generator.generate();
+        IdentityZone zone = new IdentityZone();
+        zone.getConfig().getTokenPolicy().setKeys(Collections.singletonMap(subdomain+"_key", "key_for_"+subdomain));
+        CorsConfiguration corsConfig = new CorsConfiguration();
+        corsConfig.setAllowedUris(Arrays.asList("^/uaa/userinfo$", "^/uaa/logout.do$"));
+        corsConfig.setAllowedOrigins(Arrays.asList("other.com$"));
+        corsConfig.setAllowedMethods(Arrays.asList("GET"));
+        corsConfig.setAllowedHeaders(Arrays.asList("Accept", "Authorization", "Content-Type"));
+        zone.getConfig().getCorsPolicy().setDefaultConfiguration(corsConfig);
+        zone.setId(UUID.randomUUID().toString());
+        zone.setName(subdomain);
+        zone.setSubdomain(subdomain);
+        zone.setDescription(subdomain);
+        identityZoneProvisioning.create(zone);
+        IdentityZoneHolder.set(zone);
+
+        //make POST call when only GET is allowed
+        getMockMvc().perform(post("/oauth/token")
+                .header("Access-Control-Request-Method", "POST")
+                .header("Access-Control-Request-Headers", AUTHORIZATION + ", " + ACCEPT + ", " + CONTENT_TYPE)
+                .header("Origin", "other.com")
+                .with(new SetServerNameRequestPostProcessor(subdomain + ".localhost")))
+                .andExpect(status().isMethodNotAllowed());
+
+        //make preflight call with non matching origin
+        MvcResult mvcResult = getMockMvc().perform(options("/uaa/userinfo")
+                .header("Access-Control-Request-Method", "GET")
+                .header("Access-Control-Request-Headers", AUTHORIZATION + ", " + ACCEPT + ", " + CONTENT_TYPE)
+                .header("Origin", "example.com")
+                .with(new SetServerNameRequestPostProcessor(subdomain + ".localhost")))
+                .andExpect(status().isForbidden()).andReturn();
+        assertEquals("Illegal origin", mvcResult.getResponse().getErrorMessage());
+
+        //make preflight call with non matching uri
+        mvcResult = getMockMvc().perform(options("/uaa/users")
+                .header("Access-Control-Request-Method", "GET")
+                .header("Access-Control-Request-Headers", AUTHORIZATION + ", " + ACCEPT + ", " + CONTENT_TYPE)
+                .header("Origin", "other.com")
+                .with(new SetServerNameRequestPostProcessor(subdomain + ".localhost")))
+                .andExpect(status().isForbidden()).andReturn();
+        assertEquals("Illegal request URI", mvcResult.getResponse().getErrorMessage());
+
+        //make preflight call with header that is not allowed
+        mvcResult = getMockMvc().perform(options("/uaa/logout.do")
+                .header("Access-Control-Request-Method", "GET")
+                .header("Access-Control-Request-Headers", AUTHORIZATION + ", " + ACCEPT + ", " + CONTENT_TYPE + ", " + ACCEPT_LANGUAGE)
+                .header("Origin", "other.com")
+                .with(new SetServerNameRequestPostProcessor(subdomain + ".localhost")))
+                .andExpect(status().isForbidden()).andReturn();
+        assertEquals("Illegal header requested", mvcResult.getResponse().getErrorMessage());
+        assertEquals("*", mvcResult.getResponse().getHeader(ACCESS_CONTROL_ALLOW_ORIGIN));
+    }
+
+    @Test
+    public void testXhrCorsPolicyforNonDefaultZone() throws Exception {
+        String subdomain = "testzone"+ generator.generate();
+        IdentityZone zone = new IdentityZone();
+        zone.getConfig().getTokenPolicy().setKeys(Collections.singletonMap(subdomain+"_key", "key_for_"+subdomain));
+        CorsConfiguration corsConfig = new CorsConfiguration();
+        corsConfig.setAllowedUris(Arrays.asList("^/uaa/userinfo$", "^/uaa/logout.do$"));
+        corsConfig.setAllowedOrigins(Arrays.asList("other.com$"));
+        corsConfig.setAllowedMethods(Arrays.asList("GET"));
+
+        List allowedHeadersList = Arrays.asList("Accept", "Authorization", "Content-Type");
+        corsConfig.setAllowedHeaders(allowedHeadersList);
+        zone.getConfig().getCorsPolicy().setXhrConfiguration(corsConfig);
+        zone.setId(UUID.randomUUID().toString());
+        zone.setName(subdomain);
+        zone.setSubdomain(subdomain);
+        zone.setDescription(subdomain);
+        identityZoneProvisioning.create(zone);
+        IdentityZoneHolder.set(zone);
+
+        //make POST call when only GET is allowed
+        getMockMvc().perform(post("/oauth/token")
+                .header("X-Requested-With", "XMLHttpRequest")
+                .header("Access-Control-Request-Method", "POST")
+                .header("Access-Control-Request-Headers", AUTHORIZATION + ", " + ACCEPT + ", " + CONTENT_TYPE)
+                .header("Origin", "other.com")
+                .with(new SetServerNameRequestPostProcessor(subdomain + ".localhost")))
+                .andExpect(status().isMethodNotAllowed());
+
+        //make preflight call with non matching origin
+        MvcResult mvcResult = getMockMvc().perform(options("/uaa/userinfo")
+                .header("X-Requested-With", "XMLHttpRequest")
+                .header("Access-Control-Request-Method", "GET")
+                .header("Access-Control-Request-Headers", AUTHORIZATION + ", " + ACCEPT + ", " + CONTENT_TYPE)
+                .header("Origin", "example.com")
+                .with(new SetServerNameRequestPostProcessor(subdomain + ".localhost")))
+                .andExpect(status().isForbidden()).andReturn();
+        assertEquals("Illegal origin", mvcResult.getResponse().getErrorMessage());
+
+        //make preflight call with non matching uri
+        mvcResult = getMockMvc().perform(options("/users")
+                .header("X-Requested-With", "XMLHttpRequest")
+                .header("Access-Control-Request-Method", "GET")
+                .header("Access-Control-Request-Headers", AUTHORIZATION + ", " + ACCEPT + ", " + CONTENT_TYPE)
+                .header("Origin", "other.com")
+                .with(new SetServerNameRequestPostProcessor(subdomain + ".localhost")))
+                .andExpect(status().isForbidden()).andReturn();
+        assertEquals("Illegal request URI", mvcResult.getResponse().getErrorMessage());
+
+        //make preflight call with header that is not allowed
+        mvcResult = getMockMvc().perform(options("/uaa/logout.do")
+                .header("X-Requested-With", "XMLHttpRequest")
+                .header("Access-Control-Request-Method", "GET")
+                .header("Access-Control-Request-Headers", AUTHORIZATION + ", " + ACCEPT + ", " + CONTENT_TYPE + ", " + ACCEPT_LANGUAGE)
+                .header("Origin", "other.com")
+                .with(new SetServerNameRequestPostProcessor(subdomain + ".localhost")))
+                .andExpect(status().isForbidden()).andReturn();
+        assertEquals("other.com", mvcResult.getResponse().getHeader(ACCESS_CONTROL_ALLOW_ORIGIN));
+        assertEquals("Illegal header requested", mvcResult.getResponse().getErrorMessage());
     }
 
     @Test
