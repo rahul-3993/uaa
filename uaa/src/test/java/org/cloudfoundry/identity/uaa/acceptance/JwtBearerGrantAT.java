@@ -66,17 +66,14 @@ public class JwtBearerGrantAT {
     @Value("${RUN_AGAINST_LOCAL_UAA:false}")
     boolean runAgainstLocalUaa;
 
-    @Value("${oauth.clients.identity.secret:identity-secret}")
-    String identityClientSecret;
-
     @Value("${KEY_PROVIDER_SERVICE_URL:not-used}")
     String keyProviderServiceUrl;
 
-    private OAuth2RestTemplate adminClientRest;
+    private OAuth2RestTemplate adminClientRestTemplate;
     private BaseClientDetails identityClient;
     private final RestTemplate tokenRestTemplate = new RestTemplate();
 
-    String baseUrl;
+    String acceptanceZoneUrl;
     String audience;
 
     @Before
@@ -85,22 +82,23 @@ public class JwtBearerGrantAT {
                 keyProviderServiceUrl.trim().startsWith("http"));
 
         if (this.runAgainstLocalUaa) {
-            this.baseUrl = "http://" + this.zoneSubdomain + ".localhost:8080/uaa";
+            this.acceptanceZoneUrl = "http://" + this.zoneSubdomain + ".localhost:8080/uaa";
         }
         else {
-            this.baseUrl = "https://" + this.zoneSubdomain + "."  + this.publishedHost + "." + this.cfDomain;
+            this.acceptanceZoneUrl = "https://" + this.zoneSubdomain + "."  + this.publishedHost + "." + this.cfDomain;
         }
-        this.adminClientRest = (OAuth2RestTemplate) IntegrationTestUtils.getClientCredentialsTemplate(
-                IntegrationTestUtils.getClientCredentialsResource(this.baseUrl, new String[0], "admin", "acceptance-test"));
-        instantiateIdentityClient();
-        this.audience = this.baseUrl + "/oauth/token";
+        this.adminClientRestTemplate = (OAuth2RestTemplate) IntegrationTestUtils.getClientCredentialsTemplate(
+                IntegrationTestUtils.getClientCredentialsResource(this.acceptanceZoneUrl, new String[0], "admin", "acceptance-test"));
+        this.instantiateIdentityClient();
+        this.audience = this.acceptanceZoneUrl + "/oauth/token";
         createUaaClientForDevice(DEVICE_ID);
     }
 
     private void instantiateIdentityClient() {
         this.identityClient = new BaseClientDetails();
         this.identityClient.setClientId("identity");
-        this.identityClient.setClientSecret(this.identityClientSecret);
+        this.identityClient.setClientSecret("identitysecret");
+
     }
 
     private HttpHeaders getHttpHeaders() {
@@ -117,7 +115,7 @@ public class JwtBearerGrantAT {
                 CONFIGURED_SCOPE, null);
         // authorize device for test client
         client.addAdditionalInformation(ClientConstants.ALLOWED_DEVICE_ID, deviceId);
-        IntegrationTestUtils.createClient(this.adminClientRest.getAccessToken().getValue(), this.baseUrl, client);
+        IntegrationTestUtils.createClient(this.adminClientRestTemplate.getAccessToken().getValue(), this.acceptanceZoneUrl, client);
     }
 
     @Test
@@ -126,17 +124,15 @@ public class JwtBearerGrantAT {
         String clientCreds = "admin:acceptance-test";
         String base64ClientCreds = Base64.getEncoder().encodeToString(clientCreds.getBytes());
         headers.add("Authorization", "Basic " + base64ClientCreds);
-        doJwtBearerGrantRequest(headers, this.baseUrl, this.identityClient, new MockAssertionToken());
+        doJwtBearerGrantRequest(headers, this.acceptanceZoneUrl, this.identityClient, new MockAssertionToken());
     }
 
     @Test
     public void testJwtBearerGrantSuccess() throws Exception {
-        doJwtBearerGrantRequest(getHttpHeaders(), this.baseUrl, this.identityClient, new MockAssertionToken());
+        doJwtBearerGrantRequest(getHttpHeaders(), this.acceptanceZoneUrl, this.identityClient, new MockAssertionToken());
     }
 
     private void doJwtBearerGrantRequest(final HttpHeaders headers, final String uaaUrl, final BaseClientDetails client, MockAssertionToken assertionToken) throws Exception {
-        createUaaClientForDevice(uaaUrl);
-
         // create bearer token
         String token = assertionToken.mockAssertionToken(DEVICE_CLIENT_ID, DEVICE_ID,
                 System.currentTimeMillis(), 600, TENANT_ID, audience);
@@ -160,12 +156,11 @@ public class JwtBearerGrantAT {
         String clientCreds = client.getClientId() + ":" + client.getClientSecret();
         String base64ClientCreds = Base64.getEncoder().encodeToString(clientCreds.getBytes());
         headers.set("Authorization", "Basic " + base64ClientCreds);
-        headers.add(IdentityZoneSwitchingFilter.SUBDOMAIN_HEADER, zoneSubdomain);
 
-        ResponseEntity<Map> checkTokenResponse = new RestTemplate().exchange(uaaUrl + "/check_token",
+        ResponseEntity<Map> checkTokenResponse = new RestTemplate().exchange(this.acceptanceZoneUrl + "/check_token",
                 HttpMethod.POST, new HttpEntity<>(tokenFormData, headers), Map.class);
         assertEquals(checkTokenResponse.getStatusCode(), HttpStatus.OK);
-        IntegrationTestUtils.deleteClient(this.adminClientRest, this.baseUrl, DEVICE_CLIENT_ID);
+        IntegrationTestUtils.deleteClient(this.adminClientRestTemplate, this.acceptanceZoneUrl, DEVICE_CLIENT_ID);
     }
 
     private void assertAccessToken(final OAuth2AccessToken accessToken) {
