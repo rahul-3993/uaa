@@ -39,6 +39,7 @@ dependencies {
   compile group: 'com.ge.predix', name: 'security-dynamic-log-configurer', version: '1.1.1'
 
   runtime group: 'org.springframework.security', name: 'spring-security-config', version:parent.springSecurityVersion
+  runtime group: 'org.springframework.security', name: 'spring-security-jwt', version:parent.springSecurityJwtVersion
   runtime group: 'org.springframework.retry', name: 'spring-retry', version:parent.springRetryVersion
   runtime group: 'org.aspectj', name: 'aspectjweaver', version:parent.aspectJVersion
   runtime group: 'org.postgresql', name: 'postgresql', version:parent.postgresqlVersion
@@ -89,7 +90,9 @@ test {
   exclude '**/*AT.class'
   exclude 'org/cloudfoundry/identity/uaa/degraded/*.class'
   systemProperty 'java.io.tmpdir', '/tmp'
+  exclude 'org/cloudfoundry/identity/uaa/jwt/degraded/*.class'
   systemProperty "mock.suite.test", "true"
+  systemProperty "java.io.tmpdir", "/tmp"
 }
 
 task populateVersionfile {
@@ -133,6 +136,7 @@ integrationTest {
   filter {
     exclude '**/*AT.class'
     exclude 'org/cloudfoundry/identity/uaa/degraded/*.class'
+    exclude 'org/cloudfoundry/identity/uaa/jwt/degraded/*.class'
     includeTestsMatching "org.cloudfoundry.identity.uaa.integration.*"
     includeTestsMatching "*IT"
   }
@@ -152,6 +156,19 @@ task degradedTestLocal(type: Test) {
   dependsOn rootProject.cargoStartLocal
   finalizedBy rootProject.cargoStopLocal
   include "org/cloudfoundry/identity/uaa/degraded/*.class"
+}
+
+
+task degradedJwtTestCloud(type: Test) {
+  systemProperty "RUN_AGAINST_CLOUD", true
+  include "org/cloudfoundry/identity/uaa/jwt/degraded/*.class"
+}
+
+task degradedJwtTestLocal(type: Test) {
+  systemProperty "RUN_AGAINST_CLOUD", false
+  dependsOn rootProject.cargoStartLocal
+  finalizedBy rootProject.cargoStopLocal
+  include "org/cloudfoundry/identity/uaa/jwt/degraded/*.class"
 }
 
 war {

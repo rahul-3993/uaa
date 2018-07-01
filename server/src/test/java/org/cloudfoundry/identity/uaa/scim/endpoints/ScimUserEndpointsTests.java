@@ -590,6 +590,30 @@ public class ScimUserEndpointsTests {
         validateGroupMembers(groupEndpoints.getGroup(g.getId(), new MockHttpServletResponse()), exGuy.getId(), false);
     }
 
+
+    @Test
+    public void deleteUserInZoneUpdatesGroupMembership() {
+        IdentityZone zone = new IdentityZone();
+        zone.setId("not-uaa");
+        zone.setSubdomain("not-uaa");
+        zone.setName("not-uaa");
+        zone.setDescription("not-uaa");
+        IdentityZoneHolder.set(zone);
+
+        ScimUser exGuy = new ScimUser(null, "deleteme3", "Expendable", "Guy");
+        exGuy.addEmail("exguy3@imonlyheretobedeleted.com");
+        exGuy = dao.createUser(exGuy, "exguyspassword", IdentityZoneHolder.get().getId());
+        assertEquals(IdentityZoneHolder.get().getId(), exGuy.getZoneId());
+
+        ScimGroup g = new ScimGroup(null,"test1",IdentityZoneHolder.get().getId());
+        g.setMembers(asList(new ScimGroupMember(exGuy.getId())));
+        g = groupEndpoints.createGroup(g, new MockHttpServletResponse());
+        validateGroupMembers(g, exGuy.getId(), true);
+
+        endpoints.deleteUser(exGuy.getId(), "*", new MockHttpServletRequest(), new MockHttpServletResponse());
+        validateGroupMembers(groupEndpoints.getGroup(g.getId(), new MockHttpServletResponse()), exGuy.getId(), false);
+    }
+
     private void validateGroupMembers(ScimGroup g, String mId, boolean expected) {
         boolean isMember = false;
         for (ScimGroupMember m : g.getMembers()) {
@@ -1201,5 +1225,30 @@ public class ScimUserEndpointsTests {
     public void testDeleteMfaRegistrationMfaNotEnabledInZone() {
         IdentityZoneHolder.get().getConfig().setMfaConfig(new MfaConfig().setEnabled(false));
         endpoints.deleteMfaRegistration(dale.getId());
+    }
+
+    @Test
+    public void testCreateUserTx() {
+        ScimUser user0 = createScimUser("user0");
+        ScimUser user1 = createScimUser("user1");
+        ScimUser user2 = createScimUser("user2");
+        ScimUser user3 = createScimUser("user3");
+        ScimUser[] users = {user0, user1, user2, user3};
+
+        ScimUser[] usersCreated = endpoints.createUsersTx(users, new MockHttpServletRequest(), new MockHttpServletResponse());
+
+        for(ScimUser user : usersCreated) {
+            ScimUser dbUser = dao.retrieve(user.getId(),IdentityZoneHolder.get().getId());
+            assertEquals(user.getId(), dbUser.getId());
+            assertEquals(user.getUserName(), dbUser.getUserName());
+        }
+    }
+
+    private ScimUser createScimUser(String id) {
+        ScimUser user = new ScimUser(id, id + "username", "Jo", "User");
+        user.addEmail("jo@blah.com");
+        user.setPassword("password");
+        user.setOrigin("");
+        return user;
     }
 }

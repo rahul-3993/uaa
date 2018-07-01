@@ -18,10 +18,14 @@ import org.cloudfoundry.identity.uaa.constants.OriginKeys;
 import org.cloudfoundry.identity.uaa.error.UaaException;
 import org.cloudfoundry.identity.uaa.provider.IdentityProvider;
 import org.cloudfoundry.identity.uaa.provider.IdentityProviderProvisioning;
+import org.cloudfoundry.identity.uaa.provider.KeyProviderConfig;
+import org.cloudfoundry.identity.uaa.provider.KeyProviderProvisioning;
+import org.cloudfoundry.identity.uaa.provider.KeyProviderValidator;
 import org.cloudfoundry.identity.uaa.provider.UaaIdentityProviderDefinition;
 import org.cloudfoundry.identity.uaa.saml.SamlKey;
 import org.cloudfoundry.identity.uaa.scim.ScimGroup;
 import org.cloudfoundry.identity.uaa.scim.ScimGroupProvisioning;
+import org.cloudfoundry.identity.uaa.zone.SamlConfig.SignatureAlgorithm;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -64,6 +68,7 @@ import static java.util.Optional.ofNullable;
 import static org.springframework.http.HttpStatus.CONFLICT;
 import static org.springframework.http.HttpStatus.CREATED;
 import static org.springframework.http.HttpStatus.NOT_FOUND;
+import static org.springframework.http.HttpStatus.NO_CONTENT;
 import static org.springframework.http.HttpStatus.OK;
 import static org.springframework.http.HttpStatus.UNPROCESSABLE_ENTITY;
 import static org.springframework.web.bind.annotation.RequestMethod.DELETE;
@@ -85,21 +90,32 @@ public class IdentityZoneEndpoints implements ApplicationEventPublisherAware {
     private final IdentityProviderProvisioning idpDao;
     private final IdentityZoneEndpointClientRegistrationService clientRegistrationService;
     private final ScimGroupProvisioning groupProvisioning;
+    private final KeyProviderProvisioning keyProviderProvisioning;
+    private final KeyProviderValidator keyProviderValidator;
+
+    private SignatureAlgorithm defaultSamlSignatureAlgorithm;
 
     private IdentityZoneValidator validator;
 
     public IdentityZoneEndpoints(IdentityZoneProvisioning zoneDao, IdentityProviderProvisioning idpDao,
                                  IdentityZoneEndpointClientRegistrationService clientRegistrationService,
-                                 ScimGroupProvisioning groupProvisioning) {
+                                 ScimGroupProvisioning groupProvisioning, KeyProviderProvisioning keyProviderProvisioning,
+                                 KeyProviderValidator keyProviderValidator) {
         super();
         this.zoneDao = zoneDao;
         this.idpDao = idpDao;
         this.clientRegistrationService = clientRegistrationService;
         this.groupProvisioning = groupProvisioning;
+        this.keyProviderProvisioning = keyProviderProvisioning;
+        this.keyProviderValidator = keyProviderValidator;
     }
 
     public void setValidator(IdentityZoneValidator validator) {
         this.validator = validator;
+    }
+
+    public void setDefaultSamlSignatureAlgorithm(SignatureAlgorithm samlSignatureAlgorithm) {
+        this.defaultSamlSignatureAlgorithm = samlSignatureAlgorithm;
     }
 
     @Override
@@ -195,6 +211,10 @@ public class IdentityZoneEndpoints implements ApplicationEventPublisherAware {
             throw new AccessDeniedException("Zones can only be created by being authenticated in the default zone.");
         }
 
+        if(body.getConfig().getSamlConfig() != null && body.getConfig().getSamlConfig().getSignatureAlgorithm() == null) {
+            body.getConfig().getSamlConfig().setSignatureAlgorithm(defaultSamlSignatureAlgorithm);
+        }
+
         try {
             body = validator.validate(body, IdentityZoneValidator.Mode.CREATE);
         } catch (InvalidIdentityZoneDetailsException ex) {
@@ -276,6 +296,9 @@ public class IdentityZoneEndpoints implements ApplicationEventPublisherAware {
             restoreSecretProperties(existingZone, body);
             //validator require id to be present
             body.setId(id);
+            if(body.getConfig().getSamlConfig() != null && body.getConfig().getSamlConfig().getSignatureAlgorithm() == null) {
+                body.getConfig().getSamlConfig().setSignatureAlgorithm(defaultSamlSignatureAlgorithm);
+            }
             body = validator.validate(body, IdentityZoneValidator.Mode.MODIFY);
 
             logger.debug("Zone - updating id[" + id + "] subdomain[" + body.getSubdomain() + "]");
@@ -395,6 +418,54 @@ public class IdentityZoneEndpoints implements ApplicationEventPublisherAware {
             IdentityZoneHolder.set(previous);
         }
     }
+
+    @RequestMapping(method = POST, value = "{identityZoneId}/key-provider-config")
+    public ResponseEntity<KeyProviderConfig> createKeyProviderConfig(@RequestBody KeyProviderConfig body, @PathVariable String identityZoneId) throws KeyProviderValidator.KeyProviderValidatorException {
+        validateZoneId(identityZoneId);
+        body.setIdentityZoneId(identityZoneId);
+        keyProviderValidator.validate(body);
+        KeyProviderConfig keyProvider = keyProviderProvisioning.create(body);
+        return new ResponseEntity<>(keyProvider, CREATED);
+    }
+
+    @RequestMapping(method = GET, value="{identityZoneId}/key-provider-config/{keyProviderId}")
+    public ResponseEntity<KeyProviderConfig> retrieveKeyProviderConfig(@PathVariable String identityZoneId, @PathVariable String keyProviderId) {
+        validateZoneId(identityZoneId);
+        return new ResponseEntity<>(keyProviderProvisioning.retrieve(keyProviderId), OK);
+    }
+
+    @RequestMapping(method = GET, value="{identityZoneId}/key-provider-config")
+    public ResponseEntity<KeyProviderConfig> findKeyProviderConfigs(@PathVariable String identityZoneId) {
+        validateZoneId(identityZoneId);
+        return new ResponseEntity<>(keyProviderProvisioning.findActive(), OK);
+    }
+
+    @RequestMapping(method = DELETE, value="{identityZoneId}/key-provider-config/{keyProviderId}")
+    public ResponseEntity<KeyProviderConfig> deleteKeyProviderConfig(@PathVariable String identityZoneId, @PathVariable String keyProviderId) {
+        validateZoneId(identityZoneId);
+        int deleted = keyProviderProvisioning.delete(keyProviderId);
+        if(deleted != 1) {
+            throw new KeyProviderNotFoundException("KeyProvider not found for id: " + keyProviderId);
+        }
+        return new ResponseEntity<>(NO_CONTENT);
+    }
+
+    private void validateZoneId(String identityZoneId) {
+        if(!IdentityZoneHolder.get().getId().equals(identityZoneId)) {
+            throw new ZoneDoesNotExistsException("Invalid zoneId " + identityZoneId);
+        }
+    }
+
+    @ExceptionHandler({KeyProviderValidator.KeyProviderValidatorException.class, KeyProviderNotFoundException.class})
+    public ResponseEntity<String> handleProviderNotFoundException() {
+        return new ResponseEntity<>("Key provider not found.", HttpStatus.NOT_FOUND);
+    }
+
+    @ExceptionHandler(KeyProviderAlreadyExistsException.class)
+    public ResponseEntity<String> handleProvideAlreadyExistsException() {
+        return new ResponseEntity<>("Key provider already exists.", HttpStatus.CONFLICT);
+    }
+
 
     @ExceptionHandler(ZoneAlreadyExistsException.class)
     public ResponseEntity<ZoneAlreadyExistsException> handleZoneAlreadyExistsException(ZoneAlreadyExistsException e) {
