@@ -1,7 +1,7 @@
 #!/usr/bin/env groovy
 def devcloudArtServer = Artifactory.server('devcloud')
 
-library "security-ci-commons-shared-lib"
+@Library(['PPCmanifest','security-ci-commons-shared-lib']) _
 def NODE = nodeDetails("uaa")
 
 pipeline {
@@ -391,6 +391,8 @@ pipeline {
                         grep 'version' uaa/gradle.properties | sed 's/version=//'
                         ''').trim()
                    echo "Uploading UAA ${APP_VERSION} build to Artifactory"
+
+
                    def uploadSpec = """{
                        "files": [
                            {
@@ -401,6 +403,18 @@ pipeline {
                    }"""
                    def buildInfo = devcloudArtServer.upload(uploadSpec)
                    devcloudArtServer.publishBuildInfo(buildInfo)
+
+                    BINTRAY_LOCATION = "https://api.bintray.com/content/gedigital/Rosneft/uaa/${APP_VERSION}"
+                    echo "BINTRAY_LOCATION=${BINTRAY_LOCATION}"
+
+                    BINTRAY_ARTIFACT1="predix-uaa/cloudfoundry-identity-uaa-${APP_VERSION}.war"
+                    LOCAL_ARTIFACT1="build/cloudfoundry-identity-uaa-${APP_VERSION}.war"
+
+                    BINTRAY_ARTIFACT2="predix-uaa/ppc-uaa-deploy-${APP_VERSION}.tgz"
+                    LOCAL_ARTIFACT2="ppc-uaa-deploy-${APP_VERSION}.tgz"
+
+                    BINTRAY_JENKINSFILE="predix-uaa/PPCDeployJenkinsfile-${APP_VERSION}"
+                    LOCAL_JENKINSFILE="uaa/PPCDeployJenkinsfile"
 
                     BINTRAY_LOCATION = "https://api.bintray.com/content/gedigital/Rosneft/uaa/${APP_VERSION}"
                     echo "BINTRAY_LOCATION=${BINTRAY_LOCATION}"
