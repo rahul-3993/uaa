@@ -1,7 +1,7 @@
 #!/usr/bin/env groovy
 def devcloudArtServer = Artifactory.server('devcloud')
 
-library "security-ci-commons-shared-lib"
+@Library(['PPCmanifest','security-ci-commons-shared-lib']) _
 def NODE = nodeDetails("uaa")
 
 pipeline {
@@ -391,6 +391,8 @@ pipeline {
                         grep 'version' uaa/gradle.properties | sed 's/version=//'
                         ''').trim()
                    echo "Uploading UAA ${APP_VERSION} build to Artifactory"
+
+
                    def uploadSpec = """{
                        "files": [
                            {
