@@ -414,8 +414,9 @@ pipeline {
                     BINTRAY_ARTIFACT2="predix-uaa/ppc-uaa-deploy-${APP_VERSION}.tgz"
                     LOCAL_ARTIFACT2="ppc-uaa-deploy-${APP_VERSION}.tgz"
 
-                    BINTRAY_JENKINSFILE="predix-uaa/PPCDeployJenkinsfile"
+                    BINTRAY_JENKINSFILE="predix-uaa/PPCDeployJenkinsfile-${APP_VERSION}"
                     LOCAL_JENKINSFILE="uaa/PPCDeployJenkinsfile"
+
                     echo 'package offline install files to CLZ'
                     sh """#!/bin/bash -ex
                         # currently only pulls config for rosneft PPC, maybe parameterize per PPC later
@@ -431,12 +432,12 @@ pipeline {
                 }
             }
         }
-        stage('Updating manifest for ${BINTRAY_ARTIFACT1}') {
+        stage('Updating manifest for cloudfoundry-identity-uaa.war') {
             steps {
                 PPC_Update("Rosneft","uaa","${APP_VERSION}","uaa","${BINTRAY_ARTIFACT1}","artifact","snapshot","uaa/${APP_VERSION}/${BINTRAY_JENKINSFILE}");
             }
         }
-        stage('Updating manifest for ${BINTRAY_ARTIFACT2}') {
+        stage('Updating manifest for ppc-uaa-deploy.tgz') {
             steps {
                 PPC_Update("Rosneft","uaa","${APP_VERSION}","uaa","${BINTRAY_ARTIFACT2}","artifact","snapshot","uaa/${APP_VERSION}/${BINTRAY_JENKINSFILE}");
             }
