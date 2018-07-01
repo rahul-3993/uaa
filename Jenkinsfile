@@ -423,11 +423,11 @@ pipeline {
                         # TODO: compose .toml file and push along with tar and war
                         tar -zcf $LOCAL_ARTIFACT2 uaa-cf-release
 
-                        curl -T $LOCAL_ARTIFACT1 -u$BINTRAY_CREDS_USR:$BINTRAY_CREDS_PSW $BINTRAY_LOCATION/$BINTRAY_ARTIFACT1?override=1
-                        curl -T $LOCAL_ARTIFACT2 -u$BINTRAY_CREDS_USR:$BINTRAY_CREDS_PSW $BINTRAY_LOCATION/$BINTRAY_ARTIFACT2?override=1
-                        curl -T $LOCAL_JENKINSFILE -u$BINTRAY_CREDS_USR:$BINTRAY_CREDS_PSW $BINTRAY_LOCATION/$BINTRAY_JENKINSFILE?override=1
+                        curl -v -T $LOCAL_ARTIFACT1 -u$BINTRAY_CREDS_USR:$BINTRAY_CREDS_PSW $BINTRAY_LOCATION/$BINTRAY_ARTIFACT1?override=1
+                        curl -v -T $LOCAL_ARTIFACT2 -u$BINTRAY_CREDS_USR:$BINTRAY_CREDS_PSW $BINTRAY_LOCATION/$BINTRAY_ARTIFACT2?override=1
+                        curl -v -T $LOCAL_JENKINSFILE -u$BINTRAY_CREDS_USR:$BINTRAY_CREDS_PSW $BINTRAY_LOCATION/$BINTRAY_JENKINSFILE?override=1
                         echo 'publish file in bintray'
-                        curl -X POST -u$BINTRAY_CREDS_USR:$BINTRAY_CREDS_PSW $BINTRAY_LOCATION/predix-uaa/publish
+                        curl -v -X POST -u$BINTRAY_CREDS_USR:$BINTRAY_CREDS_PSW $BINTRAY_LOCATION/predix-uaa/publish
                     """
                 }
             }
