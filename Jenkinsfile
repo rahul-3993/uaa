@@ -404,20 +404,23 @@ pipeline {
                    def buildInfo = devcloudArtServer.upload(uploadSpec)
                    devcloudArtServer.publishBuildInfo(buildInfo)
                     
-                   BINTRAY_LOCATION = "https://api.bintray.com/content/gedigital/Rosneft/uaa/${APP_VERSION}"
+                   PUBLISH_LOCATION = "https://api.bintray.com/content/gedigital/Rosneft/uaa/${APP_VERSION}"
+                   echo "PUBLISH_LOCATION=${PUBLISH_LOCATION}"
+
+                   BINTRAY_LOCATION = "${PUBLISH_LOCATION}/predix-uaa"
                    echo "BINTRAY_LOCATION=${BINTRAY_LOCATION}"
 
-                   BINTRAY_ARTIFACT1="predix-uaa/cloudfoundry-identity-uaa-${APP_VERSION}.war"
+                   BINTRAY_ARTIFACT1="cloudfoundry-identity-uaa-${APP_VERSION}.war"
                    LOCAL_ARTIFACT1="build/cloudfoundry-identity-uaa-${APP_VERSION}.war"
 
-                   BINTRAY_ARTIFACT2="predix-uaa/ppc-uaa-deploy-${APP_VERSION}.tgz"
+                   BINTRAY_ARTIFACT2="ppc-uaa-deploy-${APP_VERSION}.tgz"
                    LOCAL_ARTIFACT2="ppc-uaa-deploy-${APP_VERSION}.tgz"
 
-                   BINTRAY_JENKINSFILE="predix-uaa/PPCDeployJenkinsfile-${APP_VERSION}"
+                   BINTRAY_JENKINSFILE="PPCDeployJenkinsfile-${APP_VERSION}"
                    LOCAL_JENKINSFILE="uaa/PPCDeployJenkinsfile"
 
-                    echo 'package offline install files to CLZ'
-                    sh """#!/bin/bash -ex
+                   echo 'package offline install files to CLZ'
+                   sh """#!/bin/bash -ex
                         # currently only pulls config for rosneft PPC, maybe parameterize per PPC later
                         # TODO: compose .toml file and push along with tar and war
                         tar -zcf $LOCAL_ARTIFACT2 uaa-cf-release
@@ -426,8 +429,8 @@ pipeline {
                         curl -v -T $LOCAL_ARTIFACT2 -u$BINTRAY_CREDS_USR:$BINTRAY_CREDS_PSW $BINTRAY_LOCATION/$BINTRAY_ARTIFACT2?override=1
                         curl -v -T $LOCAL_JENKINSFILE -u$BINTRAY_CREDS_USR:$BINTRAY_CREDS_PSW $BINTRAY_LOCATION/$BINTRAY_JENKINSFILE?override=1
                         echo 'publish file in bintray'
-                        curl -v -X POST -u$BINTRAY_CREDS_USR:$BINTRAY_CREDS_PSW $BINTRAY_LOCATION/predix-uaa/publish
-                    """
+                        curl -v -X POST -u$BINTRAY_CREDS_USR:$BINTRAY_CREDS_PSW $PUBLISH_LOCATION/publish
+                   """
                 }
             }
         }
