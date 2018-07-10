@@ -437,12 +437,12 @@ pipeline {
         }
         stage('Updating manifest for cloudfoundry-identity-uaa.war') {
             steps {
-                PPC_Update("Rosneft","uaa","${APP_VERSION}","uaa","${BINTRAY_ARTIFACT1}","artifact","snapshot","uaa/${APP_VERSION}/${BINTRAY_JENKINSFILE}");
+                PPC_Update("Rosneft","uaa","${APP_VERSION}","predix-uaa","${BINTRAY_ARTIFACT1}","artifact","snapshot","uaa/${APP_VERSION}/${BINTRAY_JENKINSFILE}");
             }
         }
         stage('Updating manifest for ppc-uaa-deploy.tgz') {
             steps {
-                PPC_Update("Rosneft","uaa","${APP_VERSION}","uaa","${BINTRAY_ARTIFACT2}","artifact","snapshot","uaa/${APP_VERSION}/${BINTRAY_JENKINSFILE}");
+                PPC_Update("Rosneft","uaa","${APP_VERSION}","predix-uaa","${BINTRAY_ARTIFACT2}","artifact","snapshot","uaa/${APP_VERSION}/${BINTRAY_JENKINSFILE}");
             }
         }
     }
