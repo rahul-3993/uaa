@@ -3,11 +3,16 @@ def devcloudArtServer = Artifactory.server('devcloud')
 
 @Library(['PPCmanifest','security-ci-commons-shared-lib']) _
 def NODE = nodeDetails("uaa")
+def APP_VERSION = 'UNKNOWN'
+def BINTRAY_LOCATION = 'UNKNOWN'
+def BINTRAY_ARTIFACT1 = 'UNKNOWN'
+def BINTRAY_ARTIFACT2 = 'UNKNOWN'
+def BINTRAY_JENKINSFILE = 'UNKNOWN'
 
 pipeline {
     agent none
     environment {
-            COMPLIANCEENABLED = true
+        COMPLIANCEENABLED = true
     }
     options {
         skipDefaultCheckout()
@@ -400,10 +405,21 @@ pipeline {
                                "target": "MAAXA-MVN/builds/uaa/${APP_VERSION}/"
                            }
                        ]
-                   }"""
-                   def buildInfo = devcloudArtServer.upload(uploadSpec)
-                   devcloudArtServer.publishBuildInfo(buildInfo)
+                    }"""
+                    def buildInfo = devcloudArtServer.upload(uploadSpec)
+                    devcloudArtServer.publishBuildInfo(buildInfo)
 
+                    BINTRAY_LOCATION = "https://api.bintray.com/content/gedigital/Rosneft/uaa/${APP_VERSION}"
+                    echo "BINTRAY_LOCATION=${BINTRAY_LOCATION}"
+
+                    BINTRAY_ARTIFACT1="predix-uaa/cloudfoundry-identity-uaa-${APP_VERSION}.war"
+                    LOCAL_ARTIFACT1="build/cloudfoundry-identity-uaa-${APP_VERSION}.war"
+
+                    BINTRAY_ARTIFACT2="predix-uaa/ppc-uaa-deploy-${APP_VERSION}.tgz"
+                    LOCAL_ARTIFACT2="ppc-uaa-deploy-${APP_VERSION}.tgz"
+
+                    BINTRAY_JENKINSFILE="predix-uaa/PPCDeployJenkinsfile-${APP_VERSION}"
+                    LOCAL_JENKINSFILE="uaa/PPCDeployJenkinsfile"
 
                    PUBLISH_LOCATION = "https://api.bintray.com/content/gedigital/Rosneft/uaa/${APP_VERSION}"
                    echo "PUBLISH_LOCATION=${PUBLISH_LOCATION}"
@@ -432,6 +448,14 @@ pipeline {
                         echo 'publish file in bintray'
                         curl -v -X POST -u$BINTRAY_CREDS_USR:$BINTRAY_CREDS_PSW $PUBLISH_LOCATION/publish
                     """
+                }
+            }
+            post {
+                success {
+                    echo "Upload Build Artifact completed"
+                }
+                failure {
+                    echo "Upload Build Artifact failed"
                 }
             }
         }
