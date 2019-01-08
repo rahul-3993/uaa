@@ -34,6 +34,7 @@ import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
+import org.springframework.util.StringUtils;
 import org.springframework.web.client.RestTemplate;
 
 import java.util.Base64;
@@ -69,6 +70,15 @@ public class JwtBearerGrantAT {
     @Value("${KEY_PROVIDER_SERVICE_URL:not-used}")
     String keyProviderServiceUrl;
 
+    @Value("${UAA_HOST:}")
+    String uaaHost;
+
+    @Value("${UAA_PORT:}")
+    String uaaPort;
+
+    @Value("${UAA_PATH:}")
+    String uaaPath;
+
     private OAuth2RestTemplate adminClientRestTemplate;
     private BaseClientDetails identityClient;
     private final RestTemplate tokenRestTemplate = new RestTemplate();
@@ -82,7 +92,8 @@ public class JwtBearerGrantAT {
                 keyProviderServiceUrl.trim().startsWith("http"));
 
         if (this.runAgainstLocalUaa) {
-            this.acceptanceZoneUrl = "http://" + this.zoneSubdomain + ".localhost:8080/uaa";
+            String path = StringUtils.isEmpty(this.uaaPath) ? "" : "/" + this.uaaPath;
+            this.acceptanceZoneUrl = "http://" + this.zoneSubdomain + "." + this.uaaHost + ":" + this.uaaPort + path;
         }
         else {
             this.acceptanceZoneUrl = "https://" + this.zoneSubdomain + "."  + this.publishedHost + "." + this.cfDomain;
