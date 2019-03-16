@@ -194,6 +194,8 @@ scim:
     uaa.none: Forbid acting as a user
     uaa.offline_token: Allow offline access
 
+issuer.uri: http://localhost:8080
+
 oauth:
   user:
     authorities:
