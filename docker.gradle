@@ -52,8 +52,8 @@ task createDockerfile(type: Dockerfile) {
   instruction 'RUN bash -c "rm -r /usr/local/tomcat/webapps/manager"'
   instruction 'RUN bash -c "rm -r /usr/local/tomcat/webapps/examples"'
   instruction 'RUN bash -c "rm -r /usr/local/tomcat/webapps/docs"'
-  instruction 'ADD cloudfoundry-identity-uaa-' + version + '.war /usr/local/tomcat/webapps/uaa.war'
-  instruction 'ADD uaa.yml /uaa/uaa.yml'
+  instruction 'ADD cloudfoundry-identity-uaa-' + version + '.war /usr/local/tomcat/webapps/ROOT.war'
+  instruction 'ADD uaa-docker.yml /uaa/uaa.yml'
   instruction 'RUN bash -c "echo $LOGIN_CONFIG_URL"'
   instruction 'EXPOSE 8080'
 }
@@ -66,7 +66,7 @@ task copyContainerFiles(type: Copy) {
   dependsOn createDockerfile
   from 'uaa/build/libs'
   from 'uaa/build/resources/main/tomcat-server.xml'
-  from 'uaa/build/resources/main/uaa.yml'
+  from 'uaa/build/resources/main/uaa-docker.yml'
   into 'build/docker'
 }
 
@@ -81,7 +81,14 @@ task createUaaContainer(type: DockerCreateContainer) {
   targetImageId { buildImage.getImageId() }
   containerName = System.getenv('DOCKER_CONTAINER_NAME')
   portBindings = ['8080:8080']
-  env = ["CATALINA_OPTS='-Dspring.profiles.active=default'"]
+
+  env = ["CATALINA_OPTS='-Dspring.profiles.active=default'", 
+         "ENFORCE_CLIENT_ASSERTION_HEADER=" + System.getenv('ENFORCE_CLIENT_ASSERTION_HEADER'),
+         "KEY_PROVIDER_SERVICE_URL=" + System.getenv('KEY_PROVIDER_SERVICE_URL'),
+         "KEY_PROVIDER_TOKEN_URL=" + System.getenv('KEY_PROVIDER_TOKEN_URL'),
+         "KEY_PROVIDER_CLIENT_ID=" + System.getenv('KEY_PROVIDER_CLIENT_ID'),
+         "KEY_PROVIDER_CLIENT_SECRET=" + System.getenv('KEY_PROVIDER_CLIENT_SECRET'),
+         "KEY_PROVIDER_DEFAULT_INSTANCE=" + System.getenv('KEY_PROVIDER_DEFAULT_INSTANCE')]
 }
 
 task startUaaContainer(type: DockerStartContainer) {
