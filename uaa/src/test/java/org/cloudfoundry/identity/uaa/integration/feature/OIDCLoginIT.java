@@ -398,7 +398,7 @@ public class OIDCLoginIT {
             webDriver.findElement(By.name("username")).clear();
             webDriver.findElement(By.name("username")).sendKeys("marissa6");
             webDriver.findElement(By.name("password")).sendKeys("saml6");
-            webDriver.findElement(By.xpath("//input[@value='Login']")).click();
+            webDriver.findElement(By.xpath("//button[@id='submit_button']")).click();
 
             Assert.assertThat(webDriver.getCurrentUrl(), Matchers.containsString(zoneUrl));
             assertThat(webDriver.findElement(By.cssSelector("h1")).getText(), Matchers.containsString("You should not see this page. Set up your redirect URI."));

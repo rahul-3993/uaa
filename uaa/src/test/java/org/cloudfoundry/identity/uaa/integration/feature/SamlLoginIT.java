@@ -109,6 +109,7 @@ import static org.springframework.security.oauth2.common.util.OAuth2Utils.GRANT_
 public class SamlLoginIT {
 
     private static final String SAML_ORIGIN = "simplesamlphp";
+    public static final String XPATH_LOGIN_BUTTON = "//button[@id='submit_button']";
     @Autowired @Rule
     public IntegrationTestRule integrationTestRule;
 
@@ -213,7 +214,7 @@ public class SamlLoginIT {
         webDriver.findElement(By.name("username")).clear();
         webDriver.findElement(By.name("username")).sendKeys(testAccounts.getUserName());
         webDriver.findElement(By.name("password")).sendKeys(testAccounts.getPassword());
-        webDriver.findElement(By.xpath("//input[@value='Login']")).click();
+        webDriver.findElement(By.xpath(XPATH_LOGIN_BUTTON)).click();
 
         // We need to verify the last request URL through the HTTP Archive (HAR) log because the redirect
         // URI does not exist. When the webDriver follows the non-existent redirect URI it receives a
@@ -275,7 +276,7 @@ public class SamlLoginIT {
         webDriver.findElement(By.name("username")).clear();
         webDriver.findElement(By.name("username")).sendKeys(testAccounts.getUserName());
         webDriver.findElement(By.name("password")).sendKeys(testAccounts.getPassword());
-        webDriver.findElement(By.xpath("//input[@value='Login']")).click();
+        webDriver.findElement(By.xpath(XPATH_LOGIN_BUTTON)).click();
 
         assertEquals("No local entity found for alias invalid, verify your configuration.", webDriver.findElement(By.cssSelector("h2")).getText());
     }
@@ -329,7 +330,7 @@ public class SamlLoginIT {
         webDriver.findElement(By.name("username")).clear();
         webDriver.findElement(By.name("username")).sendKeys(testAccounts.getUserName());
         webDriver.findElement(By.name("password")).sendKeys(testAccounts.getPassword());
-        webDriver.findElement(By.xpath("//input[@value='Login']")).click();
+        webDriver.findElement(By.xpath(XPATH_LOGIN_BUTTON)).click();
         //This is modified for branding login.yml changes...
         assertThat(webDriver.findElement(By.cssSelector("h1")).getText(), Matchers.containsString("You should not see this page. Set up your redirect URI."));
 
@@ -394,7 +395,7 @@ public class SamlLoginIT {
         webDriver.findElement(By.name("username")).clear();
         webDriver.findElement(By.name("username")).sendKeys(testAccounts.getUserName());
         webDriver.findElement(By.name("password")).sendKeys(testAccounts.getPassword());
-        webDriver.findElement(By.xpath("//input[@value='Login']")).click();
+        webDriver.findElement(By.xpath(XPATH_LOGIN_BUTTON)).click();
         assertThat(webDriver.findElement(By.cssSelector("h1")).getText(), Matchers.containsString("You should not see this page. Set up your redirect URI."));
 
         //Predix branded UAA does not have the elements/links referenced below on the home page...
@@ -431,7 +432,7 @@ public class SamlLoginIT {
         webDriver.findElement(By.name("username")).clear();
         webDriver.findElement(By.name("username")).sendKeys(testAccounts.getUserName());
         webDriver.findElement(By.name("password")).sendKeys(testAccounts.getPassword());
-        webDriver.findElement(By.xpath("//input[@value='Login']")).click();
+        webDriver.findElement(By.xpath(XPATH_LOGIN_BUTTON)).click();
         //This is modified for branding login.yml changes...
         assertThat(webDriver.findElement(By.cssSelector("h1")).getText(), Matchers.containsString("You should not see this page. Set up your redirect URI."));
 
@@ -467,11 +468,12 @@ public class SamlLoginIT {
         //Assert.assertEquals("Cloud Foundry", webDriver.getTitle());
         webDriver.findElement(By.xpath("//a[text()='" + provider.getConfig().getLinkText() + "']")).click();
         //takeScreenShot();
+        System.out.println(webDriver.getPageSource());
         webDriver.findElement(By.xpath("//h2[contains(text(), 'Enter your username and password')]"));
         webDriver.findElement(By.name("username")).clear();
         webDriver.findElement(By.name("username")).sendKeys(username);
         webDriver.findElement(By.name("password")).sendKeys(password);
-        webDriver.findElement(By.xpath("//input[@value='Login']")).click();
+        webDriver.findElement(By.xpath(XPATH_LOGIN_BUTTON)).click();
         assertThat(webDriver.findElement(By.cssSelector("h1")).getText(), Matchers.containsString(lookfor));
         IntegrationTestUtils.validateAccountChooserCookie(baseUrl, webDriver);
     }
@@ -607,7 +609,7 @@ public class SamlLoginIT {
         webDriver.findElement(By.name("username")).clear();
         webDriver.findElement(By.name("username")).sendKeys(username);
         webDriver.findElement(By.name("password")).sendKeys(password);
-        webDriver.findElement(By.xpath("//input[@value='Login']")).click();
+        webDriver.findElement(By.xpath(XPATH_LOGIN_BUTTON)).click();
 
         //we should now be on the login page because we don't have a redirect
         assertThat(webDriver.findElement(By.cssSelector("h1")).getText(), Matchers.containsString("You should not see this page. Set up your redirect URI."));
@@ -682,7 +684,7 @@ public class SamlLoginIT {
         webDriver.findElement(By.name("username")).clear();
         webDriver.findElement(By.name("username")).sendKeys(testAccounts.getUserName());
         webDriver.findElement(By.name("password")).sendKeys("koala");
-        webDriver.findElement(By.xpath("//input[@value='Login']")).click();
+        webDriver.findElement(By.xpath(XPATH_LOGIN_BUTTON)).click();
 
         assertThat(webDriver.getCurrentUrl(), startsWith("https://www.google.com"));
         webDriver.get(baseUrl + "/logout.do");
@@ -750,7 +752,7 @@ public class SamlLoginIT {
         webDriver.findElement(By.name("username")).clear();
         webDriver.findElement(By.name("username")).sendKeys(testAccounts.getUserName());
         webDriver.findElement(By.name("password")).sendKeys("koala");
-        webDriver.findElement(By.xpath("//input[@value='Login']")).click();
+        webDriver.findElement(By.xpath(XPATH_LOGIN_BUTTON)).click();
         //This is modified for branding login.yml changes...
         assertThat(webDriver.findElement(By.cssSelector("h1")).getText(), Matchers.containsString("You should not see this page. Set up your redirect URI."));
         webDriver.get(baseUrl + "/logout.do");
@@ -839,7 +841,7 @@ public class SamlLoginIT {
         webDriver.findElement(By.name("username")).clear();
         webDriver.findElement(By.name("username")).sendKeys("marissa4");
         webDriver.findElement(By.name("password")).sendKeys("saml2");
-        webDriver.findElement(By.xpath("//input[@value='Login']")).click();
+        webDriver.findElement(By.xpath(XPATH_LOGIN_BUTTON)).click();
         //This is modified for branding login.yml changes...
         assertThat(webDriver.findElement(By.cssSelector("h1")).getText(), Matchers.containsString("You should not see this page. Set up your redirect URI."));
         webDriver.get(baseUrl + "/logout.do");
@@ -933,7 +935,7 @@ public class SamlLoginIT {
         webDriver.findElement(By.name("username")).clear();
         webDriver.findElement(By.name("username")).sendKeys("marissa5");
         webDriver.findElement(By.name("password")).sendKeys("saml5");
-        webDriver.findElement(By.xpath("//input[@value='Login']")).click();
+        webDriver.findElement(By.xpath(XPATH_LOGIN_BUTTON)).click();
         //This is modified for branding login.yml changes...
         assertThat(webDriver.findElement(By.cssSelector("h1")).getText(), Matchers.containsString("You should not see this page. Set up your redirect URI."));
 
@@ -1163,7 +1165,7 @@ public class SamlLoginIT {
         webDriver.findElement(By.name("username")).clear();
         webDriver.findElement(By.name("username")).sendKeys("marissa6");
         webDriver.findElement(By.name("password")).sendKeys("saml6");
-        webDriver.findElement(By.xpath("//input[@value='Login']")).click();
+        webDriver.findElement(By.xpath(XPATH_LOGIN_BUTTON)).click();
         //This is modified for branding login.yml changes...
         assertThat(webDriver.findElement(By.cssSelector("h1")).getText(), Matchers.containsString("You should not see this page. Set up your redirect URI."));
 
@@ -1272,7 +1274,7 @@ public class SamlLoginIT {
         webDriver.findElement(By.name("username")).clear();
         webDriver.findElement(By.name("username")).sendKeys(testAccounts.getUserName());
         webDriver.findElement(By.name("password")).sendKeys(testAccounts.getPassword());
-        webDriver.findElement(By.xpath("//input[@value='Login']")).click();
+        webDriver.findElement(By.xpath(XPATH_LOGIN_BUTTON)).click();
         //This is modified for branding login.yml changes...
         assertThat(webDriver.findElement(By.cssSelector("h1")).getText(), Matchers.containsString("You should not see this page. Set up your redirect URI."));
 
@@ -1372,7 +1374,7 @@ public class SamlLoginIT {
         webDriver.findElement(By.name("username")).clear();
         webDriver.findElement(By.name("username")).sendKeys(testAccounts.getUserName());
         webDriver.findElement(By.name("password")).sendKeys("koala");
-        webDriver.findElement(By.xpath("//input[@value='Login']")).click();
+        webDriver.findElement(By.xpath(XPATH_LOGIN_BUTTON)).click();
 
         //This is modified for branding login.yml changes...
         assertThat(webDriver.findElement(By.cssSelector("h1")).getText(), Matchers.containsString("You should not see this page. Set up your redirect URI."));
@@ -1506,7 +1508,7 @@ public class SamlLoginIT {
         webDriver.findElement(By.name("username")).clear();
         webDriver.findElement(By.name("username")).sendKeys(testAccounts.getUserName());
         webDriver.findElement(By.name("password")).sendKeys(testAccounts.getPassword());
-        webDriver.findElement(By.xpath("//input[@value='Login']")).click();
+        webDriver.findElement(By.xpath(XPATH_LOGIN_BUTTON)).click();
     }
 
 
