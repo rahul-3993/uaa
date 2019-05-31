@@ -64,6 +64,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 import static org.cloudfoundry.identity.uaa.oauth.token.ClaimConstants.SUB;
 import static org.cloudfoundry.identity.uaa.integration.util.IntegrationTestUtils.isMember;
@@ -212,10 +213,12 @@ public class OIDCLoginIT {
     }
 
     private void doLogout(String zoneUrl) {
+        webDriver.manage().timeouts().pageLoadTimeout(60, TimeUnit.SECONDS);
         for (String url : Arrays.asList("http://simplesamlphp.cfapps.io/module.php/core/authenticate.php?as=example-userpass&logout", baseUrl + "/logout.do", zoneUrl+"/logout.do"))  {
             webDriver.get(url);
             webDriver.manage().deleteAllCookies();
         }
+        webDriver.manage().timeouts().pageLoadTimeout(20, TimeUnit.SECONDS);
     }
 
     private void validateSuccessfulOIDCLogin(String zoneUrl, String userName, String password) {
@@ -398,7 +401,7 @@ public class OIDCLoginIT {
             webDriver.findElement(By.name("username")).clear();
             webDriver.findElement(By.name("username")).sendKeys("marissa6");
             webDriver.findElement(By.name("password")).sendKeys("saml6");
-            webDriver.findElement(By.xpath("//input[@value='Login']")).click();
+            webDriver.findElement(By.xpath("//button[@id='submit_button']")).click();
 
             Assert.assertThat(webDriver.getCurrentUrl(), Matchers.containsString(zoneUrl));
             assertThat(webDriver.findElement(By.cssSelector("h1")).getText(), Matchers.containsString("You should not see this page. Set up your redirect URI."));
