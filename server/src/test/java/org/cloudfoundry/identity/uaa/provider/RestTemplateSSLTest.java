@@ -37,7 +37,7 @@ public class RestTemplateSSLTest {
             @Override public void handleError(ClientHttpResponse response) throws IOException {}
         });
         ExpiringUrlCache cache = new ExpiringUrlCache(1, new TimeServiceImpl(), 1);
-        byte[] data = cache.getUrlContent("https://idp.login.oms.identity.team:443/saml/idp/metadata", template);
+        byte[] data = cache.getUrlContent("http://uaa.com/saml/idp/metadata", template);
         assertNotNull(data);
         System.out.println(new String(data));
     }
