@@ -79,6 +79,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 
 import static org.cloudfoundry.identity.uaa.authentication.AbstractClientParametersAuthenticationFilter.CLIENT_SECRET;
 import static org.cloudfoundry.identity.uaa.integration.util.IntegrationTestUtils.createSimplePHPSamlIDP;
@@ -156,8 +157,10 @@ public class SamlLoginIT {
             webDriver.get(baseUrl.replace("localhost", domain) + "/logout.do");
             webDriver.manage().deleteAllCookies();
         }
+        webDriver.manage().timeouts().pageLoadTimeout(60, TimeUnit.SECONDS);
         webDriver.get("http://simplesamlphp.cfapps.io/module.php/core/authenticate.php?as=example-userpass&logout");
         webDriver.get("http://simplesamlphp2.cfapps.io/module.php/core/authenticate.php?as=example-userpass&logout");
+        webDriver.manage().timeouts().pageLoadTimeout(20, TimeUnit.SECONDS);
     }
 
     @Test

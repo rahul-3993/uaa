@@ -64,6 +64,7 @@ public class HttpsIntegrationTest {
     }
 
     @Test
+    @Ignore("Ignored. Hosted uaa is not available anymore. In 4.20.0 upstream, the entire client lib is removed.")
     public void test_self_signed_cert_should_fail() throws Exception {
         try {
             test_self_signed_cert(false);
