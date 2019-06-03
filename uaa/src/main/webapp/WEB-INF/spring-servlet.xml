@@ -531,7 +531,9 @@
 
     <bean id="healthzEndpoint" class="org.cloudfoundry.identity.uaa.health.HealthzEndpoint">
         <constructor-arg name="sleepTime" value="${uaa.shutdown.sleep:-1}"/>
+        <constructor-arg name="uaaMonitoringRepository" ref="uaaMonitoringRepository" />
     </bean>
+    <bean id="uaaMonitoringRepository" class="org.cloudfoundry.identity.uaa.health.UaaMonitoringRepository"/>
 
     <context:annotation-config />
 

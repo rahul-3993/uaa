@@ -320,7 +320,7 @@ pipeline {
                                     apt-get install jq -y
                                     jq --version
 
-                                    if [[ "$BRANCH_NAME" == "predix_extensions"* ]]; then
+                                    if [[ "$BRANCH_NAME" == "predix_extensions"* || "$BRANCH_NAME" == "PR-"* ]]; then
                                         echo "Ignoring degraded JWT cloud tests for this branch"
                                         export DEGRADED_TEST_ARGS='--dont-run-jwt-cloud-tests'
                                     fi
