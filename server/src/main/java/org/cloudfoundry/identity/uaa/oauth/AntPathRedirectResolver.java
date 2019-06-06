@@ -15,6 +15,7 @@
 
 package org.cloudfoundry.identity.uaa.oauth;
 
+import lombok.SneakyThrows;
 import org.apache.commons.lang.ArrayUtils;
 import org.cloudfoundry.identity.uaa.util.UaaUrlUtils;
 import org.slf4j.Logger;
@@ -24,10 +25,14 @@ import org.springframework.security.oauth2.common.exceptions.RedirectMismatchExc
 import org.springframework.security.oauth2.provider.ClientDetails;
 import org.springframework.security.oauth2.provider.endpoint.DefaultRedirectResolver;
 import org.springframework.util.AntPathMatcher;
+import org.springframework.util.StringUtils;
 
 import java.net.URI;
+import java.net.URLDecoder;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Set;
+import java.util.function.Predicate;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -41,21 +46,18 @@ public class AntPathRedirectResolver extends DefaultRedirectResolver {
     @Override
     protected boolean redirectMatches(String requestedRedirect, String clientRedirect) {
         try {
-            URI requestedRedirectURI = URI.create(requestedRedirect);
             ClientRedirectUriPattern clientRedirectUri = new ClientRedirectUriPattern(clientRedirect);
-
             if (!clientRedirectUri.isValidRedirect()) {
                 logger.error(String.format("Invalid redirect uri: %s", clientRedirect));
                 return false;
             }
-
-            if (clientRedirectUri.isWildcard(clientRedirect) &&
-                    clientRedirectUri.isSafeRedirect(requestedRedirectURI) &&
-                    clientRedirectUri.match(requestedRedirectURI)) {
-                return true;
+            Predicate<String> matcher;
+            if (isWildcard(clientRedirect)) {
+                matcher = req -> clientRedirectUri.isSafeRedirect(req) && clientRedirectUri.match(req);
+            } else {
+                matcher = req -> super.redirectMatches(req, clientRedirect);
             }
-
-            return super.redirectMatches(requestedRedirect, clientRedirect);
+            return matchesAfterNormalization(matcher, requestedRedirect);
         } catch (IllegalArgumentException e) {
             logger.error(
                     String.format("Could not validate whether requestedRedirect (%s) matches clientRedirectUri (%s)",
@@ -64,6 +66,45 @@ public class AntPathRedirectResolver extends DefaultRedirectResolver {
                     e);
             return false;
         }
+    }
+
+    /**
+     * Repeatedly:
+     * <ol>
+     *     <li>checks for a match</li>
+     *     <li>url decodes the requested path</li>
+     * </ol>
+     * until path cannot be url decoded any further. Then normalizes the path before the final check.
+     * <p>
+     *     For example, if example.com/foo is the registered url and example.com/foo/%252e./bar is the requested url,
+     *     checks a match for:
+     *     <ol>
+     *         <li>example.com/foo/%252e./bar</li>
+     *         <li>example.com/foo/%2e./bar</li>
+     *         <li>example.com/foo/../bar</li>
+     *         <li>example.com/bar</li>
+     *     </ol>
+     * </p>
+     */
+    private boolean matchesAfterNormalization(Predicate<String> matcher, String requestedRedirect) {
+        final int maxDecodeAttempts = 5;
+        for (int i = 1; i <= maxDecodeAttempts; i++) {
+            if (!matcher.test(requestedRedirect)) {
+                return false;
+            }
+            String decoded = urlDecode(requestedRedirect);
+            if (decoded.equals(requestedRedirect)) {
+                return matcher.test(StringUtils.cleanPath(decoded));
+            }
+            requestedRedirect = decoded;
+        }
+        logger.debug("Aborted url decoding loop to mitigate DOS attack that sends a repeatedly url-encoded path");
+        return false;
+    }
+
+    @SneakyThrows
+    private String urlDecode(String url) {
+        return URLDecoder.decode(url, StandardCharsets.UTF_8.name());
     }
 
     @Override
@@ -83,6 +124,10 @@ public class AntPathRedirectResolver extends DefaultRedirectResolver {
         }
 
         return super.resolveRedirect(requestedRedirect, client);
+    }
+
+    private static boolean isWildcard(String configuredRedirectPattern) {
+        return configuredRedirectPattern.contains("*");
     }
 
 
@@ -112,10 +157,10 @@ public class AntPathRedirectResolver extends DefaultRedirectResolver {
             }
         }
 
-        boolean isSafeRedirect(URI requestedRedirect) {
+        boolean isSafeRedirect(String requestedRedirect) {
             // We iterate backwards through the hosts to make sure the TLD and domain match
             String[] configuredRedirectHost = splitAndReverseHost(getHost());
-            String[] requestedRedirectHost = splitAndReverseHost(requestedRedirect.getHost());
+            String[] requestedRedirectHost = splitAndReverseHost(URI.create(requestedRedirect).getHost());
 
             if (requestedRedirectHost.length < configuredRedirectHost.length) {
                 return false;
@@ -133,12 +178,8 @@ public class AntPathRedirectResolver extends DefaultRedirectResolver {
             return isValidRedirect;
         }
 
-        boolean match(URI requestedRedirect) {
-            return matcher.match(redirectUri, requestedRedirect.toString());
-        }
-
-        private boolean isWildcard(String configuredRedirectPattern) {
-            return configuredRedirectPattern.contains("*");
+        boolean match(String requestedRedirect) {
+            return matcher.match(redirectUri, requestedRedirect);
         }
 
         private String getHost() {
