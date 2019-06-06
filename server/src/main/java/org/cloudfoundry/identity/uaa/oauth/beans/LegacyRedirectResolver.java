@@ -1,5 +1,6 @@
 package org.cloudfoundry.identity.uaa.oauth.beans;
 
+import lombok.SneakyThrows;
 import org.apache.commons.lang.ArrayUtils;
 import org.apache.commons.lang.StringUtils;
 import org.cloudfoundry.identity.uaa.util.UaaUrlUtils;
@@ -15,11 +16,14 @@ import org.springframework.web.util.UriComponents;
 import org.springframework.web.util.UriComponentsBuilder;
 
 import java.net.URI;
+import java.net.URLDecoder;
+import java.nio.charset.StandardCharsets;
 import java.util.AbstractMap.SimpleEntry;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.function.Predicate;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -29,6 +33,7 @@ import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toMap;
 import static org.cloudfoundry.identity.uaa.util.UaaUrlUtils.normalizeUri;
 import static org.springframework.util.StringUtils.isEmpty;
+import static org.springframework.util.StringUtils.cleanPath;
 
 public class LegacyRedirectResolver extends org.cloudfoundry.identity.uaa.oauth.beans.org.springframework.security.oauth2.provider.endpoint.DefaultRedirectResolver {
     private static final Logger logger = LoggerFactory.getLogger(LegacyRedirectResolver.class);
@@ -53,13 +58,13 @@ public class LegacyRedirectResolver extends org.cloudfoundry.identity.uaa.oauth.
                 return false;
             }
 
-            if (clientRedirectUri.isWildcard(normalizedClientRedirect) &&
-                    clientRedirectUri.isSafeRedirect(requestedRedirectURI) &&
-                    clientRedirectUri.match(requestedRedirectURI)) {
-                return true;
+            Predicate<String> matcher;
+            if (clientRedirectUri.isWildcard(normalizedClientRedirect) ) {
+                matcher = req -> clientRedirectUri.isSafeRedirect(requestedRedirectURI) && clientRedirectUri.match(requestedRedirectURI);
+            } else {
+                matcher = req -> super.redirectMatches(req, normalizedClientRedirect);
             }
-
-            return super.redirectMatches(normalizedRequestedRedirect, normalizedClientRedirect);
+            return matchesAfterNormalization(matcher, requestedRedirect);
         } catch (IllegalArgumentException e) {
             logger.error(
                     String.format("Could not validate whether requestedRedirect (%s) matches clientRedirectUri (%s)",
@@ -68,6 +73,45 @@ public class LegacyRedirectResolver extends org.cloudfoundry.identity.uaa.oauth.
                     e);
             return false;
         }
+    }
+
+    /**
+     * Repeatedly:
+     * <ol>
+     *     <li>checks for a match</li>
+     *     <li>url decodes the requested path</li>
+     * </ol>
+     * until path cannot be url decoded any further. Then normalizes the path before the final check.
+     * <p>
+     *     For example, if example.com/foo is the registered url and example.com/foo/%252e./bar is the requested url,
+     *     checks a match for:
+     *     <ol>
+     *         <li>example.com/foo/%252e./bar</li>
+     *         <li>example.com/foo/%2e./bar</li>
+     *         <li>example.com/foo/../bar</li>
+     *         <li>example.com/bar</li>
+     *     </ol>
+     * </p>
+     */
+    private boolean matchesAfterNormalization(Predicate<String> matcher, String requestedRedirect) {
+        final int maxDecodeAttempts = 5;
+        for (int i = 1; i <= maxDecodeAttempts; i++) {
+            if (!matcher.test(requestedRedirect)) {
+                return false;
+            }
+            String decoded = urlDecode(requestedRedirect);
+            if (decoded.equals(requestedRedirect)) {
+                return matcher.test(cleanPath(decoded));
+            }
+            requestedRedirect = decoded;
+        }
+        logger.debug("Aborted url decoding loop to mitigate DOS attack that sends a repeatedly url-encoded path");
+        return false;
+    }
+
+    @SneakyThrows
+    private String urlDecode(String url) {
+        return URLDecoder.decode(url, StandardCharsets.UTF_8.name());
     }
 
     @Override

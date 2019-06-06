@@ -13,6 +13,10 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInstance;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.springframework.security.oauth2.common.exceptions.RedirectMismatchException;
 import org.springframework.security.oauth2.provider.ClientDetails;
 import org.springframework.security.oauth2.provider.client.BaseClientDetails;
@@ -22,6 +26,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
+import java.util.stream.Stream;
 
 import static org.apache.logging.log4j.Level.WARN;
 import static org.cloudfoundry.identity.uaa.oauth.token.TokenConstants.GRANT_TYPE_AUTHORIZATION_CODE;
@@ -34,6 +39,8 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
+import static org.junit.jupiter.params.provider.Arguments.arguments;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -721,6 +728,54 @@ class LegacyRedirectResolverTest {
 
         private void mockRegisteredRedirectUri(String allowedRedirectUri) {
             when(mockClientDetails.getRegisteredRedirectUri()).thenReturn(Collections.singleton(allowedRedirectUri));
+        }
+    }
+
+    enum Type {SINGLE_DOT_TRAVERSAL, DOUBLE_DOT_TRAVERSAL}
+
+    @Nested
+    @TestInstance(TestInstance.Lifecycle.PER_CLASS)
+    class IntegrityCheckBypass {
+        LegacyRedirectResolver resolver = new LegacyRedirectResolver();
+
+
+        private static final String REGISTERED_REDIRECT_URI = "http://example.com/foo";
+
+        private Stream<Arguments> data() {
+            return Stream.of(
+                arguments(Type.SINGLE_DOT_TRAVERSAL, "/./bar", ""),
+                arguments(Type.SINGLE_DOT_TRAVERSAL, "/./bar", "/**"),
+                arguments(Type.SINGLE_DOT_TRAVERSAL, "/%2e/bar", ""),
+                arguments(Type.SINGLE_DOT_TRAVERSAL, "/%2e/bar", "/**"),
+                arguments(Type.SINGLE_DOT_TRAVERSAL, "/%252e/bar", ""),
+                arguments(Type.SINGLE_DOT_TRAVERSAL, "/%252e/bar", "/**"),
+                arguments(Type.SINGLE_DOT_TRAVERSAL, "/%2525252e/bar", ""),
+                arguments(Type.SINGLE_DOT_TRAVERSAL, "/%2525252e/bar", "/**"),
+
+                arguments(Type.DOUBLE_DOT_TRAVERSAL, "/../bar", ""),
+                arguments(Type.DOUBLE_DOT_TRAVERSAL, "/../bar", "/**"),
+                arguments(Type.DOUBLE_DOT_TRAVERSAL, "/%2e./bar", ""),
+                arguments(Type.DOUBLE_DOT_TRAVERSAL, "/%2e./bar", "/**"),
+                arguments(Type.DOUBLE_DOT_TRAVERSAL, "/%252e./bar", ""),
+                arguments(Type.DOUBLE_DOT_TRAVERSAL, "/%252e./bar", "/**"),
+                arguments(Type.DOUBLE_DOT_TRAVERSAL, "/%2525252e./bar", ""),
+                arguments(Type.DOUBLE_DOT_TRAVERSAL, "/%2525252e./bar", "/**"),
+                arguments(Type.DOUBLE_DOT_TRAVERSAL, "/%25252525252525252525252e./bar", ""),
+                arguments(Type.DOUBLE_DOT_TRAVERSAL, "/%25252525252525252525252e./bar", "/**")
+            );
+        }
+        @ParameterizedTest(name = "{index} " + REGISTERED_REDIRECT_URI + "{1} should not match " + REGISTERED_REDIRECT_URI + "{2}")
+        @MethodSource("data")
+        void doubleDotTraversal(Type type, String requestedSuffix, String registeredSuffix) {
+            assumeTrue(type == Type.DOUBLE_DOT_TRAVERSAL);
+            assertFalse(resolver.redirectMatches(REGISTERED_REDIRECT_URI + requestedSuffix, REGISTERED_REDIRECT_URI + registeredSuffix));
+        }
+
+        @ParameterizedTest(name = "{index} " + REGISTERED_REDIRECT_URI + "{1} should not match " + REGISTERED_REDIRECT_URI + "{2}")
+        @MethodSource("data")
+        void singleDotTraversal(Type type, String requestedSuffix, String registeredSuffix) {
+            assumeTrue(type == Type.SINGLE_DOT_TRAVERSAL);
+            assertTrue(resolver.redirectMatches(REGISTERED_REDIRECT_URI + requestedSuffix, REGISTERED_REDIRECT_URI + registeredSuffix));
         }
     }
 }
