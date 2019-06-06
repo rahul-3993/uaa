@@ -57,8 +57,8 @@ public class ImplicitTokenGrantIntegrationTests {
 
     private String implicitUrl() {
         URI uri = serverRunning.buildUri("/oauth/authorize").queryParam("response_type", "token")
-                        .queryParam("client_id", "cf")
-                        .queryParam("redirect_uri", "http://localhost:8080/redirect/cf")
+                        .queryParam("client_id", "app")
+                        .queryParam("redirect_uri", "http://localhost:8080/app/%2E%2E/redirect/cf")
                         .queryParam("scope", "cloud_controller.read").build();
         return uri.toString();
     }
