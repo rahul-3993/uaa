@@ -3,6 +3,7 @@ description = 'CloudFoundry Identity Server JAR'
 dependencies {
 
   compile project(':cloudfoundry-identity-model')
+  compile group: 'org.apache.tomcat.embed', name: 'tomcat-embed-core', version:parent.tomcatVersion
 
   compile group: 'org.apache.tomcat', name: 'tomcat-jdbc', version:parent.tomcatJdbcPoolVersion
   provided group: 'javax.servlet', name: 'javax.servlet-api', version: parent.servletVersion
