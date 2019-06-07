@@ -33,6 +33,7 @@ import static org.junit.Assert.*;
 public class RedirectUriIntegrityCheckIT {
 
 
+
     private static final String REDIRECT_URL_PATTERN = "http://localhost:8080/redirect/cf#token_type=.+access_token=.+";
 
     @Rule
