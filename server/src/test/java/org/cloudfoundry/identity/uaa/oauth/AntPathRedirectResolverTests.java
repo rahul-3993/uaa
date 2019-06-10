@@ -347,6 +347,20 @@ class AntPathRedirectResolverTests {
         }
     }
 
+    @Nested //todo: what's this for?
+    @DisplayName("integrity check bypass")
+    class IntegrityCheckBypass {
+
+        private static final String REGISTERED_REDIRECT_URI = "http://example.com/foo";
+
+        @Test //todo: parameterized?
+        void doubleDotTraversal() {
+            assertFalse(resolver.redirectMatches("http://example.com/foo/../bar", REGISTERED_REDIRECT_URI));
+            assertFalse(resolver.redirectMatches("http://example.com/foo/%2E./bar", REGISTERED_REDIRECT_URI));
+        }
+
+    }
+
     @Nested
     @DisplayName("resolveRedirect")
     class ResolveRedirect {
