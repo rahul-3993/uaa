@@ -171,7 +171,7 @@ public class UaaAuthorizationEndpointTest {
         model.put("org.springframework.security.oauth2.provider.endpoint.AuthorizationEndpoint.ORIGINAL_AUTHORIZATION_REQUEST", uaaAuthorizationEndpoint.unmodifiableMap(authorizationRequest));
 
         Map<String, String> approvalParameters = new HashMap<>();
-        approvalParameters.put("user_oauth_approval", "true");
+//        approvalParameters.put("user_oauth_approval", "true");
 
         when(authorizationCodeServices.createAuthorizationCode(any(OAuth2Authentication.class))).thenReturn("code");
 
