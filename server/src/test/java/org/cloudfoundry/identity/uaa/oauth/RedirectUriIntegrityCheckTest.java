@@ -11,7 +11,12 @@ import org.cloudfoundry.identity.uaa.zone.ClientServicesExtension;
 import org.junit.jupiter.api.Test;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.oauth2.config.annotation.web.configurers.AuthorizationServerEndpointsConfigurer;
+import org.springframework.security.oauth2.provider.ClientDetails;
 import org.springframework.security.oauth2.provider.ClientDetailsService;
+import org.springframework.security.oauth2.provider.CompositeTokenGranter;
+import org.springframework.security.oauth2.provider.TokenGranter;
+import org.springframework.security.oauth2.provider.client.BaseClientDetails;
 import org.springframework.web.bind.support.SessionStatus;
 import org.springframework.web.bind.support.SimpleSessionStatus;
 import org.springframework.web.servlet.ModelAndView;
@@ -24,6 +29,7 @@ import java.util.Map;
 import java.util.UUID;
 
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 /**
  * Tests whether redirect_uri authentication check correctly examines the path.
@@ -33,12 +39,19 @@ class RedirectUriIntegrityCheckTest {
     @Test
     void authorize_implicitGrant_succeeds() throws Exception {
         UaaAuthorizationEndpoint endpoint = new UaaAuthorizationEndpoint();
-        endpoint.setClientDetailsService(mock(ClientServicesExtension.class));
+        ClientDetailsService clientDetailsService = mock(ClientServicesExtension.class);
+        String clientId = "alpha";
+        ClientDetails clientDetails = new BaseClientDetails(); //todo
+        when(clientDetailsService.loadClientByClientId(clientId)).thenReturn(clientDetails);
+        endpoint.setClientDetailsService(clientDetailsService);
+        AuthorizationServerEndpointsConfigurer endpointsConfigurer = new AuthorizationServerEndpointsConfigurer();
+        TokenGranter tokenGranter = endpointsConfigurer.getTokenGranter();
+        endpoint.setTokenGranter(tokenGranter);
         endpoint.afterPropertiesSet(); //todo
         Map<String, Object> model = new HashMap<>();
         Map<String, String> parameters = ImmutableMap.of(
                 "response_type", "token",
-                ClaimConstants.CLIENT_ID, "alpha",
+                ClaimConstants.CLIENT_ID, clientId,
                 "redirect_uri", "http://example.com/foo/bar"
         );
         SessionStatus sessionStatus = new SimpleSessionStatus();
