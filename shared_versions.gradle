@@ -17,7 +17,7 @@ ext {
   jsonPathVersion = '2.4.0'
   junitVersion = '4.12'
   junit5JupiterVersion = '5.2.0'
-  lombokVersion = '1.16.22'
+  lombokVersion = '1.18.8'
   log4j2Version = '2.11.1'
   mariaDBClientVersion = '2.2.0'
   mockitoVersion = '2.13.0'
