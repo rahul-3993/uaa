@@ -13,9 +13,6 @@
 
 package org.cloudfoundry.identity.uaa.oauth;
 
-import lombok.AllArgsConstructor;
-import lombok.NoArgsConstructor;
-import lombok.RequiredArgsConstructor;
 import org.apache.http.HttpHost;
 import org.apache.http.client.utils.URIUtils;
 import org.cloudfoundry.identity.uaa.authentication.UaaPrincipal;
@@ -100,8 +97,6 @@ import static org.springframework.security.oauth2.common.util.OAuth2Utils.SCOPE_
  */
 @Controller
 @SessionAttributes({UaaAuthorizationEndpoint.AUTHORIZATION_REQUEST, UaaAuthorizationEndpoint.ORIGINAL_AUTHORIZATION_REQUEST})
-@AllArgsConstructor
-@NoArgsConstructor
 public class UaaAuthorizationEndpoint extends AbstractEndpoint implements AuthenticationEntryPoint {
 
     static final String AUTHORIZATION_REQUEST = "authorizationRequest";
