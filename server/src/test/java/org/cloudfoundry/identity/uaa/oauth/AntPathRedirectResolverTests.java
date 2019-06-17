@@ -53,9 +53,9 @@ class AntPathRedirectResolverTests {
 
         @Test
         void allSubdomainsShouldMatch() {
-            assertTrue(resolver.redirectMatches("http://subdomain.domain.com", clientRedirectUri));
-            assertTrue(resolver.redirectMatches("http://another-subdomain.domain.com", clientRedirectUri));
-            assertTrue(resolver.redirectMatches("http://one.two.domain.com", clientRedirectUri));
+            assertFalse(resolver.redirectMatches("http://subdomain.domain.com", clientRedirectUri));
+            assertFalse(resolver.redirectMatches("http://another-subdomain.domain.com", clientRedirectUri)); //todo move into separate test
+            assertFalse(resolver.redirectMatches("http://one.two.domain.com", clientRedirectUri));
         }
 
         @Test
@@ -67,17 +67,17 @@ class AntPathRedirectResolverTests {
 
         @Test
         void allPathsInAnySubdomainShouldMatch() {
-            assertTrue(resolver.redirectMatches("http://subdomain.domain.com/one", clientRedirectUri));
-            assertTrue(resolver.redirectMatches("http://subdomain.domain.com/another", clientRedirectUri));
-            assertTrue(resolver.redirectMatches("http://subdomain.domain.com/one/two", clientRedirectUri));
+            assertFalse(resolver.redirectMatches("http://subdomain.domain.com/one", clientRedirectUri));
+            assertFalse(resolver.redirectMatches("http://subdomain.domain.com/another", clientRedirectUri));
+            assertFalse(resolver.redirectMatches("http://subdomain.domain.com/one/two", clientRedirectUri));
 
-            assertTrue(resolver.redirectMatches("http://another-subdomain.domain.com/one", clientRedirectUri));
-            assertTrue(resolver.redirectMatches("http://another-subdomain.domain.com/another", clientRedirectUri));
-            assertTrue(resolver.redirectMatches("http://another-subdomain.domain.com/one/two", clientRedirectUri));
+            assertFalse(resolver.redirectMatches("http://another-subdomain.domain.com/one", clientRedirectUri));
+            assertFalse(resolver.redirectMatches("http://another-subdomain.domain.com/another", clientRedirectUri));
+            assertFalse(resolver.redirectMatches("http://another-subdomain.domain.com/one/two", clientRedirectUri));
 
-            assertTrue(resolver.redirectMatches("http://one.two.domain.com/one", clientRedirectUri));
-            assertTrue(resolver.redirectMatches("http://one.two.domain.com/another", clientRedirectUri));
-            assertTrue(resolver.redirectMatches("http://one.two.domain.com/one/two", clientRedirectUri));
+            assertFalse(resolver.redirectMatches("http://one.two.domain.com/one", clientRedirectUri));
+            assertFalse(resolver.redirectMatches("http://one.two.domain.com/another", clientRedirectUri));
+            assertFalse(resolver.redirectMatches("http://one.two.domain.com/one/two", clientRedirectUri));
         }
 
         @Test
@@ -451,8 +451,8 @@ class AntPathRedirectResolverTests {
             assertResolveRedirectReturnsSameUrl("http://user:pass@uaa.com");
             assertResolveRedirectReturnsSameUrl("http://uaa.com/xyz");
             assertResolveRedirectReturnsSameUrl("http://uaa.com/xyz/abc/1234");
-            assertResolveRedirectReturnsSameUrl("http://subdomain.uaa.com");
-            assertResolveRedirectReturnsSameUrl("http://subdomain1.subdomain2.subdomain3.uaa.com");
+            assertResolveRedirectThrows________("http://subdomain.uaa.com");
+            assertResolveRedirectThrows________("http://subdomain1.subdomain2.subdomain3.uaa.com");
             assertResolveRedirectReturnsSameUrl("http://uaa.com/xyz?foo=bar");
             assertResolveRedirectReturnsSameUrl("http://uaa.com?foo=bar");
             assertResolveRedirectReturnsSameUrl("http://uaa.com/xyz?foo=bar#fragment");
@@ -469,8 +469,8 @@ class AntPathRedirectResolverTests {
             assertResolveRedirectReturnsSameUrl("http://user:pass@uaa.com:8080");
             assertResolveRedirectReturnsSameUrl("http://uaa.com:8080/xyz");
             assertResolveRedirectReturnsSameUrl("http://uaa.com:8080/xyz/abc/1234");
-            assertResolveRedirectReturnsSameUrl("http://subdomain.uaa.com:8080");
-            assertResolveRedirectReturnsSameUrl("http://subdomain1.subdomain2.subdomain3.uaa.com:8080");
+            assertResolveRedirectThrows________("http://subdomain.uaa.com:8080");
+            assertResolveRedirectThrows________("http://subdomain1.subdomain2.subdomain3.uaa.com:8080");
             assertResolveRedirectReturnsSameUrl("http://uaa.com:8080/xyz?foo=bar");
             assertResolveRedirectReturnsSameUrl("http://uaa.com:8080?foo=bar");
             assertResolveRedirectReturnsSameUrl("http://uaa.com:8080/xyz?foo=bar#fragment");
@@ -488,8 +488,8 @@ class AntPathRedirectResolverTests {
             assertResolveRedirectReturnsSameUrl("http://user:pass@uaa.com/");
             assertResolveRedirectReturnsSameUrl("http://uaa.com/xyz");
             assertResolveRedirectReturnsSameUrl("http://uaa.com/xyz/abc/1234");
-            assertResolveRedirectReturnsSameUrl("http://subdomain.uaa.com/");
-            assertResolveRedirectReturnsSameUrl("http://subdomain1.subdomain2.subdomain3.uaa.com/");
+            assertResolveRedirectThrows________("http://subdomain.uaa.com/");
+            assertResolveRedirectThrows________("http://subdomain1.subdomain2.subdomain3.uaa.com/");
             assertResolveRedirectReturnsSameUrl("http://uaa.com/xyz?foo=bar");
             assertResolveRedirectReturnsSameUrl("http://uaa.com/?foo=bar");
             assertResolveRedirectReturnsSameUrl("http://uaa.com/xyz?foo=bar#fragment");
