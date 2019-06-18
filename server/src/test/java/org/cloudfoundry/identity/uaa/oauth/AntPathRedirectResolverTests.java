@@ -15,6 +15,9 @@
 
 package org.cloudfoundry.identity.uaa.oauth;
 
+import lombok.AccessLevel;
+import lombok.AllArgsConstructor;
+import lombok.experimental.FieldDefaults;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -31,9 +34,11 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.EnumSet;
 import java.util.HashSet;
+import java.util.function.Predicate;
 import java.util.stream.Stream;
 
 import static com.google.common.collect.Lists.newArrayList;
+import static org.cloudfoundry.identity.uaa.oauth.AntPathRedirectResolverTests.RegisteredRedirectUri.*;
 import static org.cloudfoundry.identity.uaa.oauth.AntPathRedirectResolverTests.RequestedRedirectUri.Property.*;
 import static org.cloudfoundry.identity.uaa.oauth.token.TokenConstants.GRANT_TYPE_AUTHORIZATION_CODE;
 import static org.hamcrest.Matchers.containsString;
@@ -51,6 +56,7 @@ class AntPathRedirectResolverTests {
 
     //todo: username@password?
 
+    @FieldDefaults(makeFinal = true, level = AccessLevel.PRIVATE)
     enum RequestedRedirectUri {
 
         //todo: indentation ?
@@ -92,11 +98,11 @@ class AntPathRedirectResolverTests {
             HAS_MULTIPLE_PATH_SEGMENTS,
         }
 
-        private final boolean http;
-        private final boolean belongsToDomainDotCom;
-        private final boolean isSubdomain;
-        private final boolean hasMultiplePathSegments;
-        private final String uri;
+        boolean http;
+        boolean belongsToDomainDotCom;
+        boolean isSubdomain;
+        boolean hasMultiplePathSegments;
+        String uri;
 
         @Override
         public String toString() {
@@ -105,59 +111,64 @@ class AntPathRedirectResolverTests {
 
     }
 
-    @Nested
-    @DisplayName("matching http://domain.com")
-    class WhenMatchingAgainstJustSLD {
+    @FieldDefaults(makeFinal = true, level = AccessLevel.PRIVATE)
+    @AllArgsConstructor
+    enum RegisteredRedirectUri {
+        URI_WITHOUT_WILDCARDS("http://domain.com", uri -> uri.http && !uri.isSubdomain && uri.belongsToDomainDotCom),
+        URI_WITH_SINGLE_PATH_SEGMENT("http://domain.com/*", uri -> uri.http && !uri.isSubdomain && uri.belongsToDomainDotCom && !uri.hasMultiplePathSegments),
+        URI_WITH_MULTIPLE_PATH_SEGMENTS("http://domain.com/**", uri -> uri.http && !uri.isSubdomain && uri.belongsToDomainDotCom),
+        ;
 
-        private static final String REGISTERED_REDIRECT_URI = "http://domain.com";
+        String uri;
+        Predicate<RequestedRedirectUri> expectedMatcher;
 
-        @ParameterizedTest(name = "{index} matching {0} against " + REGISTERED_REDIRECT_URI)
-        @EnumSource(RequestedRedirectUri.class)
-        void match(RequestedRedirectUri uri) {
-            boolean matches = resolver.redirectMatches(uri.uri, REGISTERED_REDIRECT_URI);
-            if (uri.http && !uri.isSubdomain && uri.belongsToDomainDotCom) {
-                assertTrue("expected " + uri.uri + " to match " + REGISTERED_REDIRECT_URI + " but did not match", matches);
-            } else {
-                assertFalse("expected " + uri.uri + " not to match " + REGISTERED_REDIRECT_URI + " but did match", matches);
-            }
+        @Override
+        public String toString() {
+            return uri;
         }
+
+        public boolean expectedToMatch(RequestedRedirectUri requestedRedirectUri) {
+            return expectedMatcher.test(requestedRedirectUri);
+        }
+
     }
 
     @Nested
-    @DisplayName("matching http://domain.com/*")
-    class WhenMatchingWithSinglePathPattern {
+    @DisplayName("general matching")
+    class GeneralMatching {
 
-        private static final String REGISTERED_REDIRECT_URI = "http://domain.com/*";
-
-        @ParameterizedTest(name = "{index} matching {0} against " + REGISTERED_REDIRECT_URI)
+        @DisplayName("matching http://domain.com")
+        @ParameterizedTest(name = "{index} matching {0} against http://domain.com")
         @EnumSource(RequestedRedirectUri.class)
-        void match(RequestedRedirectUri uri) {
-            boolean matches = resolver.redirectMatches(uri.uri, REGISTERED_REDIRECT_URI);
-            if (uri.http && !uri.isSubdomain && uri.belongsToDomainDotCom && !uri.hasMultiplePathSegments) {
-                assertTrue("expected " + uri.uri + " to match " + REGISTERED_REDIRECT_URI + " but did not match", matches);
+        void matchAgainstUriWithoutWildcards(RequestedRedirectUri requestedRedirectUri) {
+            match(requestedRedirectUri, URI_WITHOUT_WILDCARDS);
+        }
+
+        @DisplayName("matching http://domain.com/*")
+        @ParameterizedTest(name = "{index} matching {0} against http://domain.com/*")
+        @EnumSource(RequestedRedirectUri.class)
+        void matchAgainstUriWithSinglePathSegment(RequestedRedirectUri requestedRedirectUri) {
+            match(requestedRedirectUri, URI_WITH_SINGLE_PATH_SEGMENT);
+        }
+
+        @DisplayName("matching http://domain.com/**")
+        @ParameterizedTest(name = "{index} matching {0} against http://domain.com/**")
+        @EnumSource(RequestedRedirectUri.class)
+        void matchAgainstUriWithMulipltePathSegments(RequestedRedirectUri requestedRedirectUri) {
+            match(requestedRedirectUri, URI_WITH_MULTIPLE_PATH_SEGMENTS);
+        }
+
+        private void match(RequestedRedirectUri requestedRedirectUri, RegisteredRedirectUri registeredRedirectUri) {
+            boolean matches = resolver.redirectMatches(requestedRedirectUri.uri, registeredRedirectUri.uri);
+            if (registeredRedirectUri.expectedToMatch(requestedRedirectUri)) {
+                assertTrue("expected " + requestedRedirectUri.uri + " to match " + registeredRedirectUri + " but did not match", matches);
             } else {
-                assertFalse("expected " + uri.uri + " not to match " + REGISTERED_REDIRECT_URI + " but did match", matches);
+                assertFalse("expected " + requestedRedirectUri.uri + " not to match " + registeredRedirectUri + " but did match", matches);
             }
         }
+
     }
 
-    @Nested
-    @DisplayName("matching http://domain.com/**")
-    class WhenMatchingWithAllSubPathsPattern {
-
-        private static final String REGISTERED_REDIRECT_URI = "http://domain.com/**";
-
-        @ParameterizedTest(name = "{index} matching {0} against " + REGISTERED_REDIRECT_URI)
-        @EnumSource(RequestedRedirectUri.class)
-        void match(RequestedRedirectUri uri) {
-            boolean matches = resolver.redirectMatches(uri.uri, REGISTERED_REDIRECT_URI);
-            if (uri.http && !uri.isSubdomain && uri.belongsToDomainDotCom) {
-                assertTrue("expected " + uri.uri + " to match " + REGISTERED_REDIRECT_URI + " but did not match", matches);
-            } else {
-                assertFalse("expected " + uri.uri + " not to match " + REGISTERED_REDIRECT_URI + " but did match", matches);
-            }
-        }
-    }
 
     @Nested
     @DisplayName("redirectMatches")
