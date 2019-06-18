@@ -46,10 +46,12 @@ class AntPathRedirectResolverTests {
 
     private final AntPathRedirectResolver resolver = new AntPathRedirectResolver();
 
+    //todo: username@password?
+
     @Nested
     @DisplayName("matching http://domain.com")
     class WhenMatchingAgainstJustTLD {
-        private final String clientRedirectUri = "http://domain.com";
+        private static final String clientRedirectUri = "http://domain.com";
 
         @Test
         void allSubdomainsShouldMatch() {
