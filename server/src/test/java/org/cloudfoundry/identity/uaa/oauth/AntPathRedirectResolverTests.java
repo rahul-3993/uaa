@@ -17,6 +17,7 @@ package org.cloudfoundry.identity.uaa.oauth;
 
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
+import lombok.Value;
 import lombok.experimental.FieldDefaults;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -40,6 +41,9 @@ import java.util.stream.Stream;
 import static com.google.common.collect.Lists.newArrayList;
 import static org.cloudfoundry.identity.uaa.oauth.AntPathRedirectResolverTests.RegisteredRedirectUri.*;
 import static org.cloudfoundry.identity.uaa.oauth.AntPathRedirectResolverTests.RequestedRedirectUri.Property.*;
+import static org.cloudfoundry.identity.uaa.oauth.AntPathRedirectResolverTests.RequestedRedirectUri.Protocol.NOT_HTTP;
+import static org.cloudfoundry.identity.uaa.oauth.AntPathRedirectResolverTests.RequestedRedirectUri.SecondLevelDomain.NOT_PART_OF_DOMAIN_DOT_COM;
+import static org.cloudfoundry.identity.uaa.oauth.AntPathRedirectResolverTests.RequestedRedirectUri.SecondLevelDomain.PART_OF_DOMAIN_DOT_COM;
 import static org.cloudfoundry.identity.uaa.oauth.token.TokenConstants.GRANT_TYPE_AUTHORIZATION_CODE;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.equalTo;
@@ -59,36 +63,62 @@ class AntPathRedirectResolverTests {
     @FieldDefaults(makeFinal = true, level = AccessLevel.PRIVATE)
     enum RequestedRedirectUri {
 
+        //todo: all capitals or all lowercase
         //todo: indentation ?
-        EXAMPLE01("http://subdomain.domain.com", HTTP, IS_SUBDOMAIN, BELONGS_TO_DOMAIN_DOT_COM),
-        EXAMPLE02("http://another-subdomain.domain.com", HTTP, IS_SUBDOMAIN, BELONGS_TO_DOMAIN_DOT_COM),
-        EXAMPLE03("http://one.two.domain.com", HTTP, IS_SUBDOMAIN, BELONGS_TO_DOMAIN_DOT_COM),
-        EXAMPLE04("http://domain.com/one", HTTP, BELONGS_TO_DOMAIN_DOT_COM),
-        EXAMPLE05("http://domain.com/another", HTTP, BELONGS_TO_DOMAIN_DOT_COM),
-        EXAMPLE06("http://domain.com/one/two", HTTP, BELONGS_TO_DOMAIN_DOT_COM, HAS_MULTIPLE_PATH_SEGMENTS),
-        EXAMPLE07("http://subdomain.domain.com/one", HTTP, IS_SUBDOMAIN, BELONGS_TO_DOMAIN_DOT_COM),
-        EXAMPLE08("http://subdomain.domain.com/another", HTTP, IS_SUBDOMAIN, BELONGS_TO_DOMAIN_DOT_COM),
-        EXAMPLE09("http://subdomain.domain.com/one/two", HTTP, IS_SUBDOMAIN, BELONGS_TO_DOMAIN_DOT_COM, HAS_MULTIPLE_PATH_SEGMENTS),
-        EXAMPLE10("http://another-subdomain.domain.com/one", HTTP, IS_SUBDOMAIN, BELONGS_TO_DOMAIN_DOT_COM),
-        EXAMPLE11("http://another-subdomain.domain.com/another", HTTP, IS_SUBDOMAIN, BELONGS_TO_DOMAIN_DOT_COM),
-        EXAMPLE12("http://another-subdomain.domain.com/one/two", HTTP, IS_SUBDOMAIN, BELONGS_TO_DOMAIN_DOT_COM, HAS_MULTIPLE_PATH_SEGMENTS),
-        EXAMPLE13("http://one.two.domain.com/one", HTTP, IS_SUBDOMAIN, BELONGS_TO_DOMAIN_DOT_COM),
-        EXAMPLE14("http://one.two.domain.com/another", HTTP, IS_SUBDOMAIN, BELONGS_TO_DOMAIN_DOT_COM),
-        EXAMPLE15("http://one.two.domain.com/one/two", HTTP, IS_SUBDOMAIN, BELONGS_TO_DOMAIN_DOT_COM, HAS_MULTIPLE_PATH_SEGMENTS),
-        EXAMPLE16("http://other-domain.com", HTTP),
-        EXAMPLE17("http://domain.io", HTTP),
-        EXAMPLE18("https://domain.com", BELONGS_TO_DOMAIN_DOT_COM),
-        EXAMPLE19("ws://domain.com", BELONGS_TO_DOMAIN_DOT_COM),
+//        EXAMPLE01("http://subdomain.domain.com", HTTP, IS_SUBDOMAIN, BELONGS_TO_DOMAIN_DOT_COM),
+//        EXAMPLE02("http://another-subdomain.domain.com", HTTP, IS_SUBDOMAIN, BELONGS_TO_DOMAIN_DOT_COM),
+//        EXAMPLE03("http://one.two.domain.com", HTTP, IS_SUBDOMAIN, BELONGS_TO_DOMAIN_DOT_COM),
+//        EXAMPLE04("http://domain.com/one", HTTP, BELONGS_TO_DOMAIN_DOT_COM),
+//        EXAMPLE05("http://domain.com/another", HTTP, BELONGS_TO_DOMAIN_DOT_COM),
+//        EXAMPLE06("http://domain.com/one/two", HTTP, BELONGS_TO_DOMAIN_DOT_COM, HAS_MULTIPLE_PATH_SEGMENTS),
+//        EXAMPLE07("http://subdomain.domain.com/one", HTTP, IS_SUBDOMAIN, BELONGS_TO_DOMAIN_DOT_COM),
+//        EXAMPLE08("http://subdomain.domain.com/another", HTTP, IS_SUBDOMAIN, BELONGS_TO_DOMAIN_DOT_COM),
+//        EXAMPLE09("http://subdomain.domain.com/one/two", HTTP, IS_SUBDOMAIN, BELONGS_TO_DOMAIN_DOT_COM, HAS_MULTIPLE_PATH_SEGMENTS),
+//        EXAMPLE10("http://another-subdomain.domain.com/one", HTTP, IS_SUBDOMAIN, BELONGS_TO_DOMAIN_DOT_COM),
+//        EXAMPLE11("http://another-subdomain.domain.com/another", HTTP, IS_SUBDOMAIN, BELONGS_TO_DOMAIN_DOT_COM),
+//        EXAMPLE12("http://another-subdomain.domain.com/one/two", HTTP, IS_SUBDOMAIN, BELONGS_TO_DOMAIN_DOT_COM, HAS_MULTIPLE_PATH_SEGMENTS),
+//        EXAMPLE13("http://one.two.domain.com/one", HTTP, IS_SUBDOMAIN, BELONGS_TO_DOMAIN_DOT_COM),
+//        EXAMPLE14("http://one.two.domain.com/another", HTTP, IS_SUBDOMAIN, BELONGS_TO_DOMAIN_DOT_COM),
+//        EXAMPLE15("http://one.two.domain.com/one/two", HTTP, IS_SUBDOMAIN, BELONGS_TO_DOMAIN_DOT_COM, HAS_MULTIPLE_PATH_SEGMENTS),
+//        EXAMPLE16("http://other-domain.com", HTTP),
+//        EXAMPLE17("http://domain.io", HTTP),
+//        EXAMPLE18("https://domain.com", BELONGS_TO_DOMAIN_DOT_COM),
+        EXAMPLE19("ws://domain.com", NOT_HTTP, Domain.Parts(2), NOT_PART_OF_DOMAIN_DOT_COM, Path.Segments(0)),
         ;
 
-        RequestedRedirectUri(String uri, Property... properties) {
-            EnumSet<Property> props = EnumSet.noneOf(Property.class);
-            props.addAll(Arrays.asList(properties));
+        RequestedRedirectUri(String uri, Protocol protocol, Domain domain, SecondLevelDomain secondLevelDomain, Path path) {
             this.uri = uri;
-            http = props.contains(HTTP);
+            http = protocol == Protocol.HTTP; //TODO
+            domainParts = domain.parts;
             isSubdomain = props.contains(IS_SUBDOMAIN);
-            belongsToDomainDotCom = props.contains(BELONGS_TO_DOMAIN_DOT_COM);
+            belongsToDomainDotCom = secondLevelDomain == PART_OF_DOMAIN_DOT_COM;
             hasMultiplePathSegments = props.contains(HAS_MULTIPLE_PATH_SEGMENTS);
+        }
+
+        enum Protocol {
+            HTTP,
+            NOT_HTTP,
+        }
+
+        @Value
+        private static class Domain {
+            int parts;
+            static Domain Parts(int count) {
+                return new Domain(count);
+            }
+        }
+
+        enum SecondLevelDomain {
+            PART_OF_DOMAIN_DOT_COM,
+            NOT_PART_OF_DOMAIN_DOT_COM,
+        }
+
+        @Value
+        private static class Path {
+            int segments;
+            static Path Segments(int count) {
+                return new Path(count);
+            }
         }
 
         enum Property {
@@ -99,6 +129,7 @@ class AntPathRedirectResolverTests {
         }
 
         boolean http;
+        int domainParts;
         boolean belongsToDomainDotCom;
         boolean isSubdomain;
         boolean hasMultiplePathSegments;
@@ -114,9 +145,9 @@ class AntPathRedirectResolverTests {
     @FieldDefaults(makeFinal = true, level = AccessLevel.PRIVATE)
     @AllArgsConstructor
     enum RegisteredRedirectUri {
-        URI_WITHOUT_WILDCARDS("http://domain.com", uri -> uri.http && !uri.isSubdomain && uri.belongsToDomainDotCom),
-        URI_WITH_SINGLE_PATH_SEGMENT("http://domain.com/*", uri -> uri.http && !uri.isSubdomain && uri.belongsToDomainDotCom && !uri.hasMultiplePathSegments),
-        URI_WITH_MULTIPLE_PATH_SEGMENTS("http://domain.com/**", uri -> uri.http && !uri.isSubdomain && uri.belongsToDomainDotCom),
+        URI_WITHOUT_WILDCARDS("http://domain.com", u -> u.http && !u.isSubdomain && u.belongsToDomainDotCom),
+        URI_WITH_SINGLE_PATH_SEGMENT("http://domain.com/*", u -> u.http && !u.isSubdomain && u.belongsToDomainDotCom && !u.hasMultiplePathSegments),
+        URI_WITH_MULTIPLE_PATH_SEGMENTS("http://domain.com/**", u -> u.http && !u.isSubdomain && u.belongsToDomainDotCom),
         ;
 
         String uri;
@@ -159,11 +190,14 @@ class AntPathRedirectResolverTests {
         }
 
         private void match(RequestedRedirectUri requestedRedirectUri, RegisteredRedirectUri registeredRedirectUri) {
-            boolean matches = resolver.redirectMatches(requestedRedirectUri.uri, registeredRedirectUri.uri);
-            if (registeredRedirectUri.expectedToMatch(requestedRedirectUri)) {
-                assertTrue("expected " + requestedRedirectUri.uri + " to match " + registeredRedirectUri + " but did not match", matches);
+            boolean expectedMatch = registeredRedirectUri.expectedToMatch(requestedRedirectUri);
+
+            boolean actualMatch = resolver.redirectMatches(requestedRedirectUri.uri, registeredRedirectUri.uri);
+
+            if (expectedMatch) {
+                assertTrue("expected " + requestedRedirectUri.uri + " to match " + registeredRedirectUri + " but did not match", actualMatch);
             } else {
-                assertFalse("expected " + requestedRedirectUri.uri + " not to match " + registeredRedirectUri + " but did match", matches);
+                assertFalse("expected " + requestedRedirectUri.uri + " not to match " + registeredRedirectUri + " but did match", actualMatch);
             }
         }
 
