@@ -39,10 +39,10 @@ import java.util.stream.Stream;
 
 import static com.google.common.collect.Lists.newArrayList;
 import static org.cloudfoundry.identity.uaa.oauth.AntPathRedirectResolverTests.RegisteredRedirectUri.*;
-import static org.cloudfoundry.identity.uaa.oauth.AntPathRedirectResolverTests.RequestedRedirectUri.Protocol.HTTP;
-import static org.cloudfoundry.identity.uaa.oauth.AntPathRedirectResolverTests.RequestedRedirectUri.Protocol.NOT_HTTP;
-import static org.cloudfoundry.identity.uaa.oauth.AntPathRedirectResolverTests.RequestedRedirectUri.SecondLevelDomain.NOT_PART_OF_DOMAIN_DOT_COM;
-import static org.cloudfoundry.identity.uaa.oauth.AntPathRedirectResolverTests.RequestedRedirectUri.SecondLevelDomain.PART_OF_DOMAIN_DOT_COM;
+import static org.cloudfoundry.identity.uaa.oauth.AntPathRedirectResolverTests.RequestedRedirectUri.Protocol.____http;
+import static org.cloudfoundry.identity.uaa.oauth.AntPathRedirectResolverTests.RequestedRedirectUri.Protocol.not_http;
+import static org.cloudfoundry.identity.uaa.oauth.AntPathRedirectResolverTests.RequestedRedirectUri.SecondLevelDomain.not_part_of_domain_dot_com;
+import static org.cloudfoundry.identity.uaa.oauth.AntPathRedirectResolverTests.RequestedRedirectUri.SecondLevelDomain.____part_of_domain_dot_com;
 import static org.cloudfoundry.identity.uaa.oauth.token.TokenConstants.GRANT_TYPE_AUTHORIZATION_CODE;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.equalTo;
@@ -60,61 +60,60 @@ class AntPathRedirectResolverTests {
     @FieldDefaults(makeFinal = true, level = AccessLevel.PRIVATE)
     enum RequestedRedirectUri {
 
-        //todo: all capitals or all lowercase
-        eg01("http://subdomain.domain.com",                 HTTP,       Domain.Parts(3), PART_OF_DOMAIN_DOT_COM,        Path.Segments(0)),
-        eg02("http://another-subdomain.domain.com",         HTTP,       Domain.Parts(3), PART_OF_DOMAIN_DOT_COM,        Path.Segments(0)),
-        eg03("http://one.two.domain.com",                   HTTP,       Domain.Parts(4), PART_OF_DOMAIN_DOT_COM,        Path.Segments(0)),
-        eg04("http://domain.com/one",                       HTTP,       Domain.Parts(2), PART_OF_DOMAIN_DOT_COM,        Path.Segments(1)),
-        eg05("http://domain.com/another",                   HTTP,       Domain.Parts(2), PART_OF_DOMAIN_DOT_COM,        Path.Segments(1)),
-        eg06("http://domain.com/one/two",                   HTTP,       Domain.Parts(2), PART_OF_DOMAIN_DOT_COM,        Path.Segments(2)),
-        eg07("http://subdomain.domain.com/one",             HTTP,       Domain.Parts(3), PART_OF_DOMAIN_DOT_COM,        Path.Segments(1)),
-        eg08("http://subdomain.domain.com/another",         HTTP,       Domain.Parts(3), PART_OF_DOMAIN_DOT_COM,        Path.Segments(1)),
-        eg09("http://subdomain.domain.com/one/two",         HTTP,       Domain.Parts(3), PART_OF_DOMAIN_DOT_COM,        Path.Segments(2)),
-        eg10("http://another-subdomain.domain.com/one",     HTTP,       Domain.Parts(3), PART_OF_DOMAIN_DOT_COM,        Path.Segments(1)),
-        eg11("http://another-subdomain.domain.com/another", HTTP,       Domain.Parts(3), PART_OF_DOMAIN_DOT_COM,        Path.Segments(1)),
-        eg12("http://another-subdomain.domain.com/one/two", HTTP,       Domain.Parts(3), PART_OF_DOMAIN_DOT_COM,        Path.Segments(2)),
-        eg13("http://one.two.domain.com/one",               HTTP,       Domain.Parts(4), PART_OF_DOMAIN_DOT_COM,        Path.Segments(1)),
-        eg14("http://one.two.domain.com/another",           HTTP,       Domain.Parts(4), PART_OF_DOMAIN_DOT_COM,        Path.Segments(1)),
-        eg15("http://one.two.domain.com/one/two",           HTTP,       Domain.Parts(4), PART_OF_DOMAIN_DOT_COM,        Path.Segments(2)),
-        eg16("http://other-domain.com",                     HTTP,       Domain.Parts(2), NOT_PART_OF_DOMAIN_DOT_COM,    Path.Segments(0)),
-        eg17("http://domain.io",                            HTTP,       Domain.Parts(2), NOT_PART_OF_DOMAIN_DOT_COM,    Path.Segments(0)),
-        eg18("https://domain.com",                          NOT_HTTP,   Domain.Parts(2), PART_OF_DOMAIN_DOT_COM,        Path.Segments(0)),
-        eg19("ws://domain.com",                             NOT_HTTP,   Domain.Parts(2), PART_OF_DOMAIN_DOT_COM,        Path.Segments(0)),
+        eg01("http://subdomain.domain.com",                 ____http, domain.parts(3), ____part_of_domain_dot_com, path.segments(0)),
+        eg02("http://another-subdomain.domain.com",         ____http, domain.parts(3), ____part_of_domain_dot_com, path.segments(0)),
+        eg03("http://one.two.domain.com",                   ____http, domain.parts(4), ____part_of_domain_dot_com, path.segments(0)),
+        eg04("http://domain.com/one",                       ____http, domain.parts(2), ____part_of_domain_dot_com, path.segments(1)),
+        eg05("http://domain.com/another",                   ____http, domain.parts(2), ____part_of_domain_dot_com, path.segments(1)),
+        eg06("http://domain.com/one/two",                   ____http, domain.parts(2), ____part_of_domain_dot_com, path.segments(2)),
+        eg07("http://subdomain.domain.com/one",             ____http, domain.parts(3), ____part_of_domain_dot_com, path.segments(1)),
+        eg08("http://subdomain.domain.com/another",         ____http, domain.parts(3), ____part_of_domain_dot_com, path.segments(1)),
+        eg09("http://subdomain.domain.com/one/two",         ____http, domain.parts(3), ____part_of_domain_dot_com, path.segments(2)),
+        eg10("http://another-subdomain.domain.com/one",     ____http, domain.parts(3), ____part_of_domain_dot_com, path.segments(1)),
+        eg11("http://another-subdomain.domain.com/another", ____http, domain.parts(3), ____part_of_domain_dot_com, path.segments(1)),
+        eg12("http://another-subdomain.domain.com/one/two", ____http, domain.parts(3), ____part_of_domain_dot_com, path.segments(2)),
+        eg13("http://one.two.domain.com/one",               ____http, domain.parts(4), ____part_of_domain_dot_com, path.segments(1)),
+        eg14("http://one.two.domain.com/another",           ____http, domain.parts(4), ____part_of_domain_dot_com, path.segments(1)),
+        eg15("http://one.two.domain.com/one/two",           ____http, domain.parts(4), ____part_of_domain_dot_com, path.segments(2)),
+        eg16("http://other-domain.com",                     ____http, domain.parts(2), not_part_of_domain_dot_com, path.segments(0)),
+        eg17("http://domain.io",                            ____http, domain.parts(2), not_part_of_domain_dot_com, path.segments(0)),
+        eg18("https://domain.com",                          not_http, domain.parts(2), ____part_of_domain_dot_com, path.segments(0)),
+        eg19("ws://domain.com",                             not_http, domain.parts(2), ____part_of_domain_dot_com, path.segments(0)),
         ;
 
-        RequestedRedirectUri(String uri, Protocol protocol, Domain domain, SecondLevelDomain secondLevelDomain, Path path) {
+        RequestedRedirectUri(String uri, Protocol protocol, domain d, SecondLevelDomain secondLevelDomain, path p) {
             this.uri = uri;
-            http = protocol == HTTP;
-            domainParts = domain.parts;
-            belongsToDomainDotCom = secondLevelDomain == PART_OF_DOMAIN_DOT_COM;
-            pathSegements = path.segments;
+            http = protocol == ____http;
+            domainParts = d.parts;
+            belongsToDomainDotCom = secondLevelDomain == ____part_of_domain_dot_com;
+            pathSegements = p.segments;
         }
 
         enum Protocol {
-            HTTP,
-            NOT_HTTP,
+            ____http,
+            not_http,
         }
 
         @Value
-        private static class Domain {
+        private static class domain {
             int parts;
 
-            static Domain Parts(int count) {
-                return new Domain(count);
+            static domain parts(int count) {
+                return new domain(count);
             }
         }
 
         enum SecondLevelDomain {
-            PART_OF_DOMAIN_DOT_COM,
-            NOT_PART_OF_DOMAIN_DOT_COM,
+            ____part_of_domain_dot_com,
+            not_part_of_domain_dot_com,
         }
 
         @Value
-        private static class Path {
+        private static class path {
             int segments;
 
-            static Path Segments(int count) {
-                return new Path(count);
+            static path segments(int count) {
+                return new path(count);
             }
         }
 
