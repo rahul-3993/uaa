@@ -33,23 +33,20 @@ import org.springframework.security.oauth2.provider.client.BaseClientDetails;
 
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.EnumSet;
 import java.util.HashSet;
 import java.util.function.Predicate;
 import java.util.stream.Stream;
 
 import static com.google.common.collect.Lists.newArrayList;
 import static org.cloudfoundry.identity.uaa.oauth.AntPathRedirectResolverTests.RegisteredRedirectUri.*;
-import static org.cloudfoundry.identity.uaa.oauth.AntPathRedirectResolverTests.RequestedRedirectUri.Property.*;
+import static org.cloudfoundry.identity.uaa.oauth.AntPathRedirectResolverTests.RequestedRedirectUri.Protocol.HTTP;
 import static org.cloudfoundry.identity.uaa.oauth.AntPathRedirectResolverTests.RequestedRedirectUri.Protocol.NOT_HTTP;
 import static org.cloudfoundry.identity.uaa.oauth.AntPathRedirectResolverTests.RequestedRedirectUri.SecondLevelDomain.NOT_PART_OF_DOMAIN_DOT_COM;
 import static org.cloudfoundry.identity.uaa.oauth.AntPathRedirectResolverTests.RequestedRedirectUri.SecondLevelDomain.PART_OF_DOMAIN_DOT_COM;
 import static org.cloudfoundry.identity.uaa.oauth.token.TokenConstants.GRANT_TYPE_AUTHORIZATION_CODE;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.equalTo;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertThat;
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.*;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -64,35 +61,33 @@ class AntPathRedirectResolverTests {
     enum RequestedRedirectUri {
 
         //todo: all capitals or all lowercase
-        //todo: indentation ?
-//        EXAMPLE01("http://subdomain.domain.com", HTTP, IS_SUBDOMAIN, BELONGS_TO_DOMAIN_DOT_COM),
-//        EXAMPLE02("http://another-subdomain.domain.com", HTTP, IS_SUBDOMAIN, BELONGS_TO_DOMAIN_DOT_COM),
-//        EXAMPLE03("http://one.two.domain.com", HTTP, IS_SUBDOMAIN, BELONGS_TO_DOMAIN_DOT_COM),
-//        EXAMPLE04("http://domain.com/one", HTTP, BELONGS_TO_DOMAIN_DOT_COM),
-//        EXAMPLE05("http://domain.com/another", HTTP, BELONGS_TO_DOMAIN_DOT_COM),
-//        EXAMPLE06("http://domain.com/one/two", HTTP, BELONGS_TO_DOMAIN_DOT_COM, HAS_MULTIPLE_PATH_SEGMENTS),
-//        EXAMPLE07("http://subdomain.domain.com/one", HTTP, IS_SUBDOMAIN, BELONGS_TO_DOMAIN_DOT_COM),
-//        EXAMPLE08("http://subdomain.domain.com/another", HTTP, IS_SUBDOMAIN, BELONGS_TO_DOMAIN_DOT_COM),
-//        EXAMPLE09("http://subdomain.domain.com/one/two", HTTP, IS_SUBDOMAIN, BELONGS_TO_DOMAIN_DOT_COM, HAS_MULTIPLE_PATH_SEGMENTS),
-//        EXAMPLE10("http://another-subdomain.domain.com/one", HTTP, IS_SUBDOMAIN, BELONGS_TO_DOMAIN_DOT_COM),
-//        EXAMPLE11("http://another-subdomain.domain.com/another", HTTP, IS_SUBDOMAIN, BELONGS_TO_DOMAIN_DOT_COM),
-//        EXAMPLE12("http://another-subdomain.domain.com/one/two", HTTP, IS_SUBDOMAIN, BELONGS_TO_DOMAIN_DOT_COM, HAS_MULTIPLE_PATH_SEGMENTS),
-//        EXAMPLE13("http://one.two.domain.com/one", HTTP, IS_SUBDOMAIN, BELONGS_TO_DOMAIN_DOT_COM),
-//        EXAMPLE14("http://one.two.domain.com/another", HTTP, IS_SUBDOMAIN, BELONGS_TO_DOMAIN_DOT_COM),
-//        EXAMPLE15("http://one.two.domain.com/one/two", HTTP, IS_SUBDOMAIN, BELONGS_TO_DOMAIN_DOT_COM, HAS_MULTIPLE_PATH_SEGMENTS),
-//        EXAMPLE16("http://other-domain.com", HTTP),
-//        EXAMPLE17("http://domain.io", HTTP),
-//        EXAMPLE18("https://domain.com", BELONGS_TO_DOMAIN_DOT_COM),
-        EXAMPLE19("ws://domain.com", NOT_HTTP, Domain.Parts(2), NOT_PART_OF_DOMAIN_DOT_COM, Path.Segments(0)),
+        eg01("http://subdomain.domain.com",                 HTTP,       Domain.Parts(3), PART_OF_DOMAIN_DOT_COM,        Path.Segments(0)),
+        eg02("http://another-subdomain.domain.com",         HTTP,       Domain.Parts(3), PART_OF_DOMAIN_DOT_COM,        Path.Segments(0)),
+        eg03("http://one.two.domain.com",                   HTTP,       Domain.Parts(4), PART_OF_DOMAIN_DOT_COM,        Path.Segments(0)),
+        eg04("http://domain.com/one",                       HTTP,       Domain.Parts(2), PART_OF_DOMAIN_DOT_COM,        Path.Segments(1)),
+        eg05("http://domain.com/another",                   HTTP,       Domain.Parts(2), PART_OF_DOMAIN_DOT_COM,        Path.Segments(1)),
+        eg06("http://domain.com/one/two",                   HTTP,       Domain.Parts(2), PART_OF_DOMAIN_DOT_COM,        Path.Segments(2)),
+        eg07("http://subdomain.domain.com/one",             HTTP,       Domain.Parts(3), PART_OF_DOMAIN_DOT_COM,        Path.Segments(1)),
+        eg08("http://subdomain.domain.com/another",         HTTP,       Domain.Parts(3), PART_OF_DOMAIN_DOT_COM,        Path.Segments(1)),
+        eg09("http://subdomain.domain.com/one/two",         HTTP,       Domain.Parts(3), PART_OF_DOMAIN_DOT_COM,        Path.Segments(2)),
+        eg10("http://another-subdomain.domain.com/one",     HTTP,       Domain.Parts(3), PART_OF_DOMAIN_DOT_COM,        Path.Segments(1)),
+        eg11("http://another-subdomain.domain.com/another", HTTP,       Domain.Parts(3), PART_OF_DOMAIN_DOT_COM,        Path.Segments(1)),
+        eg12("http://another-subdomain.domain.com/one/two", HTTP,       Domain.Parts(3), PART_OF_DOMAIN_DOT_COM,        Path.Segments(2)),
+        eg13("http://one.two.domain.com/one",               HTTP,       Domain.Parts(4), PART_OF_DOMAIN_DOT_COM,        Path.Segments(1)),
+        eg14("http://one.two.domain.com/another",           HTTP,       Domain.Parts(4), PART_OF_DOMAIN_DOT_COM,        Path.Segments(1)),
+        eg15("http://one.two.domain.com/one/two",           HTTP,       Domain.Parts(4), PART_OF_DOMAIN_DOT_COM,        Path.Segments(2)),
+        eg16("http://other-domain.com",                     HTTP,       Domain.Parts(2), NOT_PART_OF_DOMAIN_DOT_COM,    Path.Segments(0)),
+        eg17("http://domain.io",                            HTTP,       Domain.Parts(2), NOT_PART_OF_DOMAIN_DOT_COM,    Path.Segments(0)),
+        eg18("https://domain.com",                          NOT_HTTP,   Domain.Parts(2), PART_OF_DOMAIN_DOT_COM,        Path.Segments(0)),
+        eg19("ws://domain.com",                             NOT_HTTP,   Domain.Parts(2), PART_OF_DOMAIN_DOT_COM,        Path.Segments(0)),
         ;
 
         RequestedRedirectUri(String uri, Protocol protocol, Domain domain, SecondLevelDomain secondLevelDomain, Path path) {
             this.uri = uri;
-            http = protocol == Protocol.HTTP; //TODO
+            http = protocol == HTTP;
             domainParts = domain.parts;
-            isSubdomain = props.contains(IS_SUBDOMAIN);
             belongsToDomainDotCom = secondLevelDomain == PART_OF_DOMAIN_DOT_COM;
-            hasMultiplePathSegments = props.contains(HAS_MULTIPLE_PATH_SEGMENTS);
+            pathSegements = path.segments;
         }
 
         enum Protocol {
@@ -103,6 +98,7 @@ class AntPathRedirectResolverTests {
         @Value
         private static class Domain {
             int parts;
+
             static Domain Parts(int count) {
                 return new Domain(count);
             }
@@ -116,24 +112,18 @@ class AntPathRedirectResolverTests {
         @Value
         private static class Path {
             int segments;
+
             static Path Segments(int count) {
                 return new Path(count);
             }
         }
 
-        enum Property {
-            HTTP,
-            IS_SUBDOMAIN,
-            BELONGS_TO_DOMAIN_DOT_COM,
-            HAS_MULTIPLE_PATH_SEGMENTS,
-        }
-
+        String uri;
         boolean http;
         int domainParts;
         boolean belongsToDomainDotCom;
-        boolean isSubdomain;
-        boolean hasMultiplePathSegments;
-        String uri;
+        int pathSegements;
+
 
         @Override
         public String toString() {
@@ -145,9 +135,9 @@ class AntPathRedirectResolverTests {
     @FieldDefaults(makeFinal = true, level = AccessLevel.PRIVATE)
     @AllArgsConstructor
     enum RegisteredRedirectUri {
-        URI_WITHOUT_WILDCARDS("http://domain.com", u -> u.http && !u.isSubdomain && u.belongsToDomainDotCom),
-        URI_WITH_SINGLE_PATH_SEGMENT("http://domain.com/*", u -> u.http && !u.isSubdomain && u.belongsToDomainDotCom && !u.hasMultiplePathSegments),
-        URI_WITH_MULTIPLE_PATH_SEGMENTS("http://domain.com/**", u -> u.http && !u.isSubdomain && u.belongsToDomainDotCom),
+        URI_WITHOUT_WILDCARDS("http://domain.com", u -> u.http && u.domainParts == 2 && u.belongsToDomainDotCom),
+        URI_WITH_SINGLE_PATH_SEGMENT("http://domain.com/*", u -> u.http && u.domainParts == 2 && u.belongsToDomainDotCom && u.pathSegements <= 1),
+        URI_WITH_MULTIPLE_PATH_SEGMENTS("http://domain.com/**", u -> u.http && u.domainParts == 2 && u.belongsToDomainDotCom),
         ;
 
         String uri;
