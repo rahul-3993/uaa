@@ -134,9 +134,19 @@ class AntPathRedirectResolverTests {
     @FieldDefaults(makeFinal = true, level = AccessLevel.PRIVATE)
     @AllArgsConstructor
     enum RegisteredRedirectUri {
-        URI_WITHOUT_WILDCARDS("http://domain.com", u -> u.http && u.domainParts == 2 && u.belongsToDomainDotCom),
-        URI_WITH_SINGLE_PATH_SEGMENT("http://domain.com/*", u -> u.http && u.domainParts == 2 && u.belongsToDomainDotCom && u.pathSegements <= 1),
-        URI_WITH_MULTIPLE_PATH_SEGMENTS("http://domain.com/**", u -> u.http && u.domainParts == 2 && u.belongsToDomainDotCom),
+
+        URI_WITHOUT_WILDCARDS(
+                "http://domain.com",
+                u -> u.http && u.domainParts == 2 && u.belongsToDomainDotCom
+        ),
+        URI_ALLOWING_SINGLE_PATH_SEGMENT(
+                "http://domain.com/*",
+                u -> u.http && u.domainParts == 2 && u.belongsToDomainDotCom && u.pathSegements <= 1
+        ),
+        URI_ALLOWING_MULTIPLE_PATH_SEGMENTS(
+                "http://domain.com/**",
+                u -> u.http && u.domainParts == 2 && u.belongsToDomainDotCom
+        ),
         ;
 
         String uri;
@@ -168,14 +178,14 @@ class AntPathRedirectResolverTests {
         @ParameterizedTest(name = "{index} matching {0} against http://domain.com/*")
         @EnumSource(RequestedRedirectUri.class)
         void matchAgainstUriWithSinglePathSegment(RequestedRedirectUri requestedRedirectUri) {
-            match(requestedRedirectUri, URI_WITH_SINGLE_PATH_SEGMENT);
+            match(requestedRedirectUri, URI_ALLOWING_SINGLE_PATH_SEGMENT);
         }
 
         @DisplayName("matching http://domain.com/**")
         @ParameterizedTest(name = "{index} matching {0} against http://domain.com/**")
         @EnumSource(RequestedRedirectUri.class)
         void matchAgainstUriWithMulipltePathSegments(RequestedRedirectUri requestedRedirectUri) {
-            match(requestedRedirectUri, URI_WITH_MULTIPLE_PATH_SEGMENTS);
+            match(requestedRedirectUri, URI_ALLOWING_MULTIPLE_PATH_SEGMENTS);
         }
 
         private void match(RequestedRedirectUri requestedRedirectUri, RegisteredRedirectUri registeredRedirectUri) {
