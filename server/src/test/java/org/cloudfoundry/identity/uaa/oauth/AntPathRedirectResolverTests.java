@@ -147,6 +147,10 @@ class AntPathRedirectResolverTests {
                 "http://domain.com/**",
                 u -> u.http && u.domainParts == 2 && u.belongsToDomainDotCom
         ),
+        URI_ALLOWING_SUBDOMAINS(
+                "http://*.domain.com/**",
+                u -> u.http && u.domainParts >= 3 && u.belongsToDomainDotCom
+        ),
         ;
 
         String uri;
@@ -157,7 +161,7 @@ class AntPathRedirectResolverTests {
             return uri;
         }
 
-        public boolean expectedToMatch(RequestedRedirectUri requestedRedirectUri) {
+        public boolean expectedMatch(RequestedRedirectUri requestedRedirectUri) {
             return expectedMatcher.test(requestedRedirectUri);
         }
 
@@ -177,19 +181,26 @@ class AntPathRedirectResolverTests {
         @DisplayName("matching http://domain.com/*")
         @ParameterizedTest(name = "{index} matching {0} against http://domain.com/*")
         @EnumSource(RequestedRedirectUri.class)
-        void matchAgainstUriWithSinglePathSegment(RequestedRedirectUri requestedRedirectUri) {
+        void matchAgainstUriThatAllowsSinglePathSegment(RequestedRedirectUri requestedRedirectUri) {
             match(requestedRedirectUri, URI_ALLOWING_SINGLE_PATH_SEGMENT);
         }
 
         @DisplayName("matching http://domain.com/**")
         @ParameterizedTest(name = "{index} matching {0} against http://domain.com/**")
         @EnumSource(RequestedRedirectUri.class)
-        void matchAgainstUriWithMulipltePathSegments(RequestedRedirectUri requestedRedirectUri) {
+        void matchAgainstUriThatAllowsMulipltePathSegments(RequestedRedirectUri requestedRedirectUri) {
             match(requestedRedirectUri, URI_ALLOWING_MULTIPLE_PATH_SEGMENTS);
         }
 
+        @DisplayName("matching http://*.domain.com/**")
+        @ParameterizedTest(name = "{index} matching {0} against http://*.domain.com/**")
+        @EnumSource(RequestedRedirectUri.class)
+        void matchAgainstUriThatAllowsSubdomains(RequestedRedirectUri requestedRedirectUri) {
+            match(requestedRedirectUri, URI_ALLOWING_SUBDOMAINS);
+        }
+
         private void match(RequestedRedirectUri requestedRedirectUri, RegisteredRedirectUri registeredRedirectUri) {
-            boolean expectedMatch = registeredRedirectUri.expectedToMatch(requestedRedirectUri);
+            boolean expectedMatch = registeredRedirectUri.expectedMatch(requestedRedirectUri);
 
             boolean actualMatch = resolver.redirectMatches(requestedRedirectUri.uri, registeredRedirectUri.uri);
 
