@@ -211,6 +211,12 @@ class AntPathRedirectResolverTests {
             }
         }
 
+        @DisplayName("should not be able to set subdomain matching")
+        @Test
+        void setMatchSubdomains_throwsException() {
+            assertThrows(Exception.class, () -> resolver.setMatchSubdomains(true));
+        }
+
     }
 
 
