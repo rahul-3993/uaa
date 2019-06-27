@@ -98,7 +98,7 @@ public class AntPathRedirectResolver extends DefaultRedirectResolver {
             }
             requestedRedirect = decoded;
         }
-        logger.debug("aborted url decoding loop to mitigate DOS attack that sends a repeatedly url-encoded path");
+        logger.debug("Aborted url decoding loop to mitigate DOS attack that sends a repeatedly url-encoded path");
         return false;
     }
 
