@@ -57,7 +57,7 @@ public class AntPathRedirectResolver extends DefaultRedirectResolver {
             } else {
                 matcher = req -> super.redirectMatches(req, clientRedirect);
             }
-            return matches(matcher, requestedRedirect);
+            return matchesAfterNormalization(matcher, requestedRedirect);
         } catch (IllegalArgumentException e) {
             logger.error(
                     String.format("Could not validate whether requestedRedirect (%s) matches clientRedirectUri (%s)",
@@ -86,7 +86,7 @@ public class AntPathRedirectResolver extends DefaultRedirectResolver {
      *     </ol>
      * </p>
      */
-    private boolean matches(Predicate<String> matcher, String requestedRedirect) {
+    private boolean matchesAfterNormalization(Predicate<String> matcher, String requestedRedirect) {
         int maxDecodeAttempts = 5;
         for (int i = 1; i <= maxDecodeAttempts; i++) {
             if (!matcher.test(requestedRedirect)) {
