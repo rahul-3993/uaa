@@ -19,14 +19,20 @@ import org.cloudfoundry.identity.uaa.security.web.CookieBasedCsrfTokenRepository
 
 import org.junit.Test;
 import org.springframework.http.HttpMethod;
+import org.springframework.mock.web.MockFilterChain;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.security.oauth2.common.util.RandomValueStringGenerator;
+import org.springframework.security.web.csrf.CsrfFilter;
 import org.springframework.security.web.csrf.CsrfToken;
 
+import java.io.IOException;
 import java.util.Arrays;
+import javax.servlet.ServletException;
 import javax.servlet.http.Cookie;
 
+import static javax.ws.rs.HttpMethod.GET;
+import static javax.ws.rs.HttpMethod.POST;
 import static org.hamcrest.Matchers.nullValue;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -139,4 +145,38 @@ public class CookieBasedCsrfTokenRepositoryTests {
 
         return response.getCookie(token.getParameterName());
     }
+    
+    @Test
+    public void doFilterInternal_postCsrfTokenMatchesGetCsrfToken_filterChainContinues() throws ServletException, IOException {
+        CookieBasedCsrfTokenRepository repository = new CookieBasedCsrfTokenRepository();
+        CsrfFilter csrfFilter = new CsrfFilter(repository);
+        String parameterName = repository.getParameterName();
+        
+        
+        MockHttpServletRequest getRequest = new MockHttpServletRequest(GET, "/bar");
+        MockHttpServletResponse getResponse = new MockHttpServletResponse();
+        MockFilterChain getFilterChain = new MockFilterChain();
+
+        csrfFilter.doFilter(getRequest, getResponse, getFilterChain);
+
+        MockHttpServletRequest postRequest = new MockHttpServletRequest(POST, "/foo");
+        postRequest.setParameter(parameterName, "joeblogs");
+        MockHttpServletResponse postResponse = new MockHttpServletResponse();
+        MockFilterChain postFilterChain = new MockFilterChain();
+        
+        csrfFilter.doFilter(postRequest, postResponse, postFilterChain);
+        
+        assertNotNull("filter chain should have been called, but was not", postFilterChain.getRequest()); 
+    }
+    
+    @Test
+    public void doFilterInternal_postCsrfTokenDoesNotMatchGetCsrfToken_filterChainTerminates() {
+        //todo: re-use code or parameterize
+    }
+    
+    @Test
+    public void doFilterInternal_postCsrfTokenMatchesCookieButIsFabricated_filterChainTerminates() {
+        
+    }
+    
 }

@@ -44,6 +44,8 @@ import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.junit.jupiter.SpringExtension;
 import org.springframework.test.context.web.WebAppConfiguration;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.MvcResult;
+import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.context.WebApplicationContext;
@@ -152,19 +154,23 @@ public class ProfileControllerTests extends TestClassNullifier {
         UaaPrincipal uaaPrincipal = new UaaPrincipal("fake-user-id", "username", "email@example.com", OriginKeys.UAA, null, IdentityZoneHolder.get().getId());
         UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(uaaPrincipal, null);
 
-        mockMvc.perform(get("/profile").principal(authentication))
-            .andExpect(status().isOk())
-            .andExpect(model().attributeExists("clientnames"))
-            .andExpect(model().attribute("clientnames", hasKey("app")))
-            .andExpect(model().attribute("clientnames", hasValue(is(name))))
-            .andExpect(model().attribute("isUaaManagedUser", true))
-            .andExpect(model().attribute("approvals", hasKey("app")))
-            .andExpect(model().attribute("approvals", hasValue(hasSize(2))))
-            .andExpect(content().contentTypeCompatibleWith(TEXT_HTML))
-            .andExpect(content().string(containsString("These applications have been granted access to your account.")))
-            .andExpect(content().string(containsString("Change Password")))
-            .andExpect(content().string(containsString("<h3>"+name)))
-            .andExpect(content().string(containsString("Are you sure you want to revoke access to " + name)));
+        MvcResult result = mockMvc.perform(get("/profile").principal(authentication))
+                .andExpect(status().isOk())
+                .andExpect(model().attributeExists("clientnames"))
+                .andExpect(model().attribute("clientnames", hasKey("app")))
+                .andExpect(model().attribute("clientnames", hasValue(is(name))))
+                .andExpect(model().attribute("isUaaManagedUser", true))
+                .andExpect(model().attribute("approvals", hasKey("app")))
+                .andExpect(model().attribute("approvals", hasValue(hasSize(2))))
+                .andExpect(content().contentTypeCompatibleWith(TEXT_HTML))
+                .andExpect(content().string(containsString("These applications have been granted access to your account.")))
+                .andExpect(content().string(containsString("Change Password")))
+                .andExpect(content().string(containsString("<h3>" + name)))
+                .andExpect(content().string(containsString("Are you sure you want to revoke access to " + name)))
+                .andReturn();
+
+        String content = result.getResponse().getContentAsString();
+        System.out.println(content);
     }
 
 
