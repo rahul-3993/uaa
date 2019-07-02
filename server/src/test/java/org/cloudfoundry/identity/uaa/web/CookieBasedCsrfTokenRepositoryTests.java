@@ -25,6 +25,7 @@ import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.security.oauth2.common.util.RandomValueStringGenerator;
 import org.springframework.security.web.csrf.CsrfFilter;
 import org.springframework.security.web.csrf.CsrfToken;
+import org.springframework.security.web.csrf.DefaultCsrfToken;
 
 import java.io.IOException;
 import java.util.Arrays;
@@ -33,23 +34,22 @@ import javax.servlet.http.Cookie;
 
 import static javax.ws.rs.HttpMethod.GET;
 import static javax.ws.rs.HttpMethod.POST;
+import static org.cloudfoundry.identity.uaa.security.web.CookieBasedCsrfTokenRepository.DEFAULT_CSRF_COOKIE_NAME;
+import static org.cloudfoundry.identity.uaa.security.web.CookieBasedCsrfTokenRepository.DEFAULT_CSRF_HEADER_NAME;
 import static org.hamcrest.Matchers.nullValue;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertThat;
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.*;
+import static org.springframework.mock.web.MockHttpSession.SESSION_COOKIE_NAME;
 
 public class CookieBasedCsrfTokenRepositoryTests {
 
     @Test
     public void testGetHeader_and_Parameter_Name() throws Exception {
         CookieBasedCsrfTokenRepository repo = new CookieBasedCsrfTokenRepository();
-        assertEquals(CookieBasedCsrfTokenRepository.DEFAULT_CSRF_COOKIE_NAME, repo.getParameterName());
+        assertEquals(DEFAULT_CSRF_COOKIE_NAME, repo.getParameterName());
         repo.setParameterName("testcookie");
         assertEquals("testcookie", repo.getParameterName());
 
-        assertEquals(CookieBasedCsrfTokenRepository.DEFAULT_CSRF_HEADER_NAME, repo.getHeaderName());
+        assertEquals(DEFAULT_CSRF_HEADER_NAME, repo.getHeaderName());
         repo.setHeaderName("testheader");
         assertEquals("testheader", repo.getHeaderName());
 
@@ -102,7 +102,7 @@ public class CookieBasedCsrfTokenRepositoryTests {
     public void testLoad_Token_During_Get() {
         MockHttpServletRequest request = new MockHttpServletRequest();
         request.setMethod(HttpMethod.GET.name());
-        request.setCookies(new Cookie(CookieBasedCsrfTokenRepository.DEFAULT_CSRF_COOKIE_NAME, "should-be-removed"));
+        request.setCookies(new Cookie(DEFAULT_CSRF_COOKIE_NAME, "should-be-removed"));
 
         CookieBasedCsrfTokenRepository repo = new CookieBasedCsrfTokenRepository();
 
@@ -178,5 +178,53 @@ public class CookieBasedCsrfTokenRepositoryTests {
     public void doFilterInternal_postCsrfTokenMatchesCookieButIsFabricated_filterChainTerminates() {
         
     }
-    
+
+    @Test
+    public void loadToken_correctTokenLoadedForEachSession() {
+        CookieBasedCsrfTokenRepository repo = new CookieBasedCsrfTokenRepository();
+
+        String session0 = "alex";
+        String session1 = "bob";
+        String session2 = "charles";
+        
+        DefaultCsrfToken token1 = createToken("foo1");
+        DefaultCsrfToken token2 = createToken("foo2");
+        DefaultCsrfToken token3 = createToken("foo3");
+
+        MockHttpServletRequest saveRequest1 = new MockHttpServletRequest();
+        MockHttpServletRequest saveRequest2 = new MockHttpServletRequest();
+        MockHttpServletRequest saveRequest3 = new MockHttpServletRequest();
+
+        saveRequest1.setParameter(SESSION_COOKIE_NAME, session1);
+        saveRequest2.setParameter(SESSION_COOKIE_NAME, session2);
+        saveRequest3.setParameter(SESSION_COOKIE_NAME, session2);
+
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        MockHttpServletRequest loadRequest0 = new MockHttpServletRequest();
+        MockHttpServletRequest loadRequest1 = new MockHttpServletRequest();
+        MockHttpServletRequest loadRequest2 = new MockHttpServletRequest();
+
+        loadRequest0.setParameter(SESSION_COOKIE_NAME, session0);
+        loadRequest1.setParameter(SESSION_COOKIE_NAME, session1);
+        loadRequest2.setParameter(SESSION_COOKIE_NAME, session2);
+        
+        repo.saveToken(token1, saveRequest1, response);
+        repo.saveToken(token2, saveRequest2, response);
+        repo.saveToken(token3, saveRequest3, response);
+
+        CsrfToken actualToken0 = repo.loadToken(loadRequest0); //alex has placed 0 GET requests
+        assertNull("expected no token but found one", actualToken0);
+        
+        CsrfToken actualToken1 = repo.loadToken(loadRequest1); //bob has placed 1 GET request
+        assertEquals(token1.getToken(), actualToken1.getToken());
+
+        CsrfToken actualToken2 = repo.loadToken(loadRequest2); //charles has placed 2 GET requests, expect more recent
+        assertEquals(token3.getToken(), actualToken2.getToken());
+    }
+
+    private DefaultCsrfToken createToken(String value) {
+        return new DefaultCsrfToken(DEFAULT_CSRF_HEADER_NAME, DEFAULT_CSRF_COOKIE_NAME, value);
+    }
+
 }
