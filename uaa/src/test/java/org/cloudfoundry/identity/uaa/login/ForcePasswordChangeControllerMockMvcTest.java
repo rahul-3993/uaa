@@ -226,25 +226,33 @@ class ForcePasswordChangeControllerMockMvcTest {
                             .content(jsonStatus))
                     .andExpect(status().isOk());
             MockHttpSession session = new MockHttpSession();
-            Cookie cookie = new Cookie(CookieBasedCsrfTokenRepository.DEFAULT_CSRF_COOKIE_NAME, "csrf1");
 
             identityProvider.setConfig(new UaaIdentityProviderDefinition(passwordPolicyWithInvalidPassword.passwordPolicy, null));
             identityProviderProvisioning.update(identityProvider, identityProvider.getIdentityZoneId());
 
-            MockHttpServletRequestBuilder invalidPost = post("/login.do")
+            MockHttpServletRequestBuilder getLoginForm = get("/login")
+                    .session(session);
+            mockMvc.perform(getLoginForm)
+                    .andExpect(status().isOk());
+
+            MockHttpServletRequestBuilder login = post("/login.do")
                     .param("username", user.getUserName())
                     .param("password", "secret")
                     .session(session)
-                    .cookie(cookie)
-                    .param(CookieBasedCsrfTokenRepository.DEFAULT_CSRF_COOKIE_NAME, "csrf1");
-            mockMvc.perform(invalidPost)
-                    .andExpect(status().isFound());
+                    .with(cookieCsrf());
+            mockMvc.perform(login)
+                    .andExpect(status().isFound())
+                    .andExpect(redirectedUrl("/"));
+
+            MockHttpServletRequestBuilder getPasswordForm = get("/force_password_change")
+                    .session(session); 
+            mockMvc.perform(getPasswordForm)
+                    .andExpect(status().isOk());
 
             MockHttpServletRequestBuilder validPost = post("/force_password_change")
                     .param("password", passwordPolicyWithInvalidPassword.password)
                     .param("password_confirmation", passwordPolicyWithInvalidPassword.password)
                     .session(session)
-                    .cookie(cookie)
                     .with(cookieCsrf());
             mockMvc.perform(validPost)
                     .andExpect(view().name("force_password_change"))
@@ -314,10 +322,10 @@ class ForcePasswordChangeControllerMockMvcTest {
         MockHttpServletRequestBuilder validPost = post("/force_password_change")
                 .param("password", "test")
                 .param("password_confirmation", "test");
-        validPost.with(cookieCsrf());
+
         mockMvc.perform(validPost)
                 .andExpect(status().isFound())
-                .andExpect(redirectedUrl(("http://localhost/login")));
+                .andExpect(redirectedUrl(("http://localhost/login?error=invalid_login_request")));
     }
 
 

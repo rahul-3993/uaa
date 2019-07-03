@@ -1319,7 +1319,7 @@ public final class MockMvcUtils {
         }
     }
 
-    public static class CookieCsrfPostProcessor implements RequestPostProcessor {
+    public static class CookieCsrfPostProcessor implements RequestPostProcessor { //todo: delete this, or rename
 
         private boolean useInvalidToken = false;
 
@@ -1329,38 +1329,11 @@ public final class MockMvcUtils {
         }
 
         public MockHttpServletRequest postProcessRequest(MockHttpServletRequest request) {
-
-            CsrfTokenRepository repository = new CookieBasedCsrfTokenRepository();
-            CsrfToken token = repository.generateToken(request);
-            repository.saveToken(token, request, new MockHttpServletResponse());
+            CsrfToken token = (CsrfToken) request.getSession().getAttribute("org.springframework.security.web.csrf.HttpSessionCsrfTokenRepository.CSRF_TOKEN");
+            Assert.assertNotNull("need to first perform GET request in order to populate session with csrf token", token);
             String tokenValue = token.getToken();
-            Cookie cookie = new Cookie(token.getParameterName(), tokenValue);
-            cookie.setHttpOnly(true);
-            Cookie[] cookies = request.getCookies();
-            if (cookies == null) {
-                request.setCookies(cookie);
-            } else {
-                addCsrfCookie(request, cookie, cookies);
-            }
             request.setParameter(token.getParameterName(), useInvalidToken ? "invalid" + tokenValue : tokenValue);
             return request;
-        }
-
-        protected void addCsrfCookie(MockHttpServletRequest request, Cookie cookie, Cookie[] cookies) {
-            boolean replaced = false;
-            for (int i = 0; i < cookies.length; i++) {
-                Cookie c = cookies[i];
-                if (cookie.getName() == c.getName()) {
-                    cookies[i] = cookie;
-                    replaced = true;
-                }
-            }
-            if (!replaced) {
-                Cookie[] newcookies = new Cookie[cookies.length + 1];
-                System.arraycopy(cookies, 0, newcookies, 0, cookies.length);
-                newcookies[cookies.length] = cookie;
-                request.setCookies(newcookies);
-            }
         }
 
         public static CookieCsrfPostProcessor cookieCsrf() {
