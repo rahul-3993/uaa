@@ -170,6 +170,11 @@ public final class MockMvcUtils {
     }
 
     public static String performMfaPostVerifyWithCode(int code, MockMvc mvc, MockHttpSession session, String host) throws Exception {
+        MockHttpServletRequestBuilder getMfaForm = get("/login/mfa/verify")
+                .session(session);
+        mvc.perform(getMfaForm)
+                .andExpect(status().isOk());
+
         return mvc.perform(post("/login/mfa/verify.do")
           .param("code", Integer.toString(code))
           .header("Host", host)
@@ -196,10 +201,17 @@ public final class MockMvcUtils {
     }
 
     public static ResultActions performMfaRegistrationInZone(String username, String password, MockMvc mockMvc, String host, String[] firstAuthMethods, String[] afterMfaAuthMethods) throws Exception {
+        MockHttpSession session = new MockHttpSession();
+
+        MockHttpServletRequestBuilder getLoginForm = get("/login")
+                .session(session);
+        mockMvc.perform(getLoginForm)
+                .andExpect(status().isOk());
 
         //ldap login
-        MockHttpSession session = (MockHttpSession) mockMvc.perform(
+        mockMvc.perform(
           post("/login.do")
+            .session(session)
             .with(cookieCsrf())
             .header(HOST, host)
             .accept(MediaType.TEXT_HTML)
@@ -208,7 +220,7 @@ public final class MockMvcUtils {
         )
           .andExpect(status().isFound())
           .andExpect(redirectedUrl("/"))
-          .andReturn().getRequest().getSession(false);
+        ;
 
         assertTrue(getUaaAuthentication(session).isAuthenticated());
         assertThat(getUaaAuthentication(session).getAuthenticationMethods(), containsInAnyOrder(firstAuthMethods));
