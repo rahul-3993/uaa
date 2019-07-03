@@ -25,10 +25,13 @@ import static org.hamcrest.Matchers.not;
 import com.fasterxml.jackson.core.type.TypeReference;
 import org.cloudfoundry.identity.uaa.util.JsonUtils;
 import org.hamcrest.Matchers;
+import org.junit.After;
 import org.junit.Assert;
+import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.openqa.selenium.WebDriver;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpEntity;
@@ -59,12 +62,33 @@ public class ImplicitGrantIT {
     @Autowired @Rule
     public IntegrationTestRule integrationTestRule;
 
+    @Autowired
+    WebDriver webDriver;
 
     @Value("${integration.test.base_url}")
     String baseUrl;
 
+    @Value("${integration.test.app_url}")
+    String appUrl;
+
     @Autowired
     RestOperations restOperations;
+
+    @Autowired
+    TestClient testClient;
+
+    @Before
+    @After
+    public void logout_and_clear_cookies() {
+        try {
+            webDriver.get(baseUrl + "/logout.do");
+        }catch (org.openqa.selenium.TimeoutException x) {
+            //try again - this should not be happening - 20 second timeouts
+            webDriver.get(baseUrl + "/logout.do");
+        }
+        webDriver.get(appUrl+"/j_spring_security_logout");
+        webDriver.manage().deleteAllCookies();
+    }
 
     @Test
     public void testDefaultScopes() throws Exception {
