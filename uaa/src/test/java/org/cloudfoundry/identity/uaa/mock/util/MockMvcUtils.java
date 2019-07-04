@@ -17,6 +17,7 @@ package org.cloudfoundry.identity.uaa.mock.util;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.warrenstrange.googleauth.GoogleAuthenticator;
 import com.warrenstrange.googleauth.GoogleAuthenticatorConfig;
+import lombok.SneakyThrows;
 import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.lang.RandomStringUtils;
 import org.cloudfoundry.identity.uaa.audit.event.AbstractUaaEvent;
@@ -326,8 +327,8 @@ public final class MockMvcUtils {
         return results.getResources().get(0);
     }
 
-//    @SneakyThrows //todo
-    public static ResultActions performGet(MockMvc mvc, MockHttpSession session, String urlTemplate, Object... uriVars) throws Exception {
+    @SneakyThrows
+    public static ResultActions performGet(MockMvc mvc, MockHttpSession session, String urlTemplate, Object... uriVars) {
         RequestBuilder request = get(urlTemplate, uriVars)
                 .session(session);
         return mvc.perform(request);
