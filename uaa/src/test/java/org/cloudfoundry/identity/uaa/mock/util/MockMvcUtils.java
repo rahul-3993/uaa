@@ -167,7 +167,7 @@ public final class MockMvcUtils {
     }
 
     public static String performMfaPostVerifyWithCode(int code, MockMvc mvc, MockHttpSession session, String host) throws Exception {
-        performGet(mvc, session, "/login/mfa/verify") //todo: necessary?
+        performGet(mvc, session, "/login/mfa/verify")
                 .andExpect(status().isOk());
 
         return mvc.perform(post("/login/mfa/verify.do")

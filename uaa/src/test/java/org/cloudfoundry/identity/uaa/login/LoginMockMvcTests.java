@@ -460,7 +460,6 @@ public class LoginMockMvcTests {
                     .with(csrf(session))
                     .param("username", user.getUserName())
                     .param("password", user.getPassword()))
-                    .andDo(print())
                     .andExpect(redirectedUrl("/login?error=login_failure"));
         } finally {
             MockMvcUtils.setDisableInternalAuth(webApplicationContext, IdentityZone.getUaaZoneId(), false);
@@ -605,14 +604,9 @@ public class LoginMockMvcTests {
     @Test
     void testForgotPasswordSubmitDoesNotValidateCsrf() throws Exception {
         assumeFalse(isLimitedMode(limitedModeUaaFilter), "Test only runs in non limited mode.");
-        MockHttpSession session = new MockHttpSession(); //todo: necessary?
-        performGet(mockMvc, session, "/forgot_password")
-                .andExpect(status().isOk());
         mockMvc.perform(
                 post("/forgot_password.do")
                         .param("username", "marissa")
-                        .session(session)
-//                        .with(cookieCsrf().useInvalidToken())
         )
                 .andExpect(status().isFound())
                 .andExpect(redirectedUrl("email_sent?code=reset_password"));
@@ -638,10 +632,12 @@ public class LoginMockMvcTests {
         ScimUser user = createUser(scimUserProvisioning, generator, IdentityZone.getUaaZoneId());
         RequestPostProcessor securityContext = securityContext(getUaaSecurityContext(user.getUserName(), webApplicationContext));
         MockHttpSession session = new MockHttpSession();
-        RequestBuilder request = get("/change_password") //todo compress
-                .with(securityContext)
-                .session(session);
-        mockMvc.perform(request).andDo(print()) //todo: remove all print()s
+
+        mockMvc.perform(
+                get("/change_password")
+                        .with(securityContext)
+                        .session(session)
+        )
                 .andExpect(status().isOk());
         mockMvc.perform(
                 post("/change_password.do")
@@ -653,8 +649,6 @@ public class LoginMockMvcTests {
                 .andExpect(status().isForbidden())
                 .andExpect(forwardedUrl("/invalid_request"));
         
-        performGet(mockMvc, session, "/change_password")
-                .andExpect(status().isOk());
         mockMvc.perform(
                 post("/change_password.do")
                         .with(securityContext)
@@ -1760,10 +1754,12 @@ public class LoginMockMvcTests {
         SecurityContext marissaContext = getMarissaSecurityContext(webApplicationContext);
         //example shows to to test a request that is secured by csrf and you wish to bypass it
         MockHttpSession session = new MockHttpSession();
-        RequestBuilder request = get("/change_email")
-                .with(securityContext(marissaContext))
-                .session(session);
-        mockMvc.perform(request).andDo(print()) //todo: compress
+
+        mockMvc.perform(
+                get("/change_email")
+                        .with(securityContext(marissaContext))
+                        .session(session)
+        )
                 .andExpect(status().isOk());
         MockHttpServletRequestBuilder changeEmail = post("/change_email.do")
                 .accept(TEXT_HTML)
@@ -1819,10 +1815,11 @@ public class LoginMockMvcTests {
                 .andExpect(redirectedUrl("http://localhost/login?error=invalid_login_request"));
 
         MockHttpSession session = new MockHttpSession();
-        RequestBuilder request = get("/change_email")
-                .with(securityContext(marissaContext))
-                .session(session);
-        mockMvc.perform(request).andDo(print()) //todo: compress
+        mockMvc.perform(
+                get("/change_email")
+                        .with(securityContext(marissaContext))
+                        .session(session)
+        )
                 .andExpect(status().isOk());
         changeEmail = post("/change_email.do")
                 .accept(TEXT_HTML)
@@ -1868,9 +1865,7 @@ public class LoginMockMvcTests {
         MockHttpSession inviteSession = new MockHttpSession();
 
         performGet(mockMvc, inviteSession, "/login") // to set the csrf token in this session
-                .andDo(print())
-                .andExpect(status().isOk())
-        ;
+                .andExpect(status().isOk());
 
         SecurityContext inviteContext = new SecurityContextImpl();
         inviteContext.setAuthentication(inviteToken);
@@ -1891,7 +1886,6 @@ public class LoginMockMvcTests {
                 .param("password", "password")
                 .param("password_confirmation", "yield_unprocessable_entity");
         mockMvc.perform(post)
-                .andDo(print())
                 .andExpect(status().isFound())
                 .andExpect(redirectedUrlPattern("accept?error_message_code=form_error&code=*"))
         ;
@@ -2642,7 +2636,7 @@ public class LoginMockMvcTests {
                 .param("username", username)
                 .param("password", "wrong_password");
         for (int i = 0; i < numberOfAttempts; i++) {
-            mockMvc.perform(post) //todo: get login
+            mockMvc.perform(post)
                     .andExpect(redirectedUrl("/uaa/login?error=login_failure"))
                     .andExpect(emptyCurrentUserCookie());
         }
