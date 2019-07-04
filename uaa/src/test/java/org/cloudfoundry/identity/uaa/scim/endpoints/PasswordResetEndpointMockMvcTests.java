@@ -28,7 +28,7 @@ import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import static org.cloudfoundry.identity.uaa.mock.util.MockMvcUtils.CookieCsrfPostProcessor.cookieCsrf;
+import static org.cloudfoundry.identity.uaa.mock.util.MockMvcUtils.CookieCsrfPostProcessor.csrf;
 import static org.cloudfoundry.identity.uaa.zone.IdentityZoneSwitchingFilter.HEADER;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.*;
@@ -177,7 +177,7 @@ class PasswordResetEndpointMockMvcTests {
             .param("email", email)
             .param("password", "newpass")
             .param("password_confirmation", "newpass")
-            .with(cookieCsrf());
+            .with(csrf());
 
         mockMvc.perform(post)
             .andExpect(status().is3xxRedirection())
@@ -187,7 +187,7 @@ class PasswordResetEndpointMockMvcTests {
             .param("username", scimUser.getUserName())
             .param("password", "newpass")
             .param("form_redirect_uri", "http://localhost:8080/app/")
-            .with(cookieCsrf());
+            .with(csrf());
 
         mockMvc.perform(post)
             .andExpect(status().is3xxRedirection())

@@ -37,7 +37,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
-import static org.cloudfoundry.identity.uaa.mock.util.MockMvcUtils.CookieCsrfPostProcessor.cookieCsrf;
+import static org.cloudfoundry.identity.uaa.mock.util.MockMvcUtils.CookieCsrfPostProcessor.csrf;
 import static org.cloudfoundry.identity.uaa.mock.util.MockMvcUtils.createMfaProvider;
 import static org.cloudfoundry.identity.uaa.oauth.token.TokenConstants.GRANT_TYPE_AUTHORIZATION_CODE;
 import static org.hamcrest.CoreMatchers.containsString;
@@ -182,7 +182,7 @@ class TotpMfaEndpointMockMvcTests {
                     .param("code", Integer.toString(-1))
                     .header("Host", "localhost")
                     .session(mockHttpSession)
-                    .with(cookieCsrf()))
+                    .with(csrf()))
                     .andExpect(status().isOk());
         }
 
@@ -191,7 +191,7 @@ class TotpMfaEndpointMockMvcTests {
                 .param("code", Integer.toString(code))
                 .header("Host", "localhost")
                 .session(mockHttpSession)
-                .with(cookieCsrf()))
+                .with(csrf()))
                 .andExpect(status().is3xxRedirection())
                 .andReturn().getResponse().getRedirectedUrl();
 
@@ -220,7 +220,7 @@ class TotpMfaEndpointMockMvcTests {
         String oauthUrl = "/oauth/authorize?client_id=auth-client-id&client_secret=secret&redirect_uri=http://example.com";
         mockMvc.perform(get(oauthUrl)
                 .session(mockHttpSession)
-                .with(cookieCsrf()))
+                .with(csrf()))
                 .andExpect(status().is3xxRedirection())
                 .andDo(print())
                 .andExpect(redirectedUrl("http://localhost/login"));
@@ -229,7 +229,7 @@ class TotpMfaEndpointMockMvcTests {
 
         mockMvc.perform(get(oauthUrl)
                 .session(mockHttpSession)
-                .with(cookieCsrf()))
+                .with(csrf()))
                 .andExpect(status().is3xxRedirection())
                 .andDo(print())
                 .andExpect(redirectedUrl("/login/mfa/register"));
@@ -241,7 +241,7 @@ class TotpMfaEndpointMockMvcTests {
 
         mockMvc.perform(get("/login/mfa/completed")
                 .session(mockHttpSession)
-                .with(cookieCsrf()))
+                .with(csrf()))
                 .andExpect(status().is3xxRedirection())
                 .andDo(print())
                 .andExpect(redirectedUrl("http://localhost/oauth/authorize?client_id=auth-client-id&client_secret=secret&redirect_uri=http://example.com"));
@@ -251,7 +251,7 @@ class TotpMfaEndpointMockMvcTests {
     void testQRCodeCannotBeSubmittedWithoutLoggedInSession() throws Exception {
         mockMvc.perform(post("/login/mfa/verify.do")
                 .param("code", "1234")
-                .with(cookieCsrf()))
+                .with(csrf()))
                 .andExpect(status().is3xxRedirection())
                 .andExpect(redirectedUrl("http://localhost/login"));
     }
@@ -288,7 +288,7 @@ class TotpMfaEndpointMockMvcTests {
                 .param("code", Integer.toString(code + 1))
                 .header("Host", "localhost")
                 .session(mockHttpSession)
-                .with(cookieCsrf()))
+                .with(csrf()))
                 .andExpect(status().is2xxSuccessful())
                 .andExpect(view().name("mfa/enter_code"));
 
@@ -301,7 +301,7 @@ class TotpMfaEndpointMockMvcTests {
                 .param("code", "ABCDEF")
                 .header("Host", "localhost")
                 .session(mockHttpSession)
-                .with(cookieCsrf()))
+                .with(csrf()))
                 .andExpect(status().is2xxSuccessful())
                 .andExpect(view().name("mfa/enter_code"));
 
@@ -466,7 +466,7 @@ class TotpMfaEndpointMockMvcTests {
                 .session(session)
                 .param("username", user.getUserName())
                 .param("password", password)
-                .with(cookieCsrf()))
+                .with(csrf()))
                 .andDo(print())
                 .andExpect(status().isFound());
     }

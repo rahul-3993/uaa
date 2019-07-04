@@ -24,7 +24,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 import static java.util.Optional.ofNullable;
 import static org.cloudfoundry.identity.uaa.constants.OriginKeys.LDAP;
-import static org.cloudfoundry.identity.uaa.mock.util.MockMvcUtils.CookieCsrfPostProcessor.cookieCsrf;
+import static org.cloudfoundry.identity.uaa.mock.util.MockMvcUtils.CookieCsrfPostProcessor.csrf;
 import static org.springframework.http.MediaType.TEXT_HTML_VALUE;
 import static org.springframework.security.test.web.servlet.response.SecurityMockMvcResultMatchers.authenticated;
 import static org.springframework.security.test.web.servlet.response.SecurityMockMvcResultMatchers.unauthenticated;
@@ -150,7 +150,7 @@ class LdapCertificateMockMvcTests {
     @Test
     void trusted_server_certificate() throws Exception {
         mockMvc.perform(post("/login.do").accept(TEXT_HTML_VALUE)
-                .with(cookieCsrf())
+                .with(csrf())
                 .with(new SetServerNameRequestPostProcessor(trustedCertZone.getIdentityZone().getSubdomain() + ".localhost"))
                 .param("username", "marissa2")
                 .param("password", LDAP))
@@ -162,7 +162,7 @@ class LdapCertificateMockMvcTests {
     @Test
     void trusted_but_expired_server_certificate() throws Exception {
         mockMvc.perform(post("/login.do").accept(TEXT_HTML_VALUE)
-                .with(cookieCsrf())
+                .with(csrf())
                 .with(new SetServerNameRequestPostProcessor(trustedButExpiredCertZone.getIdentityZone().getSubdomain() + ".localhost"))
                 .param("username", "marissa2")
                 .param("password", LDAP))

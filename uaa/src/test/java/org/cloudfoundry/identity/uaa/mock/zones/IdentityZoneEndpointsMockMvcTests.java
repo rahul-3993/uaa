@@ -61,7 +61,7 @@ import java.util.stream.Stream;
 
 import static org.cloudfoundry.identity.uaa.constants.OriginKeys.LOGIN_SERVER;
 import static org.cloudfoundry.identity.uaa.constants.OriginKeys.UAA;
-import static org.cloudfoundry.identity.uaa.mock.util.MockMvcUtils.CookieCsrfPostProcessor.cookieCsrf;
+import static org.cloudfoundry.identity.uaa.mock.util.MockMvcUtils.CookieCsrfPostProcessor.csrf;
 import static org.cloudfoundry.identity.uaa.oauth.token.TokenConstants.GRANT_TYPE_AUTHORIZATION_CODE;
 import static org.cloudfoundry.identity.uaa.oauth.token.TokenConstants.TokenFormat.JWT;
 import static org.cloudfoundry.identity.uaa.oauth.token.TokenConstants.TokenFormat.OPAQUE;
@@ -1617,7 +1617,7 @@ class IdentityZoneEndpointsMockMvcTests {
         mockMvc.perform(
                 post("/login.do")
                         .header("Host", zone.getSubdomain() + ".localhost")
-                        .with(cookieCsrf())
+                        .with(csrf())
                         .accept(TEXT_HTML_VALUE)
                         .param("username", user.getUserName())
                         .param("password", "adasda")

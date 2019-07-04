@@ -43,7 +43,6 @@ import org.cloudfoundry.identity.uaa.scim.ScimUser;
 import org.cloudfoundry.identity.uaa.scim.ScimUserProvisioning;
 import org.cloudfoundry.identity.uaa.scim.endpoints.ScimGroupEndpoints;
 import org.cloudfoundry.identity.uaa.scim.jdbc.JdbcScimUserProvisioning;
-import org.cloudfoundry.identity.uaa.security.web.CookieBasedCsrfTokenRepository;
 import org.cloudfoundry.identity.uaa.test.TestApplicationEventListener;
 import org.cloudfoundry.identity.uaa.user.UaaAuthority;
 import org.cloudfoundry.identity.uaa.user.UaaUserDatabase;
@@ -63,7 +62,6 @@ import org.springframework.context.event.ApplicationEventMulticaster;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.mock.web.MockHttpServletRequest;
-import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.mock.web.MockHttpSession;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.authority.AuthorityUtils;
@@ -97,7 +95,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import static java.util.Arrays.asList;
-import static org.cloudfoundry.identity.uaa.mock.util.MockMvcUtils.CookieCsrfPostProcessor.cookieCsrf;
+import static org.cloudfoundry.identity.uaa.mock.util.MockMvcUtils.CookieCsrfPostProcessor.csrf;
 import static org.cloudfoundry.identity.uaa.oauth.token.TokenConstants.GRANT_TYPE_AUTHORIZATION_CODE;
 import static org.cloudfoundry.identity.uaa.oauth.token.TokenConstants.TokenFormat.OPAQUE;
 import static org.cloudfoundry.identity.uaa.scim.ScimGroupMember.Type.USER;
@@ -174,7 +172,7 @@ public final class MockMvcUtils {
           .param("code", Integer.toString(code))
           .header("Host", host)
           .session(session)
-          .with(cookieCsrf()))
+          .with(csrf()))
           .andExpect(status().is3xxRedirection())
           .andExpect(redirectedUrl("/login/mfa/completed"))
           .andReturn().getResponse().getRedirectedUrl();
@@ -205,7 +203,7 @@ public final class MockMvcUtils {
         mockMvc.perform(
           post("/login.do")
             .session(session)
-            .with(cookieCsrf())
+            .with(csrf())
             .header(HOST, host)
             .accept(MediaType.TEXT_HTML)
             .param("username", username)
@@ -329,9 +327,10 @@ public final class MockMvcUtils {
 
     @SneakyThrows
     public static ResultActions performGet(MockMvc mvc, MockHttpSession session, String urlTemplate, Object... uriVars) {
-        RequestBuilder request = get(urlTemplate, uriVars)
-                .session(session);
-        return mvc.perform(request);
+        return mvc.perform(
+                get(urlTemplate, uriVars)
+                        .session(session)
+        );
     }
 
     public static class MockSavedRequest extends DefaultSavedRequest {
@@ -1348,7 +1347,7 @@ public final class MockMvcUtils {
             return request;
         }
 
-        public static CookieCsrfPostProcessor cookieCsrf() {
+        public static CookieCsrfPostProcessor csrf() {
             return new CookieCsrfPostProcessor();
         }
     }

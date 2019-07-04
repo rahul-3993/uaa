@@ -78,7 +78,7 @@ import java.util.Set;
 
 import static java.util.Collections.EMPTY_LIST;
 import static org.cloudfoundry.identity.uaa.constants.OriginKeys.LDAP;
-import static org.cloudfoundry.identity.uaa.mock.util.MockMvcUtils.CookieCsrfPostProcessor.cookieCsrf;
+import static org.cloudfoundry.identity.uaa.mock.util.MockMvcUtils.CookieCsrfPostProcessor.csrf;
 import static org.cloudfoundry.identity.uaa.mock.util.MockMvcUtils.performMfaRegistrationInZone;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.arrayContainingInAnyOrder;
@@ -279,7 +279,7 @@ public abstract class AbstractLdapMockMvcTest {
                 .param("enterprise_email", "email")
                 .param("code", code)
                 .header(HOST, host)
-                .with(cookieCsrf()))
+                .with(csrf()))
                 .andExpect(status().isFound())
                 .andExpect(redirectedUrl(expectRedirectToLogin))
                 .andExpect(unauthenticated())
@@ -287,7 +287,7 @@ public abstract class AbstractLdapMockMvcTest {
 
         getMockMvc().perform(
                 get(expectRedirectToLogin)
-                        .with(cookieCsrf())
+                        .with(csrf())
                         .session(session)
                         .header(HOST, host)
         )
@@ -298,7 +298,7 @@ public abstract class AbstractLdapMockMvcTest {
 
         getMockMvc().perform(
                 post("/login.do")
-                        .with(cookieCsrf())
+                        .with(csrf())
                         .param("username", "marissa2")
                         .param("password", LDAP)
                         .session(session)
@@ -346,7 +346,7 @@ public abstract class AbstractLdapMockMvcTest {
                 .param("enterprise_email", "email")
                 .param("code", code)
                 .header(HOST, host)
-                .with(cookieCsrf()))
+                .with(csrf()))
                 .andExpect(status().isUnprocessableEntity())
                 .andExpect(content().string(containsString("The authenticated email does not match the invited email. Please log in using a different account.")))
                 .andReturn();
@@ -689,7 +689,7 @@ public abstract class AbstractLdapMockMvcTest {
 
 
         getMockMvc().perform(post("/login.do").accept(TEXT_HTML_VALUE)
-                .with(cookieCsrf())
+                .with(csrf())
                 .header(HOST, host)
                 .param("username", "marissa2")
                 .param("password", LDAP))
@@ -708,7 +708,7 @@ public abstract class AbstractLdapMockMvcTest {
         MockMvcUtils.createIdpUsingWebRequest(getMockMvc(), zone.getZone().getIdentityZone().getId(), zone.getZone().getZoneAdminToken(), provider, status().isOk(), true);
 
         getMockMvc().perform(post("/login.do").accept(TEXT_HTML_VALUE)
-                .with(cookieCsrf())
+                .with(csrf())
                 .header(HOST, host)
                 .param("username", "marissa2")
                 .param("password", LDAP))
@@ -721,7 +721,7 @@ public abstract class AbstractLdapMockMvcTest {
         MockMvcUtils.createIdpUsingWebRequest(getMockMvc(), zone.getZone().getIdentityZone().getId(), zone.getZone().getZoneAdminToken(), provider, status().isOk(), true);
 
         getMockMvc().perform(post("/login.do").accept(TEXT_HTML_VALUE)
-                .with(cookieCsrf())
+                .with(csrf())
                 .header(HOST, host)
                 .param("username", "marissa2")
                 .param("password", LDAP))
@@ -741,7 +741,7 @@ public abstract class AbstractLdapMockMvcTest {
     @Test
     void testLogin_partial_result_exception_on_group_search() throws Exception {
         getMockMvc().perform(post("/login.do").accept(TEXT_HTML_VALUE)
-                .with(cookieCsrf())
+                .with(csrf())
                 .header(HOST, host)
                 .param("username", "marissa8")
                 .param("password", "ldap8"))
@@ -765,7 +765,7 @@ public abstract class AbstractLdapMockMvcTest {
         updateLdapProvider();
 
         Object securityContext = getMockMvc().perform(post("/login.do").accept(TEXT_HTML_VALUE)
-                .with(cookieCsrf())
+                .with(csrf())
                 .header(HOST, host)
                 .param("username", "marissa10")
                 .param("password", "ldap10"))
@@ -857,7 +857,7 @@ public abstract class AbstractLdapMockMvcTest {
         getMockMvc().perform(
                 post("/login.do").accept(TEXT_HTML_VALUE)
                         .header(HOST, host)
-                        .with(cookieCsrf())
+                        .with(csrf())
                         .param("username", "marissa")
                         .param("password", "koaladsada"))
                 .andExpect(status().isFound())
@@ -928,7 +928,7 @@ public abstract class AbstractLdapMockMvcTest {
         getMockMvc().perform(
                 post("/login.do").accept(TEXT_HTML_VALUE)
                         .header(HOST, host)
-                        .with(cookieCsrf())
+                        .with(csrf())
                         .param("username", "marissa 11")
                         .param("password", "ldap11"))
                 .andExpect(status().isFound())
@@ -966,7 +966,7 @@ public abstract class AbstractLdapMockMvcTest {
     void testSuccessfulLogin() throws Exception {
         getMockMvc().perform(post("/login.do").accept(TEXT_HTML_VALUE)
                 .header(HOST, host)
-                .with(cookieCsrf())
+                .with(csrf())
 
                 .param("username", "marissa2")
                 .param("password", LDAP))
@@ -983,7 +983,7 @@ public abstract class AbstractLdapMockMvcTest {
                 getMockMvc().perform(
                         post("/login.do").accept(TEXT_HTML_VALUE)
                                 .header(HOST, host)
-                                .with(cookieCsrf())
+                                .with(csrf())
                                 .param("username", username)
                                 .param("password", "koala"))
                         .andExpect(status().isFound())
@@ -1192,7 +1192,7 @@ public abstract class AbstractLdapMockMvcTest {
     private MvcResult performUiAuthentication(String username, String password, HttpStatus status, boolean authenticated) throws Exception {
         MockHttpServletRequestBuilder post =
                 post("/login.do")
-                        .with(cookieCsrf())
+                        .with(csrf())
                         .header(HOST, host)
                         .accept(MediaType.TEXT_HTML)
                         .param("username", username)

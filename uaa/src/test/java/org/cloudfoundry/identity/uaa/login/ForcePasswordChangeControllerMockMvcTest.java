@@ -30,7 +30,7 @@ import javax.servlet.http.HttpSession;
 import java.util.Date;
 import java.util.stream.Stream;
 
-import static org.cloudfoundry.identity.uaa.mock.util.MockMvcUtils.CookieCsrfPostProcessor.cookieCsrf;
+import static org.cloudfoundry.identity.uaa.mock.util.MockMvcUtils.CookieCsrfPostProcessor.csrf;
 import static org.cloudfoundry.identity.uaa.mock.util.MockMvcUtils.performGet;
 import static org.cloudfoundry.identity.uaa.mock.util.MockMvcUtils.performMfaRegistrationInZone;
 import static org.junit.Assert.assertFalse;
@@ -104,7 +104,7 @@ class ForcePasswordChangeControllerMockMvcTest {
                     .param("username", user.getUserName())
                     .param("password", "secret")
                     .session(session)
-                    .with(cookieCsrf());
+                    .with(csrf());
             mockMvc.perform(userForcePasswordChangePostLogin)
                     .andExpect(status().isFound())
                     .andExpect(redirectedUrl("/"));
@@ -124,7 +124,7 @@ class ForcePasswordChangeControllerMockMvcTest {
                     .param("password", "test")
                     .param("password_confirmation", "test")
                     .session(session)
-                    .with(cookieCsrf());
+                    .with(csrf());
             mockMvc.perform(validPost)
                     .andExpect(status().isFound())
                     .andExpect(redirectedUrl(("/force_password_change_completed")));
@@ -171,7 +171,7 @@ class ForcePasswordChangeControllerMockMvcTest {
                         .param("password", "test")
                         .param("password_confirmation", "test")
                         .session(session)
-                        .with(cookieCsrf());
+                        .with(csrf());
                 mockMvc.perform(validPost)
                         .andExpect(status().isFound())
                         .andExpect(redirectedUrl(("/force_password_change_completed")));
@@ -230,7 +230,7 @@ class ForcePasswordChangeControllerMockMvcTest {
                     .param("username", user.getUserName())
                     .param("password", "secret")
                     .session(session)
-                    .with(cookieCsrf());
+                    .with(csrf());
             mockMvc.perform(login)
                     .andExpect(status().isFound())
                     .andExpect(redirectedUrl("/"));
@@ -242,7 +242,7 @@ class ForcePasswordChangeControllerMockMvcTest {
                     .param("password", passwordPolicyWithInvalidPassword.password)
                     .param("password_confirmation", passwordPolicyWithInvalidPassword.password)
                     .session(session)
-                    .with(cookieCsrf());
+                    .with(csrf());
             mockMvc.perform(validPost)
                     .andExpect(view().name("force_password_change"))
                     .andExpect(model().attribute("message", passwordPolicyWithInvalidPassword.errorMessage))
@@ -265,7 +265,7 @@ class ForcePasswordChangeControllerMockMvcTest {
                     .param("username", user.getUserName())
                     .param("password", "secret")
                     .session(session)
-                    .with(cookieCsrf());
+                    .with(csrf());
             mockMvc.perform(login)
                     .andExpect(status().isFound())
                     .andExpect(redirectedUrl("/"));
@@ -281,7 +281,7 @@ class ForcePasswordChangeControllerMockMvcTest {
                     .param("password", "test")
                     .param("password_confirmation", "test")
                     .session(session)
-                    .with(cookieCsrf());
+                    .with(csrf());
             mockMvc.perform(validPost)
                     .andExpect(status().isFound())
                     .andExpect(redirectedUrl(("/force_password_change_completed")));

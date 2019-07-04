@@ -37,7 +37,7 @@ import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilde
 import java.util.List;
 import java.util.stream.Collectors;
 
-import static org.cloudfoundry.identity.uaa.mock.util.MockMvcUtils.CookieCsrfPostProcessor.cookieCsrf;
+import static org.cloudfoundry.identity.uaa.mock.util.MockMvcUtils.CookieCsrfPostProcessor.csrf;
 import static org.cloudfoundry.identity.uaa.oauth.token.TokenConstants.GRANT_TYPE_AUTHORIZATION_CODE;
 import static org.hamcrest.Matchers.containsString;
 import static org.junit.Assert.assertNotNull;
@@ -70,7 +70,7 @@ public class ApprovalsMockMvcTests extends AbstractTokenMockMvcTests {
         MockHttpSession session = getAuthenticatedSession(user1);
         mockMvc.perform(
             post("/profile")
-                .with(cookieCsrf())
+                .with(csrf())
                 .param("delete", "true")
                 .param("clientId", client1.getClientId())
                 .session(session)
@@ -86,7 +86,7 @@ public class ApprovalsMockMvcTests extends AbstractTokenMockMvcTests {
         MockHttpSession session = getAuthenticatedSession(user1);
         mockMvc.perform(
             post("/profile")
-                .with(cookieCsrf())
+                .with(csrf())
                 .param("delete", "true")
                 .param("clientId", "invalid_id")
                 .session(session)
@@ -124,7 +124,7 @@ public class ApprovalsMockMvcTests extends AbstractTokenMockMvcTests {
         //invalid token
         mockMvc.perform(
             post("/oauth/authorize")
-                .with(cookieCsrf().useInvalidToken())
+                .with(csrf().useInvalidToken())
                 .session(session)
                 .param(USER_OAUTH_APPROVAL, "true")
                 .param("scope.0","scope.test.scope1")
@@ -137,7 +137,7 @@ public class ApprovalsMockMvcTests extends AbstractTokenMockMvcTests {
         //valid token
         mockMvc.perform(
             post("/oauth/authorize")
-                .with(cookieCsrf())
+                .with(csrf())
                 .session(session)
                 .param(USER_OAUTH_APPROVAL, "true")
                 .param("scope.0","scope.test.scope1")
@@ -177,7 +177,7 @@ public class ApprovalsMockMvcTests extends AbstractTokenMockMvcTests {
 
         mockMvc.perform(
             post("/oauth/authorize")
-                .with(cookieCsrf())
+                .with(csrf())
                 .session(session)
                 .param(USER_OAUTH_APPROVAL, "true")
                 .param("scope.0","scope.different.scope")
@@ -217,11 +217,11 @@ public class ApprovalsMockMvcTests extends AbstractTokenMockMvcTests {
             .andExpect(status().isForbidden());
 
         mockMvc.perform(
-            post.with(cookieCsrf().useInvalidToken())
+            post.with(csrf().useInvalidToken())
         ).andExpect(status().isForbidden());
 
         mockMvc.perform(
-            post.with(cookieCsrf())
+            post.with(csrf())
         )
             .andExpect(status().isFound())
             .andExpect(redirectedUrlPattern("**/profile"));
