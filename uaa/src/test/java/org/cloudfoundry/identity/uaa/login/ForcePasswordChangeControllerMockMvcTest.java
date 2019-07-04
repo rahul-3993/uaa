@@ -303,7 +303,6 @@ class ForcePasswordChangeControllerMockMvcTest {
         MockHttpServletRequestBuilder validPost = post("/force_password_change")
                 .param("password", "test")
                 .param("password_confirmation", "test");
-
         mockMvc.perform(validPost)
                 .andExpect(status().isFound())
                 .andExpect(redirectedUrl(("http://localhost/login?error=invalid_login_request")));

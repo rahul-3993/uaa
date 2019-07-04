@@ -648,7 +648,7 @@ public class LoginMockMvcTests {
                         .with(csrf(session).useInvalidToken()))
                 .andExpect(status().isForbidden())
                 .andExpect(forwardedUrl("/invalid_request"));
-        
+
         mockMvc.perform(
                 post("/change_password.do")
                         .with(securityContext)
