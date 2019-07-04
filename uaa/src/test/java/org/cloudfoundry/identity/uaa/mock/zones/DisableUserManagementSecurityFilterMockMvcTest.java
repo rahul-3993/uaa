@@ -33,7 +33,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
-import static org.cloudfoundry.identity.uaa.mock.util.MockMvcUtils.CookieCsrfPostProcessor.csrf;
+import static org.cloudfoundry.identity.uaa.mock.util.MockMvcUtils.CsrfPostProcessor.csrf;
 import static org.junit.Assert.assertNotNull;
 import static org.springframework.http.MediaType.APPLICATION_JSON;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
@@ -223,8 +223,11 @@ class DisableUserManagementSecurityFilterMockMvcTest {
     @Test
     void accountsControllerSendActivationEmailNotAllowed() throws Exception {
         MockMvcUtils.setDisableInternalUserManagement(webApplicationContext, true);
+
+        MockHttpSession session = new MockHttpSession();
+
         mockMvc.perform(post("/create_account.do")
-                .with(csrf())
+                .with(csrf(session))
                 .param("client_id", "login")
                 .param("email", "another@example.com")
                 .param("password", "foobar")
@@ -282,8 +285,7 @@ class DisableUserManagementSecurityFilterMockMvcTest {
         MockHttpSession userSession = getUserSession(createdUser.getUserName(), PASSWD);
         MockMvcUtils.setDisableInternalUserManagement(webApplicationContext, true);
         mockMvc.perform(get("/change_email")
-                .session(userSession)
-                .with(csrf())
+                .with(csrf(userSession))
                 .accept(ACCEPT_TEXT_HTML))
                 .andExpect(status().isForbidden())
                 .andExpect(content()
@@ -301,9 +303,11 @@ class DisableUserManagementSecurityFilterMockMvcTest {
         ScimUser createdUser = JsonUtils.readValue(result.andReturn().getResponse().getContentAsString(), ScimUser.class);
 
         MockMvcUtils.setDisableInternalUserManagement(webApplicationContext, true);
+
+        MockHttpSession userSession = getUserSession(createdUser.getUserName(), PASSWD);
+        
         mockMvc.perform(post("/change_email.do")
-                .session(getUserSession(createdUser.getUserName(), PASSWD))
-                .with(csrf())
+                .with(csrf(userSession))
                 .accept(ACCEPT_TEXT_HTML)
                 .param("newEmail", "newUser@example.com")
                 .param("client_id", "login"))
@@ -370,8 +374,7 @@ class DisableUserManagementSecurityFilterMockMvcTest {
         MockHttpSession userSession = getUserSession(createdUser.getUserName(), PASSWD);
         MockMvcUtils.setDisableInternalUserManagement(webApplicationContext, true);
         mockMvc.perform(post("/change_password.do")
-                .session(userSession)
-                .with(csrf())
+                .with(csrf(userSession))
                 .accept(ACCEPT_TEXT_HTML)
                 .param("current_password", PASSWD)
                 .param("new_password", "whatever")
@@ -454,13 +457,16 @@ class DisableUserManagementSecurityFilterMockMvcTest {
         PasswordChange change = new PasswordChange(createdUser.getId(), createdUser.getUserName(), createdUser.getPasswordLastModified(), "", "");
 
         MockMvcUtils.setDisableInternalUserManagement(webApplicationContext, true);
+
+        MockHttpSession session = new MockHttpSession();
+
         mockMvc.perform(post("/reset_password.do")
                 .param("code", getExpiringCode(change).getCode())
                 .param("email", createdUser.getUserName())
                 .param("password", "new-password")
 
                 .param("password_confirmation", "new-password")
-                .with(csrf()))
+                .with(csrf(session)))
                 .andExpect(status().isForbidden())
                 .andExpect(content()
                         .string(JsonObjectMatcherUtils.matchesJsonObject(
@@ -481,8 +487,7 @@ class DisableUserManagementSecurityFilterMockMvcTest {
         session.invalidate();
 
         MockHttpSession afterLoginSession = (MockHttpSession) mockMvc.perform(post("/login.do")
-                .with(csrf())
-                .session(session)
+                .with(csrf(session))
                 .accept(ACCEPT_TEXT_HTML)
                 .param("username", username)
                 .param("password", password))

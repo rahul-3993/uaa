@@ -30,7 +30,7 @@ import javax.servlet.http.HttpSession;
 import java.util.Date;
 import java.util.stream.Stream;
 
-import static org.cloudfoundry.identity.uaa.mock.util.MockMvcUtils.CookieCsrfPostProcessor.csrf;
+import static org.cloudfoundry.identity.uaa.mock.util.MockMvcUtils.CsrfPostProcessor.csrf;
 import static org.cloudfoundry.identity.uaa.mock.util.MockMvcUtils.performGet;
 import static org.cloudfoundry.identity.uaa.mock.util.MockMvcUtils.performMfaRegistrationInZone;
 import static org.junit.Assert.assertFalse;
@@ -103,8 +103,7 @@ class ForcePasswordChangeControllerMockMvcTest {
             MockHttpServletRequestBuilder userForcePasswordChangePostLogin = post("/login.do")
                     .param("username", user.getUserName())
                     .param("password", "secret")
-                    .session(session)
-                    .with(csrf());
+                    .with(csrf(session));
             mockMvc.perform(userForcePasswordChangePostLogin)
                     .andExpect(status().isFound())
                     .andExpect(redirectedUrl("/"));
@@ -123,8 +122,7 @@ class ForcePasswordChangeControllerMockMvcTest {
             MockHttpServletRequestBuilder validPost = post("/force_password_change")
                     .param("password", "test")
                     .param("password_confirmation", "test")
-                    .session(session)
-                    .with(csrf());
+                    .with(csrf(session));
             mockMvc.perform(validPost)
                     .andExpect(status().isFound())
                     .andExpect(redirectedUrl(("/force_password_change_completed")));
@@ -170,8 +168,7 @@ class ForcePasswordChangeControllerMockMvcTest {
                 MockHttpServletRequestBuilder validPost = post("/force_password_change")
                         .param("password", "test")
                         .param("password_confirmation", "test")
-                        .session(session)
-                        .with(csrf());
+                        .with(csrf(session));
                 mockMvc.perform(validPost)
                         .andExpect(status().isFound())
                         .andExpect(redirectedUrl(("/force_password_change_completed")));
@@ -229,8 +226,7 @@ class ForcePasswordChangeControllerMockMvcTest {
             MockHttpServletRequestBuilder login = post("/login.do")
                     .param("username", user.getUserName())
                     .param("password", "secret")
-                    .session(session)
-                    .with(csrf());
+                    .with(csrf(session));
             mockMvc.perform(login)
                     .andExpect(status().isFound())
                     .andExpect(redirectedUrl("/"));
@@ -241,8 +237,7 @@ class ForcePasswordChangeControllerMockMvcTest {
             MockHttpServletRequestBuilder validPost = post("/force_password_change")
                     .param("password", passwordPolicyWithInvalidPassword.password)
                     .param("password_confirmation", passwordPolicyWithInvalidPassword.password)
-                    .session(session)
-                    .with(csrf());
+                    .with(csrf(session));
             mockMvc.perform(validPost)
                     .andExpect(view().name("force_password_change"))
                     .andExpect(model().attribute("message", passwordPolicyWithInvalidPassword.errorMessage))
@@ -264,8 +259,7 @@ class ForcePasswordChangeControllerMockMvcTest {
             MockHttpServletRequestBuilder login = post("/login.do")
                     .param("username", user.getUserName())
                     .param("password", "secret")
-                    .session(session)
-                    .with(csrf());
+                    .with(csrf(session));
             mockMvc.perform(login)
                     .andExpect(status().isFound())
                     .andExpect(redirectedUrl("/"));
@@ -280,8 +274,7 @@ class ForcePasswordChangeControllerMockMvcTest {
             MockHttpServletRequestBuilder validPost = post("/force_password_change")
                     .param("password", "test")
                     .param("password_confirmation", "test")
-                    .session(session)
-                    .with(csrf());
+                    .with(csrf(session));
             mockMvc.perform(validPost)
                     .andExpect(status().isFound())
                     .andExpect(redirectedUrl(("/force_password_change_completed")));

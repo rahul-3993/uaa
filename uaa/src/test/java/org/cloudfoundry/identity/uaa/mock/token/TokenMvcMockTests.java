@@ -76,7 +76,7 @@ import java.util.*;
 
 import static java.util.Collections.emptySet;
 import static org.cloudfoundry.identity.uaa.mock.util.JwtTokenUtils.getClaimsForToken;
-import static org.cloudfoundry.identity.uaa.mock.util.MockMvcUtils.CookieCsrfPostProcessor.csrf;
+import static org.cloudfoundry.identity.uaa.mock.util.MockMvcUtils.CsrfPostProcessor.csrf;
 import static org.cloudfoundry.identity.uaa.mock.util.MockMvcUtils.getUserOAuthAccessToken;
 import static org.cloudfoundry.identity.uaa.mock.util.MockMvcUtils.setDisableInternalAuth;
 import static org.cloudfoundry.identity.uaa.oauth.client.ClientConstants.REQUIRED_USER_GROUPS;
@@ -1506,13 +1506,12 @@ public class TokenMvcMockTests extends AbstractTokenMockMvcTests {
 
         mockMvc.perform(
                 post("/oauth/authorize")
-                        .session(session)
                         .param(OAuth2Utils.RESPONSE_TYPE, "token")
                         .param("prompt", "none")
                         .param(OAuth2Utils.CLIENT_ID, clientId)
                         .param(OAuth2Utils.STATE, state)
                         .param(OAuth2Utils.REDIRECT_URI, redirectUrl)
-                        .with(csrf())
+                        .with(csrf(session))
         )
                 .andExpect(status().is3xxRedirection())
                 .andExpect(header().string("Location", startsWith(redirectUrl)))
@@ -1543,8 +1542,7 @@ public class TokenMvcMockTests extends AbstractTokenMockMvcTests {
 
         MvcResult result = mockMvc.perform(
                 post("/oauth/authorize")
-                        .session(session)
-                        .with(csrf())
+                        .with(csrf(session))
                         .param(OAuth2Utils.USER_OAUTH_APPROVAL, "true")
                         .param("scope.0", "scope.openid")
         ).andExpect(status().is3xxRedirection()).andReturn();
@@ -1580,9 +1578,8 @@ public class TokenMvcMockTests extends AbstractTokenMockMvcTests {
 
         MvcResult result = mockMvc.perform(
                 post("/oauth/authorize")
-                        .session(session)
                         .param(OAuth2Utils.USER_OAUTH_APPROVAL, "true")
-                        .with(csrf())
+                        .with(csrf(session))
                         .param("scope.0", "scope.openid")
         ).andExpect(status().is3xxRedirection()).andReturn();
 
@@ -1779,7 +1776,7 @@ public class TokenMvcMockTests extends AbstractTokenMockMvcTests {
         //attempt to login without a session
         result = mockMvc.perform(
                 post("/login.do")
-                        .with(csrf())
+                        .with(csrf(session))
                         .param("form_redirect_uri", authUrl)
                         .param("username", username)
                         .param("password", "invalid")
@@ -1805,7 +1802,7 @@ public class TokenMvcMockTests extends AbstractTokenMockMvcTests {
         //attempt to login without a session
         mockMvc.perform(
                 post("/login.do")
-                        .with(csrf())
+                        .with(csrf(session))
                         .param("form_redirect_uri", authUrl)
                         .param("username", username)
                         .param("password", SECRET)

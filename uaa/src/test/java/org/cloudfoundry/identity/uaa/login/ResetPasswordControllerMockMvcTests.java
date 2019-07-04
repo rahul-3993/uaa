@@ -47,7 +47,7 @@ import java.util.regex.Pattern;
 
 import static org.cloudfoundry.identity.uaa.account.UaaResetPasswordService.FORGOT_PASSWORD_INTENT_PREFIX;
 import static org.cloudfoundry.identity.uaa.constants.OriginKeys.UAA;
-import static org.cloudfoundry.identity.uaa.mock.util.MockMvcUtils.CookieCsrfPostProcessor.csrf;
+import static org.cloudfoundry.identity.uaa.mock.util.MockMvcUtils.CsrfPostProcessor.csrf;
 import static org.cloudfoundry.identity.uaa.web.UaaSavedRequestAwareAuthenticationSuccessHandler.SAVED_REQUEST_SESSION_ATTRIBUTE;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.equalTo;
@@ -292,8 +292,7 @@ public class ResetPasswordControllerMockMvcTests {
                 .andExpect(redirectedUrl("/login?success=password_reset"));
 
         mockMvc.perform(post("/login.do")
-            .session(session)
-            .with(csrf())
+            .with(csrf(session))
             .param("username", user.getUserName())
             .param("password", "secret1"))
             .andExpect(redirectedUrl("http://test/redirect/oauth/authorize"));
@@ -404,8 +403,11 @@ public class ResetPasswordControllerMockMvcTests {
 
     private MockHttpServletRequestBuilder createChangePasswordRequest(ScimUser user, String code, boolean useCSRF, String password, String passwordConfirmation) {
         MockHttpServletRequestBuilder post = post("/reset_password.do");
+
+        MockHttpSession session = new MockHttpSession();
+
         if (useCSRF) {
-            post.with(csrf());
+            post.with(csrf(session));
         }
         post.param("code", code)
             .param("email", user.getPrimaryEmail())

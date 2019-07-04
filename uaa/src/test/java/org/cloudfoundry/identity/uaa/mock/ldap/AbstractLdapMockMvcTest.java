@@ -78,7 +78,8 @@ import java.util.Set;
 
 import static java.util.Collections.EMPTY_LIST;
 import static org.cloudfoundry.identity.uaa.constants.OriginKeys.LDAP;
-import static org.cloudfoundry.identity.uaa.mock.util.MockMvcUtils.CookieCsrfPostProcessor.csrf;
+import static org.cloudfoundry.identity.uaa.mock.util.MockMvcUtils.CsrfPostProcessor.csrf;
+import static org.cloudfoundry.identity.uaa.mock.util.MockMvcUtils.performGet;
 import static org.cloudfoundry.identity.uaa.mock.util.MockMvcUtils.performMfaRegistrationInZone;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.arrayContainingInAnyOrder;
@@ -273,13 +274,12 @@ public abstract class AbstractLdapMockMvcTest {
         MockHttpSession session = (MockHttpSession) result.getRequest().getSession(false);
         String expectRedirectToLogin = "/login?success=invite_accepted&form_redirect_uri=" + URLEncoder.encode(redirectUri);
         getMockMvc().perform(post("/invitations/accept_enterprise.do")
-                .session(session)
                 .param("enterprise_username", "marissa2")
                 .param("enterprise_password", LDAP)
                 .param("enterprise_email", "email")
                 .param("code", code)
                 .header(HOST, host)
-                .with(csrf()))
+                .with(csrf(session)))
                 .andExpect(status().isFound())
                 .andExpect(redirectedUrl(expectRedirectToLogin))
                 .andExpect(unauthenticated())
@@ -287,8 +287,7 @@ public abstract class AbstractLdapMockMvcTest {
 
         getMockMvc().perform(
                 get(expectRedirectToLogin)
-                        .with(csrf())
-                        .session(session)
+                        .with(csrf(session))
                         .header(HOST, host)
         )
                 .andExpect(status().isOk())
@@ -298,10 +297,9 @@ public abstract class AbstractLdapMockMvcTest {
 
         getMockMvc().perform(
                 post("/login.do")
-                        .with(csrf())
+                        .with(csrf(session))
                         .param("username", "marissa2")
                         .param("password", LDAP)
-                        .session(session)
                         .header(HOST, host)
                         .param("form_redirect_uri", redirectUri)
         )
@@ -340,13 +338,12 @@ public abstract class AbstractLdapMockMvcTest {
 
         session = (MockHttpSession) result.getRequest().getSession(false);
         getMockMvc().perform(post("/invitations/accept_enterprise.do")
-                .session(session)
                 .param("enterprise_username", "marissa2")
                 .param("enterprise_password", LDAP)
                 .param("enterprise_email", "email")
                 .param("code", code)
                 .header(HOST, host)
-                .with(csrf()))
+                .with(csrf(session)))
                 .andExpect(status().isUnprocessableEntity())
                 .andExpect(content().string(containsString("The authenticated email does not match the invited email. Please log in using a different account.")))
                 .andReturn();
@@ -681,7 +678,10 @@ public abstract class AbstractLdapMockMvcTest {
         assumeFalse(!(ldapProfile.contains("ldap-search-and-bind.xml") &&
                 ldapGroup.contains("ldap-groups-map-to-scopes.xml")));
 
+        MockHttpSession session = new MockHttpSession();
+
         getMockMvc().perform(get("/login")
+                .session(session)
                 .header(HOST, host))
                 .andExpect(status().isOk())
                 .andExpect(view().name("login"))
@@ -689,7 +689,7 @@ public abstract class AbstractLdapMockMvcTest {
 
 
         getMockMvc().perform(post("/login.do").accept(TEXT_HTML_VALUE)
-                .with(csrf())
+                .with(csrf(session))
                 .header(HOST, host)
                 .param("username", "marissa2")
                 .param("password", LDAP))
@@ -708,7 +708,7 @@ public abstract class AbstractLdapMockMvcTest {
         MockMvcUtils.createIdpUsingWebRequest(getMockMvc(), zone.getZone().getIdentityZone().getId(), zone.getZone().getZoneAdminToken(), provider, status().isOk(), true);
 
         getMockMvc().perform(post("/login.do").accept(TEXT_HTML_VALUE)
-                .with(csrf())
+                .with(csrf(session))
                 .header(HOST, host)
                 .param("username", "marissa2")
                 .param("password", LDAP))
@@ -721,7 +721,7 @@ public abstract class AbstractLdapMockMvcTest {
         MockMvcUtils.createIdpUsingWebRequest(getMockMvc(), zone.getZone().getIdentityZone().getId(), zone.getZone().getZoneAdminToken(), provider, status().isOk(), true);
 
         getMockMvc().perform(post("/login.do").accept(TEXT_HTML_VALUE)
-                .with(csrf())
+                .with(csrf(session))
                 .header(HOST, host)
                 .param("username", "marissa2")
                 .param("password", LDAP))
@@ -740,8 +740,13 @@ public abstract class AbstractLdapMockMvcTest {
 
     @Test
     void testLogin_partial_result_exception_on_group_search() throws Exception {
+        MockHttpSession session = new MockHttpSession();
+
+        performGet(mockMvc, session, "/login")
+                .andExpect(status().isOk());
+
         getMockMvc().perform(post("/login.do").accept(TEXT_HTML_VALUE)
-                .with(csrf())
+                .with(csrf(session))
                 .header(HOST, host)
                 .param("username", "marissa8")
                 .param("password", "ldap8"))
@@ -764,8 +769,13 @@ public abstract class AbstractLdapMockMvcTest {
         provider.getConfig().setGroupSearchBase("memberOf");
         updateLdapProvider();
 
+        MockHttpSession session = new MockHttpSession();
+
+        performGet(mockMvc, session, "/login")
+                .andExpect(status().isOk());
+
         Object securityContext = getMockMvc().perform(post("/login.do").accept(TEXT_HTML_VALUE)
-                .with(csrf())
+                .with(csrf(session))
                 .header(HOST, host)
                 .param("username", "marissa10")
                 .param("password", "ldap10"))
@@ -847,8 +857,11 @@ public abstract class AbstractLdapMockMvcTest {
 
     @Test
     void testLogin() throws Exception {
+        MockHttpSession session = new MockHttpSession();
+
         getMockMvc().perform(
                 get("/login")
+                        .session(session)
                         .header(HOST, host))
                 .andExpect(status().isOk())
                 .andExpect(view().name("login"))
@@ -857,7 +870,7 @@ public abstract class AbstractLdapMockMvcTest {
         getMockMvc().perform(
                 post("/login.do").accept(TEXT_HTML_VALUE)
                         .header(HOST, host)
-                        .with(csrf())
+                        .with(csrf(session))
                         .param("username", "marissa")
                         .param("password", "koaladsada"))
                 .andExpect(status().isFound())
@@ -925,10 +938,15 @@ public abstract class AbstractLdapMockMvcTest {
 
     @Test
     void test_username_with_space() throws Exception {
+        MockHttpSession session = new MockHttpSession();
+
+        performGet(mockMvc, session, "/login")
+                .andExpect(status().isOk());
+
         getMockMvc().perform(
                 post("/login.do").accept(TEXT_HTML_VALUE)
                         .header(HOST, host)
-                        .with(csrf())
+                        .with(csrf(session))
                         .param("username", "marissa 11")
                         .param("password", "ldap11"))
                 .andExpect(status().isFound())
@@ -964,10 +982,14 @@ public abstract class AbstractLdapMockMvcTest {
 
 
     void testSuccessfulLogin() throws Exception {
+        MockHttpSession session = new MockHttpSession();
+
+        performGet(mockMvc, session, "/login")
+                .andExpect(status().isOk());
+
         getMockMvc().perform(post("/login.do").accept(TEXT_HTML_VALUE)
                 .header(HOST, host)
-                .with(csrf())
-
+                .with(csrf(session))
                 .param("username", "marissa2")
                 .param("password", LDAP))
                 .andExpect(status().isFound())
@@ -979,17 +1001,21 @@ public abstract class AbstractLdapMockMvcTest {
     void testAuthenticateWithUTF8Characters() throws Exception {
         String username = "\u7433\u8D3A";
 
-        HttpSession session =
+        MockHttpSession session = new MockHttpSession();
+
+        performGet(mockMvc, session, "/login")
+                .andExpect(status().isOk());
+
                 getMockMvc().perform(
                         post("/login.do").accept(TEXT_HTML_VALUE)
                                 .header(HOST, host)
-                                .with(csrf())
+                                .with(csrf(session))
                                 .param("username", username)
                                 .param("password", "koala"))
                         .andExpect(status().isFound())
                         .andExpect(redirectedUrl("/"))
                         .andExpect(authenticated())
-                        .andReturn().getRequest().getSession(false);
+                ;
         assertNotNull(session);
         assertNotNull(session.getAttribute(SPRING_SECURITY_CONTEXT_KEY));
         Authentication authentication = ((SecurityContext) session.getAttribute(SPRING_SECURITY_CONTEXT_KEY)).getAuthentication();
@@ -1190,9 +1216,14 @@ public abstract class AbstractLdapMockMvcTest {
     }
 
     private MvcResult performUiAuthentication(String username, String password, HttpStatus status, boolean authenticated) throws Exception {
+        MockHttpSession session = new MockHttpSession();
+
+        performGet(mockMvc, session, "/login")
+                .andExpect(status().isOk());
+
         MockHttpServletRequestBuilder post =
                 post("/login.do")
-                        .with(csrf())
+                        .with(csrf(session))
                         .header(HOST, host)
                         .accept(MediaType.TEXT_HTML)
                         .param("username", username)

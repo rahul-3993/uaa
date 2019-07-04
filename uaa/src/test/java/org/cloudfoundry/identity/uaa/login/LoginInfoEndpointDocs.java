@@ -22,7 +22,7 @@ import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 import java.util.Arrays;
 import java.util.Map;
 
-import static org.cloudfoundry.identity.uaa.mock.util.MockMvcUtils.CookieCsrfPostProcessor.csrf;
+import static org.cloudfoundry.identity.uaa.mock.util.MockMvcUtils.CsrfPostProcessor.csrf;
 import static org.cloudfoundry.identity.uaa.test.SnippetUtils.fieldWithPath;
 import static org.cloudfoundry.identity.uaa.test.SnippetUtils.headerWithName;
 import static org.cloudfoundry.identity.uaa.test.SnippetUtils.parameterWithName;
@@ -102,9 +102,11 @@ class LoginInfoEndpointDocs extends EndpointDocs {
                 headerWithName("Cookie").required().type(STRING).description("Must contain the a value for the cookie X-Uaa-Csrf and that must match the request parameter of the same name")
         );
 
+        MockHttpSession session = new MockHttpSession();
+
         mockMvc.perform(
                 post("/login.do")
-                        .with(csrf())
+                        .with(csrf(session))
                         .header("Cookie", "X-Uaa-Csrf=12345a")
                         .param("username", "marissa")
                         .param("password", "koala")

@@ -37,7 +37,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
-import static org.cloudfoundry.identity.uaa.mock.util.MockMvcUtils.CookieCsrfPostProcessor.csrf;
+import static org.cloudfoundry.identity.uaa.mock.util.MockMvcUtils.CsrfPostProcessor.csrf;
 import static org.cloudfoundry.identity.uaa.mock.util.MockMvcUtils.createMfaProvider;
 import static org.cloudfoundry.identity.uaa.oauth.token.TokenConstants.GRANT_TYPE_AUTHORIZATION_CODE;
 import static org.hamcrest.CoreMatchers.containsString;
@@ -181,8 +181,7 @@ class TotpMfaEndpointMockMvcTests {
             mockMvc.perform(post("/login/mfa/verify.do")
                     .param("code", Integer.toString(-1))
                     .header("Host", "localhost")
-                    .session(mockHttpSession)
-                    .with(csrf()))
+                    .with(csrf(mockHttpSession)))
                     .andExpect(status().isOk());
         }
 
@@ -190,8 +189,7 @@ class TotpMfaEndpointMockMvcTests {
         String location = mockMvc.perform(post("/login/mfa/verify.do")
                 .param("code", Integer.toString(code))
                 .header("Host", "localhost")
-                .session(mockHttpSession)
-                .with(csrf()))
+                .with(csrf(mockHttpSession)))
                 .andExpect(status().is3xxRedirection())
                 .andReturn().getResponse().getRedirectedUrl();
 
@@ -219,8 +217,7 @@ class TotpMfaEndpointMockMvcTests {
         //Not using param function because params won't end up in paramsMap.
         String oauthUrl = "/oauth/authorize?client_id=auth-client-id&client_secret=secret&redirect_uri=http://example.com";
         mockMvc.perform(get(oauthUrl)
-                .session(mockHttpSession)
-                .with(csrf()))
+                .with(csrf(mockHttpSession)))
                 .andExpect(status().is3xxRedirection())
                 .andDo(print())
                 .andExpect(redirectedUrl("http://localhost/login"));
@@ -228,8 +225,7 @@ class TotpMfaEndpointMockMvcTests {
         performLoginWithSession(mockMvc, mockHttpSession, scimUser, password).andExpect(redirectedUrl("http://localhost" + oauthUrl));
 
         mockMvc.perform(get(oauthUrl)
-                .session(mockHttpSession)
-                .with(csrf()))
+                .with(csrf(mockHttpSession)))
                 .andExpect(status().is3xxRedirection())
                 .andDo(print())
                 .andExpect(redirectedUrl("/login/mfa/register"));
@@ -240,8 +236,7 @@ class TotpMfaEndpointMockMvcTests {
         MockMvcUtils.performMfaPostVerifyWithCode(code, mockMvc, mockHttpSession);
 
         mockMvc.perform(get("/login/mfa/completed")
-                .session(mockHttpSession)
-                .with(csrf()))
+                .with(csrf(mockHttpSession)))
                 .andExpect(status().is3xxRedirection())
                 .andDo(print())
                 .andExpect(redirectedUrl("http://localhost/oauth/authorize?client_id=auth-client-id&client_secret=secret&redirect_uri=http://example.com"));
@@ -251,7 +246,7 @@ class TotpMfaEndpointMockMvcTests {
     void testQRCodeCannotBeSubmittedWithoutLoggedInSession() throws Exception {
         mockMvc.perform(post("/login/mfa/verify.do")
                 .param("code", "1234")
-                .with(csrf()))
+                .with(csrf(mockHttpSession)))
                 .andExpect(status().is3xxRedirection())
                 .andExpect(redirectedUrl("http://localhost/login"));
     }
@@ -287,8 +282,7 @@ class TotpMfaEndpointMockMvcTests {
         mockMvc.perform(post("/login/mfa/verify.do")
                 .param("code", Integer.toString(code + 1))
                 .header("Host", "localhost")
-                .session(mockHttpSession)
-                .with(csrf()))
+                .with(csrf(mockHttpSession)))
                 .andExpect(status().is2xxSuccessful())
                 .andExpect(view().name("mfa/enter_code"));
 
@@ -300,8 +294,7 @@ class TotpMfaEndpointMockMvcTests {
         mockMvc.perform(post("/login/mfa/verify.do")
                 .param("code", "ABCDEF")
                 .header("Host", "localhost")
-                .session(mockHttpSession)
-                .with(csrf()))
+                .with(csrf(mockHttpSession)))
                 .andExpect(status().is2xxSuccessful())
                 .andExpect(view().name("mfa/enter_code"));
 
@@ -463,10 +456,9 @@ class TotpMfaEndpointMockMvcTests {
 
     private static ResultActions performLoginWithSession(MockMvc mockMvc, MockHttpSession session, ScimUser user, String password) throws Exception {
         return mockMvc.perform(post("/login.do")
-                .session(session)
                 .param("username", user.getUserName())
                 .param("password", password)
-                .with(csrf()))
+                .with(csrf(session)))
                 .andDo(print())
                 .andExpect(status().isFound());
     }
