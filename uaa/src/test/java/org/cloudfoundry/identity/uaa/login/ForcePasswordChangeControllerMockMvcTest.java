@@ -31,6 +31,7 @@ import java.util.Date;
 import java.util.stream.Stream;
 
 import static org.cloudfoundry.identity.uaa.mock.util.MockMvcUtils.CookieCsrfPostProcessor.cookieCsrf;
+import static org.cloudfoundry.identity.uaa.mock.util.MockMvcUtils.performGet;
 import static org.cloudfoundry.identity.uaa.mock.util.MockMvcUtils.performMfaRegistrationInZone;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
@@ -96,9 +97,7 @@ class ForcePasswordChangeControllerMockMvcTest {
         void requires_user_to_change_password() throws Exception {
             MockHttpSession session = new MockHttpSession();
 
-            MockHttpServletRequestBuilder getLoginForm = get("/login")
-                    .session(session);
-            mockMvc.perform(getLoginForm)
+            performGet(mockMvc, session, "/login")
                     .andExpect(status().isOk());
 
             MockHttpServletRequestBuilder userForcePasswordChangePostLogin = post("/login.do")
@@ -112,16 +111,13 @@ class ForcePasswordChangeControllerMockMvcTest {
             assertTrue(((SecurityContext) ((HttpSession) session).getAttribute(HttpSessionSecurityContextRepository.SPRING_SECURITY_CONTEXT_KEY)).getAuthentication().isAuthenticated());
             assertTrue(((UaaAuthentication) ((SecurityContext) ((HttpSession) session).getAttribute(HttpSessionSecurityContextRepository.SPRING_SECURITY_CONTEXT_KEY)).getAuthentication()).isRequiresPasswordChange());
 
-            mockMvc.perform(get("/")
-                    .session(session))
+            performGet(mockMvc, session, "/")
                     .andExpect(status().isFound())
                     .andExpect(redirectedUrl("/force_password_change"));
             assertTrue(((SecurityContext) ((HttpSession) session).getAttribute(HttpSessionSecurityContextRepository.SPRING_SECURITY_CONTEXT_KEY)).getAuthentication().isAuthenticated());
             assertTrue(((UaaAuthentication) ((SecurityContext) ((HttpSession) session).getAttribute(HttpSessionSecurityContextRepository.SPRING_SECURITY_CONTEXT_KEY)).getAuthentication()).isRequiresPasswordChange());
 
-            MockHttpServletRequestBuilder getPasswordForm = get("/force_password_change")
-                    .session(session);
-            mockMvc.perform(getPasswordForm)
+            performGet(mockMvc, session, "/force_password_change")
                     .andExpect(status().isOk());
 
             MockHttpServletRequestBuilder validPost = post("/force_password_change")
@@ -135,8 +131,7 @@ class ForcePasswordChangeControllerMockMvcTest {
             assertTrue(((SecurityContext) ((HttpSession) session).getAttribute(HttpSessionSecurityContextRepository.SPRING_SECURITY_CONTEXT_KEY)).getAuthentication().isAuthenticated());
             assertFalse(((UaaAuthentication) ((SecurityContext) ((HttpSession) session).getAttribute(HttpSessionSecurityContextRepository.SPRING_SECURITY_CONTEXT_KEY)).getAuthentication()).isRequiresPasswordChange());
 
-            mockMvc.perform(get("/force_password_change_completed")
-                    .session(session))
+            performGet(mockMvc, session, "/force_password_change_completed")
                     .andExpect(status().isFound())
                     .andExpect(redirectedUrl("http://localhost/"));
             assertTrue(((SecurityContext) ((HttpSession) session).getAttribute(HttpSessionSecurityContextRepository.SPRING_SECURITY_CONTEXT_KEY)).getAuthentication().isAuthenticated());
@@ -169,10 +164,8 @@ class ForcePasswordChangeControllerMockMvcTest {
                         .getRequest()
                         .getSession(false);
 
-                MockHttpServletRequestBuilder getPasswordForm = get("/force_password_change")
-                        .session(session);
-                mockMvc.perform(getPasswordForm)
-                        .andExpect(status().isOk());
+                performGet(mockMvc, session, "/force_password_change")
+                    .andExpect(status().isOk());
 
                 MockHttpServletRequestBuilder validPost = post("/force_password_change")
                         .param("password", "test")
@@ -185,8 +178,7 @@ class ForcePasswordChangeControllerMockMvcTest {
                 assertTrue(((SecurityContext) ((HttpSession) session).getAttribute(HttpSessionSecurityContextRepository.SPRING_SECURITY_CONTEXT_KEY)).getAuthentication().isAuthenticated());
                 assertFalse(((UaaAuthentication) ((SecurityContext) ((HttpSession) session).getAttribute(HttpSessionSecurityContextRepository.SPRING_SECURITY_CONTEXT_KEY)).getAuthentication()).isRequiresPasswordChange());
 
-                mockMvc.perform(get("/force_password_change_completed")
-                        .session(session))
+                performGet(mockMvc, session, "/force_password_change_completed")
                         .andExpect(status().isFound())
                         .andExpect(redirectedUrl("http://localhost/"));
                 assertTrue(((SecurityContext) ((HttpSession) session).getAttribute(HttpSessionSecurityContextRepository.SPRING_SECURITY_CONTEXT_KEY)).getAuthentication().isAuthenticated());
@@ -231,9 +223,7 @@ class ForcePasswordChangeControllerMockMvcTest {
             identityProvider.setConfig(new UaaIdentityProviderDefinition(passwordPolicyWithInvalidPassword.passwordPolicy, null));
             identityProviderProvisioning.update(identityProvider, identityProvider.getIdentityZoneId());
 
-            MockHttpServletRequestBuilder getLoginForm = get("/login")
-                    .session(session);
-            mockMvc.perform(getLoginForm)
+            performGet(mockMvc, session, "/login")
                     .andExpect(status().isOk());
 
             MockHttpServletRequestBuilder login = post("/login.do")
@@ -245,9 +235,7 @@ class ForcePasswordChangeControllerMockMvcTest {
                     .andExpect(status().isFound())
                     .andExpect(redirectedUrl("/"));
 
-            MockHttpServletRequestBuilder getPasswordForm = get("/force_password_change") //todo: code re-use
-                    .session(session); 
-            mockMvc.perform(getPasswordForm)
+            performGet(mockMvc, session, "/force_password_change")
                     .andExpect(status().isOk());
 
             MockHttpServletRequestBuilder validPost = post("/force_password_change")
@@ -270,9 +258,7 @@ class ForcePasswordChangeControllerMockMvcTest {
             identityProviderProvisioning.update(identityProvider, identityProvider.getIdentityZoneId());
             MockHttpSession session = new MockHttpSession();
 
-            MockHttpServletRequestBuilder getLoginForm = get("/login")
-                    .session(session);
-            mockMvc.perform(getLoginForm)
+            performGet(mockMvc, session, "/login")
                     .andExpect(status().isOk());
 
             MockHttpServletRequestBuilder login = post("/login.do")
@@ -284,16 +270,11 @@ class ForcePasswordChangeControllerMockMvcTest {
                     .andExpect(status().isFound())
                     .andExpect(redirectedUrl("/"));
 
-            mockMvc.perform(
-                    get("/")
-                            .session(session)
-            )
+            performGet(mockMvc, session, "/")
                     .andExpect(status().isFound())
                     .andExpect(redirectedUrl("/force_password_change"));
 
-            MockHttpServletRequestBuilder getPasswordForm = get("/force_password_change")
-                    .session(session);
-            mockMvc.perform(getPasswordForm)
+            performGet(mockMvc, session, "/force_password_change")
                     .andExpect(status().isOk());
 
             MockHttpServletRequestBuilder validPost = post("/force_password_change")
@@ -305,10 +286,7 @@ class ForcePasswordChangeControllerMockMvcTest {
                     .andExpect(status().isFound())
                     .andExpect(redirectedUrl(("/force_password_change_completed")));
 
-            mockMvc.perform(get("/force_password_change_completed")
-                    .session(session)
-                    .with(cookieCsrf())
-            )
+            performGet(mockMvc, session, "/force_password_change_completed")
                     .andExpect(status().isFound())
                     .andExpect(redirectedUrl("http://localhost/"));
             assertTrue(((SecurityContext) ((HttpSession) session).getAttribute(HttpSessionSecurityContextRepository.SPRING_SECURITY_CONTEXT_KEY)).getAuthentication().isAuthenticated());

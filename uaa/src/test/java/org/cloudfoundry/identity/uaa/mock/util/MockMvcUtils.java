@@ -76,13 +76,9 @@ import org.springframework.security.oauth2.provider.client.BaseClientDetails;
 import org.springframework.security.web.PortResolverImpl;
 import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
 import org.springframework.security.web.csrf.CsrfToken;
-import org.springframework.security.web.csrf.CsrfTokenRepository;
 import org.springframework.security.web.savedrequest.DefaultSavedRequest;
 import org.springframework.security.web.savedrequest.SavedRequest;
-import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.test.web.servlet.MvcResult;
-import org.springframework.test.web.servlet.ResultActions;
-import org.springframework.test.web.servlet.ResultMatcher;
+import org.springframework.test.web.servlet.*;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
 import org.springframework.util.StringUtils;
@@ -170,9 +166,7 @@ public final class MockMvcUtils {
     }
 
     public static String performMfaPostVerifyWithCode(int code, MockMvc mvc, MockHttpSession session, String host) throws Exception {
-        MockHttpServletRequestBuilder getMfaForm = get("/login/mfa/verify")
-                .session(session);
-        mvc.perform(getMfaForm)
+        performGet(mvc, session, "/login/mfa/verify") //todo: re-use paths
                 .andExpect(status().isOk());
 
         return mvc.perform(post("/login/mfa/verify.do")
@@ -203,9 +197,7 @@ public final class MockMvcUtils {
     public static ResultActions performMfaRegistrationInZone(String username, String password, MockMvc mockMvc, String host, String[] firstAuthMethods, String[] afterMfaAuthMethods) throws Exception {
         MockHttpSession session = new MockHttpSession();
 
-        MockHttpServletRequestBuilder getLoginForm = get("/login")
-                .session(session);
-        mockMvc.perform(getLoginForm)
+        performGet(mockMvc, session, "/login")
                 .andExpect(status().isOk());
 
         //ldap login
@@ -332,6 +324,13 @@ public final class MockMvcUtils {
         SearchResults<ScimUser> results = JsonUtils.readValue(userResult.getResponse().getContentAsString(),
             new TypeReference<SearchResults<ScimUser>>(){});
         return results.getResources().get(0);
+    }
+
+//    @SneakyThrows //todo
+    public static ResultActions performGet(MockMvc mvc, MockHttpSession session, String urlTemplate, Object... uriVars) throws Exception {
+        RequestBuilder request = get(urlTemplate, uriVars)
+                .session(session);
+        return mvc.perform(request);
     }
 
     public static class MockSavedRequest extends DefaultSavedRequest {
