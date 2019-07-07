@@ -15,6 +15,7 @@
 package org.cloudfoundry.identity.uaa.mock.approvals;
 
 
+import lombok.SneakyThrows;
 import org.cloudfoundry.identity.uaa.authentication.UaaAuthentication;
 import org.cloudfoundry.identity.uaa.authentication.UaaPrincipal;
 import org.cloudfoundry.identity.uaa.constants.OriginKeys;
@@ -38,6 +39,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 import static org.cloudfoundry.identity.uaa.mock.util.MockMvcUtils.CsrfPostProcessor.csrf;
+import static org.cloudfoundry.identity.uaa.mock.util.MockMvcUtils.performGet;
 import static org.cloudfoundry.identity.uaa.oauth.token.TokenConstants.GRANT_TYPE_AUTHORIZATION_CODE;
 import static org.hamcrest.Matchers.containsString;
 import static org.junit.Assert.assertNotNull;
@@ -222,6 +224,7 @@ public class ApprovalsMockMvcTests extends AbstractTokenMockMvcTests {
             .andExpect(redirectedUrlPattern("**/profile"));
     }
 
+    @SneakyThrows
     public MockHttpSession getAuthenticatedSession(ScimUser user) {
         List<SimpleGrantedAuthority> authorities = user.getGroups().stream().map(g -> new SimpleGrantedAuthority(g.getValue())).collect(Collectors.toList());
         UaaPrincipal p = new UaaPrincipal(user.getId(), user.getUserName(), user.getPrimaryEmail(), OriginKeys.UAA, "", IdentityZoneHolder.get().getId());
@@ -229,6 +232,8 @@ public class ApprovalsMockMvcTests extends AbstractTokenMockMvcTests {
         Assert.assertTrue(auth.isAuthenticated());
         SecurityContextHolder.getContext().setAuthentication(auth);
         MockHttpSession session = new MockHttpSession();
+        performGet(mockMvc, session, "/login") // to set the csrf token in this session
+                .andExpect(status().isOk());
         session.setAttribute(
             HttpSessionSecurityContextRepository.SPRING_SECURITY_CONTEXT_KEY,
             new MockMvcUtils.MockSecurityContext(auth)
