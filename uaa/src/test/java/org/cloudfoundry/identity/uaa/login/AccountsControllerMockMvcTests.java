@@ -1,5 +1,6 @@
 package org.cloudfoundry.identity.uaa.login;
 
+import lombok.SneakyThrows;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.cloudfoundry.identity.uaa.DefaultTestContext;
 import org.cloudfoundry.identity.uaa.account.EmailAccountCreationService;
@@ -42,6 +43,7 @@ import org.springframework.web.context.support.StandardServletEnvironment;
 import java.util.Collections;
 
 import static org.cloudfoundry.identity.uaa.mock.util.MockMvcUtils.CsrfPostProcessor.csrf;
+import static org.cloudfoundry.identity.uaa.mock.util.MockMvcUtils.performGet;
 import static org.cloudfoundry.identity.uaa.web.UaaSavedRequestAwareAuthenticationSuccessHandler.SAVED_REQUEST_SESSION_ATTRIBUTE;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.*;
@@ -183,7 +185,7 @@ class AccountsControllerMockMvcTests {
 
         MockMvcUtils.createOtherIdentityZoneAndReturnResult(mockMvc, webApplicationContext, getBaseClientDetails(), zone);
 
-        MockHttpSession session = new MockHttpSession();
+        MockHttpSession session = getCreateAccountForm();
 
         mockMvc.perform(post("/create_account.do")
                 .with(csrf(session))
@@ -218,7 +220,7 @@ class AccountsControllerMockMvcTests {
         JdbcExpiringCodeStore store = webApplicationContext.getBean(JdbcExpiringCodeStore.class);
         store.setGenerator(generator);
 
-        MockHttpSession session = new MockHttpSession();
+        MockHttpSession session = getCreateAccountForm();
 
         mockMvc.perform(post("/create_account.do")
                 .with(csrf(session))
@@ -256,7 +258,7 @@ class AccountsControllerMockMvcTests {
         JdbcExpiringCodeStore store = webApplicationContext.getBean(JdbcExpiringCodeStore.class);
         store.setGenerator(generator);
 
-        MockHttpSession session = new MockHttpSession();
+        MockHttpSession session = getCreateAccountForm();
 
         mockMvc.perform(post("/create_account.do")
                 .with(csrf(session))
@@ -301,7 +303,7 @@ class AccountsControllerMockMvcTests {
         JdbcExpiringCodeStore store = webApplicationContext.getBean(JdbcExpiringCodeStore.class);
         store.setGenerator(generator);
 
-        MockHttpSession session = new MockHttpSession();
+        MockHttpSession session = getCreateAccountForm();
 
         mockMvc.perform(post("/create_account.do")
                 .with(csrf(session))
@@ -352,7 +354,7 @@ class AccountsControllerMockMvcTests {
                 .content(JsonUtils.writeValueAsString(identityZone)))
                 .andExpect(status().isCreated());
 
-        MockHttpSession session = new MockHttpSession();
+        MockHttpSession session = getCreateAccountForm();
 
         mockMvc.perform(post("/create_account.do")
                 .with(csrf(session))
@@ -406,7 +408,7 @@ class AccountsControllerMockMvcTests {
 
         MockMvcUtils.createOtherIdentityZone(subdomain, mockMvc, webApplicationContext, getBaseClientDetails());
 
-        MockHttpSession session = new MockHttpSession();
+        MockHttpSession session = getCreateAccountForm();
 
         mockMvc.perform(post("/create_account.do")
                 .with(new SetServerNameRequestPostProcessor(subdomain + ".localhost"))
@@ -458,6 +460,9 @@ class AccountsControllerMockMvcTests {
         PredictableGenerator generator = new PredictableGenerator();
         JdbcExpiringCodeStore store = webApplicationContext.getBean(JdbcExpiringCodeStore.class);
         store.setGenerator(generator);
+
+        performGet(mockMvc, session, "/create_account")
+                .andExpect(status().isOk());
 
         mockMvc.perform(post("/create_account.do")
                 .with(csrf(session))
@@ -549,7 +554,7 @@ class AccountsControllerMockMvcTests {
         zone.getConfig().getBranding().getConsent().setText(consentText);
         MockMvcUtils.updateZone(mockMvc, zone);
 
-        MockHttpSession session = new MockHttpSession();
+        MockHttpSession session = getCreateAccountForm();
 
         mockMvc.perform(post("/create_account.do")
                 .with(new SetServerNameRequestPostProcessor(randomZoneSubdomain + ".localhost"))
@@ -582,7 +587,7 @@ class AccountsControllerMockMvcTests {
 
         BaseClientDetails clientDetails = createTestClient();
 
-        MockHttpSession session = new MockHttpSession();
+        MockHttpSession session = getCreateAccountForm();
 
         mockMvc.perform(post("/create_account.do")
                 .with(csrf(session))
@@ -618,7 +623,7 @@ class AccountsControllerMockMvcTests {
 
     private ResultActions loginWithAccount(String subdomain) throws Exception {
 
-        MockHttpSession session = new MockHttpSession();
+        MockHttpSession session = getCreateAccountForm();
 
         MockHttpServletRequestBuilder req = post("/login.do")
                 .param("username", userEmail)
@@ -632,4 +637,13 @@ class AccountsControllerMockMvcTests {
         return mockMvc.perform(req)
                 .andExpect(status().isFound());
     }
+
+    @SneakyThrows
+    private MockHttpSession getCreateAccountForm() {
+        MockHttpSession session = new MockHttpSession();
+        performGet(mockMvc, session, "/create_account")
+                .andExpect(status().isOk());
+        return session;
+    }
+
 }
