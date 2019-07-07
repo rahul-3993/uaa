@@ -39,6 +39,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationEvent;
 import org.springframework.context.ApplicationListener;
 import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.context.support.ClassPathXmlApplicationContext;
@@ -82,11 +83,7 @@ import static org.cloudfoundry.identity.uaa.mock.util.MockMvcUtils.CsrfPostProce
 import static org.cloudfoundry.identity.uaa.mock.util.MockMvcUtils.performGet;
 import static org.cloudfoundry.identity.uaa.mock.util.MockMvcUtils.performMfaRegistrationInZone;
 import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.arrayContainingInAnyOrder;
-import static org.hamcrest.Matchers.containsInAnyOrder;
-import static org.hamcrest.Matchers.containsString;
-import static org.hamcrest.Matchers.instanceOf;
-import static org.hamcrest.Matchers.not;
+import static org.hamcrest.Matchers.*;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -111,6 +108,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.model;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl;
@@ -131,7 +129,7 @@ public abstract class AbstractLdapMockMvcTest {
     private String tlsConfig;
 
     private String host;
-    private ApplicationListener<AbstractUaaEvent> listener;
+    private ApplicationListener<ApplicationEvent> listener;
     private MockMvcUtils.ZoneScimInviteData zone;
     private IdentityProvider<LdapIdentityProviderDefinition> provider;
 
@@ -210,7 +208,7 @@ public abstract class AbstractLdapMockMvcTest {
         host = zone.getZone().getIdentityZone().getSubdomain() + ".localhost";
         IdentityZoneHolder.clear();
 
-        listener = (ApplicationListener<AbstractUaaEvent>) mock(ApplicationListener.class);
+        listener = (ApplicationListener<ApplicationEvent>) mock(ApplicationListener.class);
         configurableApplicationContext.addApplicationListener(listener);
 
         ensureLdapServerIsRunning();
@@ -707,7 +705,13 @@ public abstract class AbstractLdapMockMvcTest {
         provider.setActive(false);
         MockMvcUtils.createIdpUsingWebRequest(getMockMvc(), zone.getZone().getIdentityZone().getId(), zone.getZone().getZoneAdminToken(), provider, status().isOk(), true);
 
-        getMockMvc().perform(post("/login.do").accept(TEXT_HTML_VALUE)
+        getMockMvc().perform(get("/login")
+                .session(session)
+                .header(HOST, host))
+                .andDo(print())
+//                .andExpect(status().isOk())
+;
+        getMockMvc().perform(post("/login.do").accept(TEXT_HTML_VALUE) //todo
                 .with(csrf(session))
                 .header(HOST, host)
                 .param("username", "marissa2")
@@ -877,9 +881,9 @@ public abstract class AbstractLdapMockMvcTest {
                 .andExpect(unauthenticated())
                 .andExpect(redirectedUrl("/login?error=login_failure"));
 
-        ArgumentCaptor<AbstractUaaEvent> captor = ArgumentCaptor.forClass(AbstractUaaEvent.class);
+        ArgumentCaptor<ApplicationEvent> captor = ArgumentCaptor.forClass(ApplicationEvent.class);
         verify(listener, atLeast(5)).onApplicationEvent(captor.capture());
-        List<AbstractUaaEvent> allValues = captor.getAllValues();
+        List<ApplicationEvent> allValues = captor.getAllValues();
         assertThat(allValues.get(4), instanceOf(IdentityProviderAuthenticationFailureEvent.class));
         IdentityProviderAuthenticationFailureEvent event = (IdentityProviderAuthenticationFailureEvent) allValues.get(4);
         assertEquals("marissa", event.getUsername());
@@ -887,11 +891,16 @@ public abstract class AbstractLdapMockMvcTest {
 
         testSuccessfulLogin();
 
-        captor = ArgumentCaptor.forClass(AbstractUaaEvent.class);
+        captor = ArgumentCaptor.forClass(ApplicationEvent.class);
         verify(listener, atLeast(5)).onApplicationEvent(captor.capture());
         allValues = captor.getAllValues();
-        assertThat(allValues.get(12), instanceOf(IdentityProviderAuthenticationSuccessEvent.class));
-        IdentityProviderAuthenticationSuccessEvent successEvent = (IdentityProviderAuthenticationSuccessEvent) allValues.get(12);
+        assertThat(allValues, hasItem(instanceOf(IdentityProviderAuthenticationSuccessEvent.class)));
+        IdentityProviderAuthenticationSuccessEvent successEvent = allValues
+                .stream()
+                .filter(e -> e instanceof IdentityProviderAuthenticationSuccessEvent)
+                .map(e -> (IdentityProviderAuthenticationSuccessEvent) e)
+                .findAny()
+                .orElseThrow(AssertionError::new);
         assertEquals(OriginKeys.LDAP, successEvent.getAuthenticationType());
     }
 
@@ -967,7 +976,7 @@ public abstract class AbstractLdapMockMvcTest {
         zone.getZone().getIdentityZone().getConfig().setMfaConfig(new MfaConfig().setEnabled(true).setProviderName(mfaProvider.getName()));
         IdentityZone newZone = getWebApplicationContext().getBean(JdbcIdentityZoneProvisioning.class).update(zone.getZone().getIdentityZone());
         assertEquals(mfaProvider.getName(), newZone.getConfig().getMfaConfig().getProviderName());
-        ResultActions actions = performMfaRegistrationInZone(
+        ResultActions actions = performMfaRegistrationInZone( //todo
                 "marissa7",
                 "ldap7",
                 getMockMvc(),
