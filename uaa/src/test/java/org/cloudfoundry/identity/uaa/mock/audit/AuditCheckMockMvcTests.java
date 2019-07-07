@@ -2,6 +2,7 @@ package org.cloudfoundry.identity.uaa.mock.audit;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.google.common.collect.Sets;
+import lombok.SneakyThrows;
 import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.impl.NoOpLog;
@@ -76,6 +77,7 @@ import static java.util.stream.Collectors.joining;
 import static org.cloudfoundry.identity.uaa.audit.AuditEventType.*;
 import static org.cloudfoundry.identity.uaa.integration.util.IntegrationTestUtils.RegexMatcher.matchesRegex;
 import static org.cloudfoundry.identity.uaa.mock.util.MockMvcUtils.CsrfPostProcessor.csrf;
+import static org.cloudfoundry.identity.uaa.mock.util.MockMvcUtils.performGet;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.startsWith;
 import static org.hamcrest.Matchers.*;
@@ -216,7 +218,7 @@ class AuditCheckMockMvcTests {
 
     @Test
     void userLoginTest() throws Exception {
-        MockHttpSession session = new MockHttpSession();
+        MockHttpSession session = getLoginForm();
 
         MockHttpServletRequestBuilder loginPost = post("/login.do")
                 .with(csrf(session))
@@ -282,7 +284,7 @@ class AuditCheckMockMvcTests {
 
     @Test
     void invalidPasswordLoginUnsuccessfulTest() throws Exception {
-        MockHttpSession session = new MockHttpSession();
+        MockHttpSession session = getLoginForm();
 
         MockHttpServletRequestBuilder loginPost = post("/login.do")
                 .with(csrf(session))
@@ -477,7 +479,7 @@ class AuditCheckMockMvcTests {
     void userNotFoundLoginUnsuccessfulTest() throws Exception {
         String username = "test1234";
 
-        MockHttpSession session = new MockHttpSession();
+        MockHttpSession session = getLoginForm();
 
         MockHttpServletRequestBuilder loginPost = post("/login.do")
                 .with(csrf(session))
@@ -505,7 +507,7 @@ class AuditCheckMockMvcTests {
 
     @Test
     void userChangePasswordTest() throws Exception {
-        MockHttpSession session = new MockHttpSession();
+        MockHttpSession session = getLoginForm();
         MockHttpServletRequestBuilder loginPost = post("/login.do")
                 .with(csrf(session))
                 .accept(APPLICATION_JSON_VALUE)
@@ -563,7 +565,7 @@ class AuditCheckMockMvcTests {
 
     @Test
     void userChangeInvalidPasswordTest() throws Exception {
-        MockHttpSession session = new MockHttpSession();
+        MockHttpSession session = getLoginForm();
         MockHttpServletRequestBuilder loginPost = post("/login.do")
                 .with(csrf(session))
                 .accept(APPLICATION_JSON_VALUE)
@@ -812,10 +814,8 @@ class AuditCheckMockMvcTests {
 
         resetAuditTestReceivers();
 
-        MockHttpSession session = new MockHttpSession();
-
         MockHttpServletRequestBuilder userPost = post("/oauth/authorize")
-                .with(csrf(session))
+                .session(new MockHttpSession())
                 .accept(APPLICATION_JSON_VALUE)
                 .contentType(MediaType.APPLICATION_JSON)
                 .header("Authorization", "Bearer " + loginToken)
@@ -1288,4 +1288,12 @@ class AuditCheckMockMvcTests {
             return messages.get(messages.size() - 1);
         }
     }
+
+    @SneakyThrows
+    private MockHttpSession getLoginForm() {
+        MockHttpSession session = new MockHttpSession();
+        performGet(mockMvc, session, "/login").andExpect(status().isOk());
+        return session;
+    }
+
 }
