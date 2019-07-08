@@ -1610,7 +1610,6 @@ public class TokenMvcMockTests extends AbstractTokenMockMvcTests {
 
         String state = generator.generate();
         MockHttpServletRequestBuilder authRequest = get("/oauth/authorize")
-                .with(httpBasic(clientId, SECRET)) //todo: delete - user's browswer does not have client secret in code grant
                 .session(session)
                 .param(OAuth2Utils.RESPONSE_TYPE, "code")
                 .param(SCOPE, "openid")
