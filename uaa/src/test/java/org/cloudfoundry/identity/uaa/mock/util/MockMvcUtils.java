@@ -167,7 +167,11 @@ public final class MockMvcUtils {
     }
 
     public static String performMfaPostVerifyWithCode(int code, MockMvc mvc, MockHttpSession session, String host) throws Exception {
-        performGet(mvc, session, "/login/mfa/verify")
+        mvc.perform(
+                get("/login/mfa/verify")
+                        .session(session)
+                        .header("Host", host)
+        )
                 .andExpect(status().isOk());
 
         return mvc.perform(post("/login/mfa/verify.do")
@@ -197,7 +201,10 @@ public final class MockMvcUtils {
     public static ResultActions performMfaRegistrationInZone(String username, String password, MockMvc mockMvc, String host, String[] firstAuthMethods, String[] afterMfaAuthMethods) throws Exception {
         MockHttpSession session = new MockHttpSession();
 
-        performGet(mockMvc, session, "/login")
+        mockMvc.perform(get("/login")
+                .session(session)
+                .header(HOST, host)
+        )
                 .andExpect(status().isOk());
 
         //ldap login

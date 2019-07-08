@@ -63,7 +63,6 @@ import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilde
 import org.springframework.util.StringUtils;
 import org.springframework.web.context.WebApplicationContext;
 
-import javax.servlet.http.HttpSession;
 import java.io.File;
 import java.net.URL;
 import java.net.URLEncoder;
@@ -108,7 +107,6 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
-import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.model;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl;
@@ -676,10 +674,10 @@ public abstract class AbstractLdapMockMvcTest {
         assumeFalse(!(ldapProfile.contains("ldap-search-and-bind.xml") &&
                 ldapGroup.contains("ldap-groups-map-to-scopes.xml")));
 
-        MockHttpSession session = new MockHttpSession();
+        MockHttpSession session1 = new MockHttpSession();
 
         getMockMvc().perform(get("/login")
-                .session(session)
+                .session(session1)
                 .header(HOST, host))
                 .andExpect(status().isOk())
                 .andExpect(view().name("login"))
@@ -687,7 +685,7 @@ public abstract class AbstractLdapMockMvcTest {
 
 
         getMockMvc().perform(post("/login.do").accept(TEXT_HTML_VALUE)
-                .with(csrf(session))
+                .with(csrf(session1))
                 .header(HOST, host)
                 .param("username", "marissa2")
                 .param("password", LDAP))
@@ -705,14 +703,16 @@ public abstract class AbstractLdapMockMvcTest {
         provider.setActive(false);
         MockMvcUtils.createIdpUsingWebRequest(getMockMvc(), zone.getZone().getIdentityZone().getId(), zone.getZone().getZoneAdminToken(), provider, status().isOk(), true);
 
+        MockHttpSession session2 = new MockHttpSession(); //new session to store csrf token in session
+
         getMockMvc().perform(get("/login")
-                .session(session)
-                .header(HOST, host))
-                .andDo(print())
-//                .andExpect(status().isOk())
-;
-        getMockMvc().perform(post("/login.do").accept(TEXT_HTML_VALUE) //todo
-                .with(csrf(session))
+                .session(session2)
+                .header(HOST, host)
+        )
+                .andExpect(status().isOk());
+
+        getMockMvc().perform(post("/login.do").accept(TEXT_HTML_VALUE)
+                .with(csrf(session2))
                 .header(HOST, host)
                 .param("username", "marissa2")
                 .param("password", LDAP))
@@ -725,7 +725,7 @@ public abstract class AbstractLdapMockMvcTest {
         MockMvcUtils.createIdpUsingWebRequest(getMockMvc(), zone.getZone().getIdentityZone().getId(), zone.getZone().getZoneAdminToken(), provider, status().isOk(), true);
 
         getMockMvc().perform(post("/login.do").accept(TEXT_HTML_VALUE)
-                .with(csrf(session))
+                .with(csrf(session2))
                 .header(HOST, host)
                 .param("username", "marissa2")
                 .param("password", LDAP))
@@ -976,7 +976,7 @@ public abstract class AbstractLdapMockMvcTest {
         zone.getZone().getIdentityZone().getConfig().setMfaConfig(new MfaConfig().setEnabled(true).setProviderName(mfaProvider.getName()));
         IdentityZone newZone = getWebApplicationContext().getBean(JdbcIdentityZoneProvisioning.class).update(zone.getZone().getIdentityZone());
         assertEquals(mfaProvider.getName(), newZone.getConfig().getMfaConfig().getProviderName());
-        ResultActions actions = performMfaRegistrationInZone( //todo
+        ResultActions actions = performMfaRegistrationInZone(
                 "marissa7",
                 "ldap7",
                 getMockMvc(),
