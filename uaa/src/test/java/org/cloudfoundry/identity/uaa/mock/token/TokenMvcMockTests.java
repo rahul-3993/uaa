@@ -1597,8 +1597,8 @@ public class TokenMvcMockTests extends AbstractTokenMockMvcTests {
 
     @Test
     void test_subdomain_redirect_url() throws Exception {
-        String redirectUri = "https://example.com/dashboard/?appGuid=app-guid&ace_config=test";
-        String subDomainUri = redirectUri.replace("example.com", "test.example.com");
+        String redirectUri = "https://*.example.com/dashboard/?appGuid=app-guid&ace_config=test";
+        String subDomainUri = redirectUri.replace("*.example.com", "test.example.com");
         String clientId = "authclient-" + generator.generate();
         String scopes = "openid";
         setUpClients(clientId, scopes, scopes, GRANT_TYPES, true, redirectUri);
