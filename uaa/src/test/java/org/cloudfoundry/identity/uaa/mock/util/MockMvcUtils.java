@@ -1349,12 +1349,17 @@ public final class MockMvcUtils {
         }
 
         public MockHttpServletRequest postProcessRequest(MockHttpServletRequest request) {
-            CsrfToken token = (CsrfToken) session.getAttribute("org.springframework.security.web.csrf.HttpSessionCsrfTokenRepository.CSRF_TOKEN");
-            Assert.assertNotNull("need to first perform GET request in order to populate session with csrf token", token);
+            CsrfToken token = getCsrfToken(session);
             String tokenValue = token.getToken();
             request.setSession(session);
             request.setParameter(token.getParameterName(), useInvalidToken ? "invalid" + tokenValue : tokenValue);
             return request;
+        }
+
+        public static CsrfToken getCsrfToken(HttpSession session) {
+            CsrfToken token = (CsrfToken) session.getAttribute("org.springframework.security.web.csrf.HttpSessionCsrfTokenRepository.CSRF_TOKEN");
+            Assert.assertNotNull("need to first perform GET request in order to populate session with csrf token", token);
+            return token;
         }
 
         public static CsrfPostProcessor csrf(HttpSession session) {

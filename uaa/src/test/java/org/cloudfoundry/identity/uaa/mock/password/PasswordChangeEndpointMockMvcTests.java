@@ -13,10 +13,13 @@ import org.springframework.mock.web.MockHttpSession;
 import org.springframework.security.oauth2.common.util.RandomValueStringGenerator;
 import org.springframework.security.oauth2.provider.client.BaseClientDetails;
 import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
+import org.springframework.security.web.csrf.CsrfToken;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 
 import static org.cloudfoundry.identity.uaa.mock.util.MockMvcUtils.CsrfPostProcessor.csrf;
+import static org.cloudfoundry.identity.uaa.mock.util.MockMvcUtils.CsrfPostProcessor.getCsrfToken;
+import static org.cloudfoundry.identity.uaa.mock.util.MockMvcUtils.performGet;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNotSame;
 import static org.junit.Assert.assertTrue;
@@ -26,6 +29,7 @@ import static org.springframework.http.MediaType.TEXT_HTML_VALUE;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -134,10 +138,15 @@ class PasswordChangeEndpointMockMvcTests {
         ScimUser user = createUser();
 
         MockHttpSession session = new MockHttpSession();
+        performGet(mockMvc, session, "/login")
+                .andExpect(status().isOk());
+        CsrfToken csrfToken = getCsrfToken(session);
+
         session.invalidate();
         MockHttpSession afterLoginSession = (MockHttpSession) mockMvc.perform(post("/login.do")
-                .with(csrf(session))
+                .session(session)
                 .accept(TEXT_HTML_VALUE)
+                .param(csrfToken.getParameterName(), csrfToken.getToken())
                 .param("username", user.getUserName())
                 .param("password", password))
                 .andExpect(status().isFound())
@@ -169,6 +178,8 @@ class PasswordChangeEndpointMockMvcTests {
         ScimUser user = createUser();
 
         MockHttpSession session = new MockHttpSession();
+        performGet(mockMvc, session, "/login")
+                .andExpect(status().isOk());
         MockHttpSession afterLoginSessionA = (MockHttpSession) mockMvc.perform(post("/login.do")
                 .with(csrf(session))
                 .accept(TEXT_HTML_VALUE)
@@ -179,6 +190,8 @@ class PasswordChangeEndpointMockMvcTests {
                 .andReturn().getRequest().getSession(false);
 
         session = new MockHttpSession();
+        performGet(mockMvc, session, "/login") //todo: extract getLoginForm() method
+                .andExpect(status().isOk());
         MockHttpSession afterLoginSessionB = (MockHttpSession) mockMvc.perform(post("/login.do")
                 .with(csrf(session))
                 .accept(TEXT_HTML_VALUE)
@@ -197,12 +210,12 @@ class PasswordChangeEndpointMockMvcTests {
 
         Thread.sleep(1000 - (System.currentTimeMillis() % 1000) + 1);
 
-        MockHttpSession afterPasswordChange = (MockHttpSession) mockMvc.perform(post("/change_password.do")
+        MockHttpSession afterPasswordChange = (MockHttpSession) mockMvc.perform(post("/change_password.do") //todo
                 .with(csrf(afterLoginSessionA))
                 .accept(TEXT_HTML_VALUE)
                 .param("current_password", password)
                 .param("new_password", "secr3T1")
-                .param("confirm_password", "secr3T1"))
+                .param("confirm_password", "secr3T1")).andDo(print())
                 .andExpect(status().isFound())
                 .andExpect(redirectedUrl("profile"))
                 .andReturn().getRequest().getSession(false);
