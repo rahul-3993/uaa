@@ -60,6 +60,7 @@ import java.util.Map;
 
 import static org.cloudfoundry.identity.uaa.codestore.ExpiringCodeType.REGISTRATION;
 import static org.cloudfoundry.identity.uaa.mock.util.MockMvcUtils.CsrfPostProcessor.csrf;
+import static org.cloudfoundry.identity.uaa.mock.util.MockMvcUtils.performGet;
 import static org.cloudfoundry.identity.uaa.zone.IdentityZoneSwitchingFilter.HEADER;
 import static org.hamcrest.CoreMatchers.*;
 import static org.hamcrest.Matchers.greaterThan;
@@ -1442,8 +1443,7 @@ class ScimUserEndpointsMockMvcTests {
     }
 
     private ResultActions attemptLogin(ScimUser user) throws Exception {
-        MockHttpSession session = new MockHttpSession();
-
+        MockHttpSession session = getLoginForm();
         return mockMvc
                 .perform(post("/login.do")
                         .with(csrf(session))
@@ -1453,9 +1453,7 @@ class ScimUserEndpointsMockMvcTests {
 
     private void attemptUnsuccessfulLogin(int numberOfAttempts, String username, String subdomain) throws Exception {
         String requestDomain = subdomain.equals("") ? "localhost" : subdomain + ".localhost";
-
-        MockHttpSession session = new MockHttpSession();
-
+        MockHttpSession session = getLoginForm();
         MockHttpServletRequestBuilder post = post("/login.do")
                 .with(new SetServerNameRequestPostProcessor(requestDomain))
                 .with(csrf(session))
@@ -1517,8 +1515,7 @@ class ScimUserEndpointsMockMvcTests {
     }
 
     private void performAuthentication(ScimUser user, boolean success) throws Exception {
-        MockHttpSession session = new MockHttpSession();
-
+        MockHttpSession session = getLoginForm();
         mockMvc.perform(
                 post("/login.do")
                         .accept("text/html")
@@ -1528,4 +1525,12 @@ class ScimUserEndpointsMockMvcTests {
                 .andDo(print())
                 .andExpect(success ? authenticated() : unauthenticated());
     }
+
+    private MockHttpSession getLoginForm() throws Exception {
+        MockHttpSession session = new MockHttpSession();
+        performGet(mockMvc, session, "/login")
+                .andExpect(status().isOk());
+        return session;
+    }
+
 }
