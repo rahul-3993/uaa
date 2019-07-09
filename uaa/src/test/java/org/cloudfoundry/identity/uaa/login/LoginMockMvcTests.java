@@ -31,7 +31,6 @@ import org.cloudfoundry.identity.uaa.provider.saml.BootstrapSamlIdentityProvider
 import org.cloudfoundry.identity.uaa.scim.ScimUser;
 import org.cloudfoundry.identity.uaa.scim.ScimUserProvisioning;
 import org.cloudfoundry.identity.uaa.scim.jdbc.JdbcScimUserProvisioning;
-import org.cloudfoundry.identity.uaa.security.web.CookieBasedCsrfTokenRepository;
 import org.cloudfoundry.identity.uaa.security.web.CorsFilter;
 import org.cloudfoundry.identity.uaa.user.UaaAuthority;
 import org.cloudfoundry.identity.uaa.util.JsonUtils;
@@ -340,46 +339,6 @@ public class LoginMockMvcTests {
                 .andExpect(status().is3xxRedirection())
                 .andExpect(redirectedUrl("http://configured." + zone.getSubdomain() + ".redirect.to/z/" + zone.getId()));
 
-    }
-
-    @Test
-    void test_cookie_csrf() throws Exception {
-        MockHttpSession session = new MockHttpSession();
-
-        MockHttpServletRequestBuilder invalidPost = post("/login.do")
-                .session(session)
-                .param("username", "marissa")
-                .param("password", "koala");
-
-        mockMvc.perform(invalidPost)
-                .andDo(print())
-                .andExpect(status().isFound())
-                .andExpect(redirectedUrl("http://localhost/login?error=invalid_login_request"));
-
-        session = new MockHttpSession();
-        String csrfValue = "12345";
-        Cookie cookie = new Cookie(CookieBasedCsrfTokenRepository.DEFAULT_CSRF_COOKIE_NAME, csrfValue);
-
-        mockMvc.perform(
-                invalidPost
-                        .cookie(cookie)
-                        .param(CookieBasedCsrfTokenRepository.DEFAULT_CSRF_COOKIE_NAME, "other-value")
-        )
-                .andDo(print())
-                .andExpect(status().isFound())
-                .andExpect(redirectedUrl("http://localhost/login?error=invalid_login_request"));
-
-        performGet(mockMvc, session, "/login")
-                .andExpect(status().isOk());
-        MockHttpServletRequestBuilder validPost = post("/uaa/login.do")
-                .with(csrf(session))
-                .contextPath("/uaa")
-                .param("username", "marissa")
-                .param("password", "koala");
-        mockMvc.perform(validPost)
-                .andDo(print())
-                .andExpect(status().isFound())
-                .andExpect(redirectedUrl("/uaa/"));
     }
 
     @Test
