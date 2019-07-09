@@ -63,6 +63,7 @@ import java.util.stream.Stream;
 import static org.cloudfoundry.identity.uaa.constants.OriginKeys.LOGIN_SERVER;
 import static org.cloudfoundry.identity.uaa.constants.OriginKeys.UAA;
 import static org.cloudfoundry.identity.uaa.mock.util.MockMvcUtils.CsrfPostProcessor.csrf;
+import static org.cloudfoundry.identity.uaa.mock.util.MockMvcUtils.performGet;
 import static org.cloudfoundry.identity.uaa.oauth.token.TokenConstants.GRANT_TYPE_AUTHORIZATION_CODE;
 import static org.cloudfoundry.identity.uaa.oauth.token.TokenConstants.TokenFormat.JWT;
 import static org.cloudfoundry.identity.uaa.oauth.token.TokenConstants.TokenFormat.OPAQUE;
@@ -1615,6 +1616,8 @@ class IdentityZoneEndpointsMockMvcTests {
         assertEquals(1, membershipManager.getMembers(group.getId(), false, IdentityZoneHolder.get().getId()).size());
 
         MockHttpSession session = new MockHttpSession();
+        performGet(mockMvc, session, "/login")
+                .andExpect(status().isOk());
 
         //failed authenticated user
         mockMvc.perform(
