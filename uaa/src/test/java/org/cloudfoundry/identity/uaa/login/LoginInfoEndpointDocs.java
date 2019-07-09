@@ -23,6 +23,7 @@ import java.util.Arrays;
 import java.util.Map;
 
 import static org.cloudfoundry.identity.uaa.mock.util.MockMvcUtils.CsrfPostProcessor.csrf;
+import static org.cloudfoundry.identity.uaa.mock.util.MockMvcUtils.performGet;
 import static org.cloudfoundry.identity.uaa.test.SnippetUtils.fieldWithPath;
 import static org.cloudfoundry.identity.uaa.test.SnippetUtils.headerWithName;
 import static org.cloudfoundry.identity.uaa.test.SnippetUtils.parameterWithName;
@@ -96,25 +97,21 @@ class LoginInfoEndpointDocs extends EndpointDocs {
         Snippet requestParameters = requestParameters(
                 parameterWithName("username").required().type(STRING).description("The username of the user, sometimes the email address."),
                 parameterWithName("password").required().type(STRING).description("The user's password"),
-                parameterWithName("X-Uaa-Csrf").required().type(STRING).description("Automatically configured by the server upon /login. Must match the value of the X-Uaa-Csrf cookie.")
-        );
-        Snippet requestHeaders = requestHeaders(
-                headerWithName("Cookie").required().type(STRING).description("Must contain the a value for the cookie X-Uaa-Csrf and that must match the request parameter of the same name")
+                parameterWithName("_csrf").required().type(STRING).description("Automatically configured by the server upon /login.")
         );
 
         MockHttpSession session = new MockHttpSession();
-
+        performGet(mockMvc, session, "/login")
+                .andExpect(status().isOk());
         mockMvc.perform(
                 post("/login.do")
                         .with(csrf(session))
-                        .header("Cookie", "X-Uaa-Csrf=12345a")
                         .param("username", "marissa")
                         .param("password", "koala")
-                        .param("X-Uaa-Csrf", "12345a"))
+        )
                 .andDo(
                         document("{ClassName}/{methodName}",
                                 preprocessResponse(prettyPrint()),
-                                requestHeaders,
                                 requestParameters))
                 .andExpect(status().isFound())
                 .andExpect(redirectedUrl("/"));
