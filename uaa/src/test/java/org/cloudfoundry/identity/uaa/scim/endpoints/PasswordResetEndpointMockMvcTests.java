@@ -162,7 +162,10 @@ class PasswordResetEndpointMockMvcTests {
         String code = getExpiringCode(mockMvc, "app", "http://localhost:8080/app/", loginToken, scimUser);
         String email = scimUser.getUserName();
 
+        MockHttpSession session = new MockHttpSession();
+
         MockHttpServletRequestBuilder get = get("/reset_password")
+            .session(session)
             .param("code", code)
             .param("email", email);
 
@@ -172,8 +175,6 @@ class PasswordResetEndpointMockMvcTests {
             .andReturn();
 
         String resultingCodeString = getCodeFromPage(result);
-
-        MockHttpSession session = new MockHttpSession();
 
         MockHttpServletRequestBuilder post = post("/reset_password.do")
             .param("code", resultingCodeString)
