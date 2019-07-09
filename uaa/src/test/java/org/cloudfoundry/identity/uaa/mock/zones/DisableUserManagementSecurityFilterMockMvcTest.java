@@ -34,6 +34,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 import static org.cloudfoundry.identity.uaa.mock.util.MockMvcUtils.CsrfPostProcessor.csrf;
+import static org.cloudfoundry.identity.uaa.mock.util.MockMvcUtils.performGet;
 import static org.junit.Assert.assertNotNull;
 import static org.springframework.http.MediaType.APPLICATION_JSON;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
@@ -222,10 +223,11 @@ class DisableUserManagementSecurityFilterMockMvcTest {
 
     @Test
     void accountsControllerSendActivationEmailNotAllowed() throws Exception {
-        MockMvcUtils.setDisableInternalUserManagement(webApplicationContext, true);
-
         MockHttpSession session = new MockHttpSession();
+        performGet(mockMvc, session, "/create_account")
+                .andExpect(status().isOk());
 
+        MockMvcUtils.setDisableInternalUserManagement(webApplicationContext, true);
         mockMvc.perform(post("/create_account.do")
                 .with(csrf(session))
                 .param("client_id", "login")
@@ -285,7 +287,7 @@ class DisableUserManagementSecurityFilterMockMvcTest {
         MockHttpSession userSession = getUserSession(createdUser.getUserName(), PASSWD);
         MockMvcUtils.setDisableInternalUserManagement(webApplicationContext, true);
         mockMvc.perform(get("/change_email")
-                .with(csrf(userSession))
+                .session(userSession)
                 .accept(ACCEPT_TEXT_HTML))
                 .andExpect(status().isForbidden())
                 .andExpect(content()
@@ -302,12 +304,13 @@ class DisableUserManagementSecurityFilterMockMvcTest {
         ResultActions result = createUser();
         ScimUser createdUser = JsonUtils.readValue(result.andReturn().getResponse().getContentAsString(), ScimUser.class);
 
-        MockMvcUtils.setDisableInternalUserManagement(webApplicationContext, true);
+        MockHttpSession session = getUserSession(createdUser.getUserName(), PASSWD);
+        performGet(mockMvc, session, "/change_email")
+                .andExpect(status().isOk());
 
-        MockHttpSession userSession = getUserSession(createdUser.getUserName(), PASSWD);
-        
+        MockMvcUtils.setDisableInternalUserManagement(webApplicationContext, true);
         mockMvc.perform(post("/change_email.do")
-                .with(csrf(userSession))
+                .with(csrf(session))
                 .accept(ACCEPT_TEXT_HTML)
                 .param("newEmail", "newUser@example.com")
                 .param("client_id", "login"))
@@ -372,6 +375,10 @@ class DisableUserManagementSecurityFilterMockMvcTest {
         ResultActions result = createUser();
         ScimUser createdUser = JsonUtils.readValue(result.andReturn().getResponse().getContentAsString(), ScimUser.class);
         MockHttpSession userSession = getUserSession(createdUser.getUserName(), PASSWD);
+
+        performGet(mockMvc, userSession, "/change_password")
+                .andExpect(status().isOk());
+
         MockMvcUtils.setDisableInternalUserManagement(webApplicationContext, true);
         mockMvc.perform(post("/change_password.do")
                 .with(csrf(userSession))
@@ -459,12 +466,13 @@ class DisableUserManagementSecurityFilterMockMvcTest {
         MockMvcUtils.setDisableInternalUserManagement(webApplicationContext, true);
 
         MockHttpSession session = new MockHttpSession();
+        performGet(mockMvc, session, "/login") // to set the csrf token in this session
+                .andExpect(status().isOk());
 
         mockMvc.perform(post("/reset_password.do")
                 .param("code", getExpiringCode(change).getCode())
                 .param("email", createdUser.getUserName())
                 .param("password", "new-password")
-
                 .param("password_confirmation", "new-password")
                 .with(csrf(session)))
                 .andExpect(status().isForbidden())
@@ -484,7 +492,8 @@ class DisableUserManagementSecurityFilterMockMvcTest {
 
     private MockHttpSession getUserSession(String username, String password) throws Exception {
         MockHttpSession session = new MockHttpSession();
-        session.invalidate();
+        performGet(mockMvc, session, "/login")
+                .andExpect(status().isOk());
 
         MockHttpSession afterLoginSession = (MockHttpSession) mockMvc.perform(post("/login.do")
                 .with(csrf(session))
