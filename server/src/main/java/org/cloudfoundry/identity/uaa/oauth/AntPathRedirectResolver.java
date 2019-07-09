@@ -88,7 +88,7 @@ public class AntPathRedirectResolver extends DefaultRedirectResolver {
      * </p>
      */
     private boolean matchesAfterNormalization(Predicate<String> matcher, String requestedRedirect) {
-        int maxDecodeAttempts = 5;
+        final int maxDecodeAttempts = 5;
         for (int i = 1; i <= maxDecodeAttempts; i++) {
             if (!matcher.test(requestedRedirect)) {
                 return false;
