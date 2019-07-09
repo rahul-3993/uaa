@@ -1356,7 +1356,7 @@ public final class MockMvcUtils {
             return request;
         }
 
-        public static CsrfToken getCsrfToken(HttpSession session) { //todo: revert back to private
+        public static CsrfToken getCsrfToken(HttpSession session) {
             CsrfToken token = (CsrfToken) session.getAttribute("org.springframework.security.web.csrf.HttpSessionCsrfTokenRepository.CSRF_TOKEN");
             Assert.assertNotNull("need to first perform GET request in order to populate session with csrf token", token);
             return token;

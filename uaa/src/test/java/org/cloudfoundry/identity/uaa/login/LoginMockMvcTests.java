@@ -12,6 +12,7 @@
  *******************************************************************************/
 package org.cloudfoundry.identity.uaa.login;
 
+import lombok.SneakyThrows;
 import org.cloudfoundry.identity.uaa.DefaultTestContext;
 import org.cloudfoundry.identity.uaa.authentication.UaaAuthentication;
 import org.cloudfoundry.identity.uaa.authentication.UaaPrincipal;
@@ -56,6 +57,7 @@ import org.springframework.security.oauth2.common.util.RandomValueStringGenerato
 import org.springframework.security.oauth2.provider.client.BaseClientDetails;
 import org.springframework.security.web.PortResolverImpl;
 import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
+import org.springframework.security.web.csrf.CsrfToken;
 import org.springframework.security.web.savedrequest.DefaultSavedRequest;
 import org.springframework.security.web.savedrequest.SavedRequest;
 import org.springframework.test.annotation.DirtiesContext;
@@ -84,6 +86,7 @@ import static org.cloudfoundry.identity.uaa.constants.OriginKeys.LDAP;
 import static org.cloudfoundry.identity.uaa.constants.OriginKeys.UAA;
 import static org.cloudfoundry.identity.uaa.mock.util.MockMvcUtils.CsrfPostProcessor.csrf;
 import static org.cloudfoundry.identity.uaa.mock.util.MockMvcUtils.*;
+import static org.cloudfoundry.identity.uaa.mock.util.MockMvcUtils.CsrfPostProcessor.getCsrfToken;
 import static org.cloudfoundry.identity.uaa.web.UaaSavedRequestAwareAuthenticationSuccessHandler.SAVED_REQUEST_SESSION_ATTRIBUTE;
 import static org.cloudfoundry.identity.uaa.zone.IdentityZone.getUaa;
 import static org.hamcrest.Matchers.*;
@@ -340,9 +343,7 @@ public class LoginMockMvcTests {
     }
 
     @Test
-    void test_cookie_csrf(
-            @Autowired JdbcScimUserProvisioning jdbcScimUserProvisioning
-    ) throws Exception {
+    void test_cookie_csrf() throws Exception {
         MockHttpSession session = new MockHttpSession();
 
         MockHttpServletRequestBuilder invalidPost = post("/login.do")
@@ -368,8 +369,6 @@ public class LoginMockMvcTests {
                 .andExpect(status().isFound())
                 .andExpect(redirectedUrl("http://localhost/login?error=invalid_login_request"));
 
-        jdbcScimUserProvisioning.query("username eq 'marissa'", IdentityZoneHolder.get().getId()).get(0);
-
         performGet(mockMvc, session, "/login")
                 .andExpect(status().isOk());
         MockHttpServletRequestBuilder validPost = post("/uaa/login.do")
@@ -382,6 +381,55 @@ public class LoginMockMvcTests {
                 .andExpect(status().isFound())
                 .andExpect(redirectedUrl("/uaa/"));
     }
+
+    @Test
+    void login_formLacksCsrfToken_invalidLoginRequest() throws Exception {
+        MockHttpSession session = new MockHttpSession();
+        MockHttpServletRequestBuilder loginRequest = createLoginRequest(session);
+
+        login(loginRequest)
+                .andExpect(redirectedUrl("http://localhost/uaa/login?error=invalid_login_request"));
+    }
+
+    @Test
+    void login_formContainsInvalidCsrfToken_invalidLoginRequest() throws Exception {
+        MockHttpSession session = new MockHttpSession();
+        MockHttpServletRequestBuilder loginRequest = createLoginRequest(session)
+                .param(CSRF_PARAMETER_NAME, "some-invalid-token");
+
+        login(loginRequest)
+                .andExpect(redirectedUrl("http://localhost/uaa/login?error=invalid_login_request"));
+    }
+
+    @Test
+    void login_formContainsValidCsrfToken_redirectedToHomePage() throws Exception {
+        MockHttpSession session = new MockHttpSession();
+        performGet(mockMvc, session, "/login")
+                .andExpect(status().isOk());
+        CsrfToken csrfToken = getCsrfToken(session);
+        MockHttpServletRequestBuilder loginRequest = createLoginRequest(session)
+                .param(CSRF_PARAMETER_NAME, csrfToken.getToken());
+
+        login(loginRequest)
+                .andExpect(redirectedUrl("/uaa/"));
+    }
+
+    @SneakyThrows
+    private ResultActions login(RequestBuilder request) {
+        return mockMvc.perform(request)
+                .andDo(print())
+                .andExpect(status().isFound())
+        ;
+    }
+
+    private MockHttpServletRequestBuilder createLoginRequest(MockHttpSession session) {
+        return post("/uaa/login.do")
+                    .session(session)
+                    .contextPath("/uaa")
+                    .param("username", "marissa")
+                    .param("password", "koala");
+    }
+
 
     @Test
     void test_case_insensitive_login(
