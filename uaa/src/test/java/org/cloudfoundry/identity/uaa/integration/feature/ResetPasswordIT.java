@@ -74,14 +74,17 @@ public class ResetPasswordIT {
     private String authCodeClientId;
 
     @Before
+    public void doBefore() {
+        logoutAndClearCookies();
+    }
+
     @After
-    public void logoutAndClearCookies() {
-        try {
-            webDriver.get(baseUrl + "/logout.do");
-        } catch (org.openqa.selenium.TimeoutException x) {
-            //try again - this should not be happening - 20 second timeouts
-            webDriver.get(baseUrl + "/logout.do");
-        }
+    public void doAfter() {
+        logoutAndClearCookies();
+    }
+
+    private void logoutAndClearCookies() {
+        webDriver.get(baseUrl + "/logout.do");
         webDriver.manage().deleteAllCookies();
     }
 
@@ -96,17 +99,12 @@ public class ResetPasswordIT {
 
         String adminAccessToken = testClient.getOAuthAccessToken("admin", "adminsecret", "client_credentials", "clients.read clients.write clients.secret clients.admin");
         testClient.createScimClient(adminAccessToken, scimClientId);
-        BaseClientDetails authCodeClient = new BaseClientDetails(authCodeClientId, "oauth", "uaa.user", "authorization_code,refresh_token", null, "http://example.redirect.com");
+        BaseClientDetails authCodeClient = new BaseClientDetails(authCodeClientId, "oauth", "uaa.user", "authorization_code,refresh_token", null, "http://example.com");
         authCodeClient.setClientSecret("scimsecret");
         authCodeClient.setAutoApproveScopes(Arrays.asList(new String[] {"uaa.user"}));
         IntegrationTestUtils.createClient(adminAccessToken, baseUrl, authCodeClient);
         String scimAccessToken = testClient.getOAuthAccessToken(scimClientId, "scimsecret", "client_credentials", "scim.read scim.write password.write");
         testClient.createUser(scimAccessToken, username, email, "secr3T", true);
-    }
-
-    @After
-    public void tearDown() throws Exception {
-        webDriver.get(baseUrl + "/logout.do");
     }
 
     @Test
@@ -126,7 +124,7 @@ public class ResetPasswordIT {
 
     @Test
     public void resetPassword_with_clientRedirect() throws Exception {
-        webDriver.get(baseUrl + "/forgot_password?client_id=" + scimClientId + "&redirect_uri=http://example.redirect.com");
+        webDriver.get(baseUrl + "/forgot_password?client_id=" + scimClientId + "&redirect_uri=http://example.com");
         Assert.assertEquals("Reset Password", webDriver.findElement(By.tagName("h1")).getText());
 
         int receivedEmailSize = simpleSmtpServer.getReceivedEmailSize();
@@ -154,12 +152,12 @@ public class ResetPasswordIT {
         webDriver.findElement(By.name("password_confirmation")).sendKeys("new_password");
         webDriver.findElement(By.xpath("//input[@value='Create new password']")).click();
 
-        assertEquals(baseUrl + "/login?success=password_reset&form_redirect_uri=http://example.redirect.com", webDriver.getCurrentUrl());
+        assertEquals(baseUrl + "/login?success=password_reset&form_redirect_uri=http://example.com", webDriver.getCurrentUrl());
     }
 
     @Test
     public void testNotAutoLoginAfterResetPassword() {
-        webDriver.get(baseUrl + "/oauth/authorize?client_id=" + authCodeClientId + "&redirect_uri=http://example.redirect.com&grant_type=authorization_code&response_type=code");
+        webDriver.get(baseUrl + "/oauth/authorize?client_id=" + authCodeClientId + "&redirect_uri=http://example.com&grant_type=authorization_code&response_type=code");
 //        webDriver.get();
         webDriver.findElement(By.linkText("Reset password")).click();
         Assert.assertEquals("Reset Password", webDriver.findElement(By.tagName("h1")).getText());
@@ -195,7 +193,7 @@ public class ResetPasswordIT {
         webDriver.findElement(By.name("password")).sendKeys("new_password");
         webDriver.findElement(By.xpath("//input[@value='Sign in']")).click();
 
-        assertThat(webDriver.getCurrentUrl(), startsWith("http://example.redirect.com/?code="));
+        assertThat(webDriver.getCurrentUrl(), startsWith("http://example.com/?code="));
     }
 
     @Test
