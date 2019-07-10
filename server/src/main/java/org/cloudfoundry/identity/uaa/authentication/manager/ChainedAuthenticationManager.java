@@ -81,7 +81,7 @@ public class ChainedAuthenticationManager implements AuthenticationManager {
                         thisAuth = delegates[i].getAuthenticationManager().authenticate(auth!=null ? auth : output);
                     } catch (AuthenticationException x) {
                         if (logger.isDebugEnabled()) {
-                            logger.debug("Chained authentication exception:"+x.getMessage()+" at:"+(x.getStackTrace().length>0?x.getStackTrace()[0]:"(no stack trace)"));
+                            logger.warn("Chained authentication exception:"+x.getMessage()+" at:"+(x.getStackTrace().length>0?x.getStackTrace()[0]:"(no stack trace)"));
                         }
                         lastException = x;
                         if (delegates[i].getStopIf()!=null) {
