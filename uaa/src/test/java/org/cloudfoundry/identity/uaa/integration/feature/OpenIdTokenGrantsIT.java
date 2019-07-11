@@ -122,14 +122,8 @@ public class OpenIdTokenGrantsIT {
     @Before
     @After
     public void logout_and_clear_cookies() {
-        try {
-            webDriver.get(loginUrl + "/logout.do");
-            webDriver.get(uaaUrl + "/logout.do");
-        }catch (org.openqa.selenium.TimeoutException x) {
-            //try again - this should not be happening - 20 second timeouts
-            webDriver.get(loginUrl + "/logout.do");
-            webDriver.get(uaaUrl + "/logout.do");
-        }
+        webDriver.get(loginUrl + "/logout.do");
+        webDriver.get(uaaUrl + "/logout.do");
         webDriver.get(appUrl+"/j_spring_security_logout");
         webDriver.manage().deleteAllCookies();
     }
