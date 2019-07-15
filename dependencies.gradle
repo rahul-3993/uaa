@@ -1,5 +1,5 @@
 ext {
-    tomcatVersion = '9.0.20'
+    tomcatVersion = '9.0.21'
     tomcatContainerId = 'tomcat9x'
 
     libraries = [:]

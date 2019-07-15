@@ -3,7 +3,7 @@ description = 'CloudFoundry Identity Server JAR'
 dependencies {
 
     compile project(':cloudfoundry-identity-model')
-
+    compile libraries.tomcatEmbed
     compile libraries.tomcatJdbc
     provided libraries.tomcatEmbed
     compile group: 'javax.mail', name: 'mail', version: '1.4.7'

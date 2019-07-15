@@ -135,7 +135,7 @@ cargo {
         startStopTimeout = 540000
         List activeProfiles = System.getProperty('spring.profiles.active', '').split(',')
         if (activeProfiles.contains('debug')) {
-            jvmArgs = "-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=5005 -DLOGIN_CONFIG_URL=file://" + new File(".").absolutePath + "/uaa/src/main/resources/required_configuration.yml"
+            jvmArgs = "-agentlib:jdwp=transport=dt_socket,server=y,suspend=y,address=5005 -DLOGIN_CONFIG_URL=file://" + new File(".").absolutePath + "/uaa/src/main/resources/required_configuration.yml"
         } else {
             jvmArgs = "-DLOGIN_CONFIG_URL=file://" + new File(".").absolutePath + "/uaa/src/main/resources/required_configuration.yml"
         }
