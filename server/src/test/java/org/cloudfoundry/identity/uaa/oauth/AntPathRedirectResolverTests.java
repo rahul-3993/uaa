@@ -55,8 +55,6 @@ class AntPathRedirectResolverTests {
 
     private final AntPathRedirectResolver resolver = new AntPathRedirectResolver();
 
-    //todo: username@password?
-
     @FieldDefaults(makeFinal = true, level = AccessLevel.PRIVATE)
     enum RequestedRedirectUri {
 
