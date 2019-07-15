@@ -88,12 +88,7 @@ public class AutologinIT {
     public void logout_and_clear_cookies() {
         map.add("username", testAccounts.getUserName());
         map.add("password", testAccounts.getPassword());
-        try {
-            webDriver.get(baseUrl + "/logout.do");
-        }catch (org.openqa.selenium.TimeoutException x) {
-            //try again - this should not be happening - 20 second timeouts
-            webDriver.get(baseUrl + "/logout.do");
-        }
+        webDriver.get(baseUrl + "/logout.do");
         webDriver.manage().deleteAllCookies();
         webDriver.get(appUrl+"/j_spring_security_logout");
         webDriver.manage().deleteAllCookies();

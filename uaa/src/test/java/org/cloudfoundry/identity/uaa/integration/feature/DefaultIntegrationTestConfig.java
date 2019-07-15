@@ -73,9 +73,6 @@ public class DefaultIntegrationTestConfig {
 
         ChromeDriver driver = new ChromeDriver(options);
 
-        driver.manage().timeouts().implicitlyWait(1, TimeUnit.SECONDS);
-        driver.manage().timeouts().pageLoadTimeout(2, TimeUnit.SECONDS);
-        driver.manage().timeouts().setScriptTimeout(1, TimeUnit.SECONDS);
         driver.manage().window().setSize(new Dimension(1024, 768));
         return driver;
     }
