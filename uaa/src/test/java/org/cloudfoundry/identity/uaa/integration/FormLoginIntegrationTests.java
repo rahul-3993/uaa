@@ -107,7 +107,7 @@ public class FormLoginIntegrationTests {
         assertTrue(body.contains("username"));
         assertTrue(body.contains("password"));
 
-        String csrf = IntegrationTestUtils.extractCookieCsrf(body);
+        String csrf = IntegrationTestUtils.extracCsrfToken(body);
 
         HttpUriRequest loginPost = RequestBuilder.post()
             .setUri(serverRunning.getBaseUrl() + "/login.do")

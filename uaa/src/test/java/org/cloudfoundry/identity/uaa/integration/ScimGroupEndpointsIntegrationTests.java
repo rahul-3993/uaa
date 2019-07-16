@@ -536,7 +536,7 @@ public class ScimGroupEndpointsIntegrationTests {
         MultiValueMap<String, String> formData = new LinkedMultiValueMap<>();
         formData.add("username", username);
         formData.add("password", password);
-        formData.add(CSRF_PARAMETER_NAME, IntegrationTestUtils.extractCookieCsrf(response.getBody()));
+        formData.add(CSRF_PARAMETER_NAME, IntegrationTestUtils.extracCsrfToken(response.getBody()));
 
         // Should be redirected to the original URL, but now authenticated
         result = serverRunning.postForResponse("/login.do", getHeaders(cookies), formData);
@@ -566,7 +566,7 @@ public class ScimGroupEndpointsIntegrationTests {
             assertTrue(response.getBody().contains("<h1>Application Authorization</h1>"));
 
             formData.clear();
-            formData.add(CSRF_PARAMETER_NAME, IntegrationTestUtils.extractCookieCsrf(response.getBody()));
+            formData.add(CSRF_PARAMETER_NAME, IntegrationTestUtils.extracCsrfToken(response.getBody()));
             formData.add(USER_OAUTH_APPROVAL, "true");
             formData.add("scope.0", "scope." + CFID);
             result = serverRunning.postForResponse("/oauth/authorize", getHeaders(cookies), formData);

@@ -89,7 +89,7 @@ public class CheckTokenEndpointIntegrationTests {
         assertTrue(response.getBody().contains("/login.do"));
         assertTrue(response.getBody().contains("username"));
         assertTrue(response.getBody().contains("password"));
-        String csrf = IntegrationTestUtils.extractCookieCsrf(response.getBody());
+        String csrf = IntegrationTestUtils.extracCsrfToken(response.getBody());
 
         MultiValueMap<String, String> formData = new LinkedMultiValueMap<>();
         formData.add("username", testAccounts.getUserName());
@@ -119,7 +119,7 @@ public class CheckTokenEndpointIntegrationTests {
             assertTrue(response.getBody().contains("<h1>Application Authorization</h1>"));
 
             formData.clear();
-            formData.add(CSRF_PARAMETER_NAME, IntegrationTestUtils.extractCookieCsrf(response.getBody()));
+            formData.add(CSRF_PARAMETER_NAME, IntegrationTestUtils.extracCsrfToken(response.getBody()));
             formData.add(USER_OAUTH_APPROVAL, "true");
             result = serverRunning.postForResponse("/oauth/authorize", getHeaders(cookies), formData);
             assertEquals(HttpStatus.FOUND, result.getStatusCode());

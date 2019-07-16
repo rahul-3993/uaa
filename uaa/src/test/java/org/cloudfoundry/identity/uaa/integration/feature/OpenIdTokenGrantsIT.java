@@ -309,7 +309,7 @@ public class OpenIdTokenGrantsIT {
         assertTrue(response.getBody().contains("/login.do"));
         assertTrue(response.getBody().contains("username"));
         assertTrue(response.getBody().contains("password"));
-        String csrf = IntegrationTestUtils.extractCookieCsrf(response.getBody());
+        String csrf = IntegrationTestUtils.extracCsrfToken(response.getBody());
 
         if (response.getHeaders().containsKey("Set-Cookie")) {
             for (String cookie : response.getHeaders().get("Set-Cookie")) {
@@ -354,7 +354,7 @@ public class OpenIdTokenGrantsIT {
 
             formData.clear();
             formData.add(USER_OAUTH_APPROVAL, "true");
-            formData.add(CSRF_PARAMETER_NAME, IntegrationTestUtils.extractCookieCsrf(response.getBody()));
+            formData.add(CSRF_PARAMETER_NAME, IntegrationTestUtils.extracCsrfToken(response.getBody()));
             result = restOperations.exchange(loginUrl + "/oauth/authorize", HttpMethod.POST, new HttpEntity<>(formData, getHeaders(cookies)), Void.class);
             assertEquals(HttpStatus.FOUND, result.getStatusCode());
             location = UriUtils.decode(result.getHeaders().getLocation().toString(), "UTF-8");

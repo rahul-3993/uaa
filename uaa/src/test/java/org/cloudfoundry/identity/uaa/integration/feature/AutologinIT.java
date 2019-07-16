@@ -186,7 +186,7 @@ public class AutologinIT {
             authorizeUrl = UriComponentsBuilder.fromHttpUrl(baseUrl)
                 .path("/oauth/authorize")
                 .queryParam("user_oauth_approval", "true")
-                .queryParam(CSRF_PARAMETER_NAME, IntegrationTestUtils.extractCookieCsrf(authorizeResponse.getBody()))
+                .queryParam(CSRF_PARAMETER_NAME, IntegrationTestUtils.extracCsrfToken(authorizeResponse.getBody()))
                 .build().toUriString();
             authorizeResponse = template.exchange(authorizeUrl,
                                                   HttpMethod.POST,
@@ -232,7 +232,7 @@ public class AutologinIT {
                                                                  String.class);
 
         setCookiesFromResponse(cookieStore, loginResponse);
-        String csrf = IntegrationTestUtils.extractCookieCsrf(loginResponse.getBody());
+        String csrf = IntegrationTestUtils.extracCsrfToken(loginResponse.getBody());
         requestBody.add(CSRF_PARAMETER_NAME, csrf);
 
         headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
@@ -261,7 +261,7 @@ public class AutologinIT {
         requestBody.clear();
         requestBody.add("clientId","app");
         requestBody.add("delete","");
-        requestBody.add(CSRF_PARAMETER_NAME, IntegrationTestUtils.extractCookieCsrf(profilePage.getBody()));
+        requestBody.add(CSRF_PARAMETER_NAME, IntegrationTestUtils.extracCsrfToken(profilePage.getBody()));
         ResponseEntity<Void> revokeResponse = template.exchange(revokeApprovalsUrl,
                                                                 HttpMethod.POST,
                                                                 new HttpEntity<>(requestBody, getHeaders(cookieStore)),

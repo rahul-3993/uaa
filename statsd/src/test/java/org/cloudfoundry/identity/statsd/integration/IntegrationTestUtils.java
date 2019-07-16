@@ -25,12 +25,12 @@ public class IntegrationTestUtils {
     public static final String TEST_USERNAME = "marissa";
     public static final String TEST_PASSWORD = "koala";
     public static final String CSRF_PARAMETER_NAME = "_csrf";
+    private static final Pattern CSRF_FORM_ELEMENT = Pattern.compile(
+            "\\<input type=\\\"hidden\\\" name=\\\"" + CSRF_PARAMETER_NAME + "\\\" value=\\\"(.*?)\\\""
+    );
 
     public static String extractCsrfToken(String body) {
-        String pattern = "\\<input type=\\\"hidden\\\" name=\\\"" + CSRF_PARAMETER_NAME + "\\\" value=\\\"(.*?)\\\"";
-
-        Pattern linkPattern = Pattern.compile(pattern);
-        Matcher matcher = linkPattern.matcher(body);
+        Matcher matcher = CSRF_FORM_ELEMENT.matcher(body);
         if (matcher.find()) {
             return matcher.group(1);
         }

@@ -101,7 +101,7 @@ public class RefreshTokenSupportIntegrationTests {
         MultiValueMap<String, String> formData = new LinkedMultiValueMap<String, String>();
         formData.add("username", testAccounts.getUserName());
         formData.add("password", testAccounts.getPassword());
-        formData.add(CSRF_PARAMETER_NAME, IntegrationTestUtils.extractCookieCsrf(response.getBody()));
+        formData.add(CSRF_PARAMETER_NAME, IntegrationTestUtils.extracCsrfToken(response.getBody()));
 
         // Should be redirected to the original URL, but now authenticated
         result = serverRunning.postForResponse("/login.do", getHeaders(cookies), formData);
@@ -128,7 +128,7 @@ public class RefreshTokenSupportIntegrationTests {
 
             formData.clear();
             formData.add(USER_OAUTH_APPROVAL, "true");
-            formData.add(CSRF_PARAMETER_NAME, IntegrationTestUtils.extractCookieCsrf(response.getBody()));
+            formData.add(CSRF_PARAMETER_NAME, IntegrationTestUtils.extracCsrfToken(response.getBody()));
             result = serverRunning.postForResponse("/oauth/authorize", getHeaders(cookies), formData);
             assertEquals(HttpStatus.FOUND, result.getStatusCode());
             location = result.getHeaders().getLocation().toString();

@@ -151,7 +151,7 @@ public class ImplicitTokenGrantIntegrationTests {
         MultiValueMap<String, String> formData = new LinkedMultiValueMap<>();
         formData.add("username", testAccounts.getUserName());
         formData.add("password", testAccounts.getPassword());
-        formData.add(CSRF_PARAMETER_NAME, IntegrationTestUtils.extractCookieCsrf(response.getBody()));
+        formData.add(CSRF_PARAMETER_NAME, IntegrationTestUtils.extracCsrfToken(response.getBody()));
 
         result = serverRunning.postForRedirect(location, getHeaders(cookies), formData);
 

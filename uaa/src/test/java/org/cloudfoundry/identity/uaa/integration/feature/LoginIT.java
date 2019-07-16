@@ -114,7 +114,7 @@ public class LoginIT {
                 headers.add("Cookie", cookie);
             }
         }
-        String csrf = IntegrationTestUtils.extractCookieCsrf(loginResponse.getBody());
+        String csrf = IntegrationTestUtils.extracCsrfToken(loginResponse.getBody());
         requestBody.add(CSRF_PARAMETER_NAME, csrf);
 
         headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
@@ -310,7 +310,7 @@ public class LoginIT {
                 headers.add("Cookie", cookie);
             }
         }
-        String csrf = IntegrationTestUtils.extractCookieCsrf(loginResponse.getBody());
+        String csrf = IntegrationTestUtils.extracCsrfToken(loginResponse.getBody());
         LinkedMultiValueMap<String,String> body = new LinkedMultiValueMap<>();
         body.add("username", testAccounts.getUserName());
         body.add("password", "invalidpassword");
