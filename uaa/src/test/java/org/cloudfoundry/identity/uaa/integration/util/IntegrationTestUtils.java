@@ -82,6 +82,7 @@ import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 import org.springframework.util.StringUtils;
 import org.springframework.web.client.DefaultResponseErrorHandler;
+import org.springframework.web.client.ResponseErrorHandler;
 import org.springframework.web.client.RestOperations;
 import org.springframework.web.client.RestTemplate;
 
@@ -209,6 +210,52 @@ public class IntegrationTestUtils {
         }
         throw new RuntimeException("Invalid return code:" + providerResponse.getStatusCode());
 
+    }
+
+    public static List<MfaProvider<GoogleMfaProviderConfig>> getGoogleMfaProviders(String url, String token, String zoneSwitchId) {
+        ParameterizedTypeReference<List<MfaProvider<GoogleMfaProviderConfig>>> responseType
+                = new ParameterizedTypeReference<List<MfaProvider<GoogleMfaProviderConfig>>>() {};
+        return exchangeGoogleMfaProviderConfigMfaProvider(
+                url + "/mfa-providers",
+                token,
+                zoneSwitchId,
+                HttpMethod.GET,
+                responseType
+        );
+    }
+
+    public static MfaProvider<GoogleMfaProviderConfig> deleteGoogleMfaProvider(String url, String token, String id, String zoneSwitchId) {
+        ParameterizedTypeReference<MfaProvider<GoogleMfaProviderConfig>> responseType
+                = new ParameterizedTypeReference<MfaProvider<GoogleMfaProviderConfig>>() {};
+        return exchangeGoogleMfaProviderConfigMfaProvider(
+                url + "/mfa-providers/" + id,
+                token,
+                zoneSwitchId,
+                HttpMethod.DELETE,
+                responseType
+        );
+    }
+
+    private static <T> T exchangeGoogleMfaProviderConfigMfaProvider(String url, String token, String zoneSwitchId, HttpMethod method, ParameterizedTypeReference<T> responseType) {
+        RestTemplate template = new RestTemplate();
+        MultiValueMap<String, String> headers = new LinkedMultiValueMap<>();
+        headers.add("Accept", APPLICATION_JSON_VALUE);
+        headers.add("Authorization", "bearer " + token);
+        headers.add("Content-Type", APPLICATION_JSON_VALUE);
+        if (hasText(zoneSwitchId)) {
+            headers.add(IdentityZoneSwitchingFilter.HEADER, zoneSwitchId);
+        }
+        HttpEntity getHeaders = new HttpEntity<>(headers);
+        ResponseEntity<T> providers = template.exchange(
+                url,
+                method,
+                getHeaders,
+                responseType
+        );
+        if (providers.getStatusCode() == HttpStatus.OK) {
+            return providers.getBody();
+        }
+        throw new RuntimeException("Invalid return code:" + providers.getStatusCode());
     }
 
     public static class RegexMatcher extends TypeSafeMatcher<String> {
@@ -759,6 +806,78 @@ public class IntegrationTestUtils {
         );
         if (clientCreate.getStatusCode() == HttpStatus.CREATED) {
             return JsonUtils.readValue(clientCreate.getBody(), BaseClientDetails.class);
+        }
+        throw new RuntimeException("Invalid return code:" + clientCreate.getStatusCode());
+    }
+
+    public static BaseClientDetails deleteClientAsZoneAdmin(String zoneAdminToken,
+                                                            String url,
+                                                            String zoneId,
+                                                            String clientId) {
+        RestTemplate template = new RestTemplate();
+        template.setErrorHandler(new ResponseErrorHandler() {
+            @Override
+            public boolean hasError(ClientHttpResponse response) {
+                return false;
+            }
+
+            @Override
+            public void handleError(ClientHttpResponse response) {
+            }
+        });
+
+        MultiValueMap<String, String> headers = new LinkedMultiValueMap<>();
+        headers.add("Accept", APPLICATION_JSON_VALUE);
+        headers.add("Authorization", "bearer " + zoneAdminToken);
+        headers.add("Content-Type", APPLICATION_JSON_VALUE);
+        headers.add(IdentityZoneSwitchingFilter.HEADER, zoneId);
+        HttpEntity getHeaders = new HttpEntity<>(headers);
+        ResponseEntity<String> clientCreate = template.exchange(
+                url + "/oauth/clients/" + clientId,
+                HttpMethod.DELETE,
+                getHeaders,
+                String.class
+        );
+        if (clientCreate.getStatusCode() == HttpStatus.OK) {
+            return JsonUtils.readValue(clientCreate.getBody(), BaseClientDetails.class);
+        } else if (clientCreate.getStatusCode() == HttpStatus.NOT_FOUND) {
+            return null;
+        }
+        throw new RuntimeException("Invalid return code:" + clientCreate.getStatusCode());
+    }
+
+    public static BaseClientDetails deleteClientAsZoneAdmin(String zoneAdminToken,
+                                                            String url,
+                                                            String zoneId,
+                                                            String clientId) {
+        RestTemplate template = new RestTemplate();
+        template.setErrorHandler(new ResponseErrorHandler() {
+            @Override
+            public boolean hasError(ClientHttpResponse response) {
+                return false;
+            }
+
+            @Override
+            public void handleError(ClientHttpResponse response) {
+            }
+        });
+
+        MultiValueMap<String, String> headers = new LinkedMultiValueMap<>();
+        headers.add("Accept", APPLICATION_JSON_VALUE);
+        headers.add("Authorization", "bearer " + zoneAdminToken);
+        headers.add("Content-Type", APPLICATION_JSON_VALUE);
+        headers.add(IdentityZoneSwitchingFilter.HEADER, zoneId);
+        HttpEntity getHeaders = new HttpEntity<>(headers);
+        ResponseEntity<String> clientCreate = template.exchange(
+                url + "/oauth/clients/" + clientId,
+                HttpMethod.DELETE,
+                getHeaders,
+                String.class
+        );
+        if (clientCreate.getStatusCode() == HttpStatus.OK) {
+            return JsonUtils.readValue(clientCreate.getBody(), BaseClientDetails.class);
+        } else if (clientCreate.getStatusCode() == HttpStatus.NOT_FOUND) {
+            return null;
         }
         throw new RuntimeException("Invalid return code:" + clientCreate.getStatusCode());
     }

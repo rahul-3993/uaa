@@ -164,7 +164,7 @@ public class AuthzAuthenticationFilter implements Filter {
             }
         } catch (AuthenticationException e) {
             logger.debug("Authentication failed");
-
+            logger.warn("auth failed", e);
             String acceptHeaderValue = req.getHeader("accept");
             String clientId = req.getParameter("client_id");
             if ("*/*; q=0.5, application/xml".equals(acceptHeaderValue) && "vmc".equals(clientId)) {

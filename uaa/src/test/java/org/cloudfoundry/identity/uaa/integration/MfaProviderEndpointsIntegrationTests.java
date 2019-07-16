@@ -21,6 +21,8 @@ import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
 import org.springframework.util.StringUtils;
 import org.springframework.web.client.RestTemplate;
 
+import java.util.List;
+
 import static org.junit.Assert.assertTrue;
 
 @RunWith(SpringJUnit4ClassRunner.class)
@@ -55,6 +57,7 @@ public class MfaProviderEndpointsIntegrationTests {
 
     @Test
     public void createMfaProvider() {
+        clearMfaProviderIfAlreadyExists(baseUrl, adminToken, mfaProvider, "");
         MfaProvider result = IntegrationTestUtils.createGoogleMfaProvider(baseUrl, adminToken, mfaProvider, "");
         assertTrue("id is not empty", StringUtils.hasText(result.getId()));
     }
@@ -71,14 +74,30 @@ public class MfaProviderEndpointsIntegrationTests {
         String zoneAdminToken = IntegrationTestUtils.getZoneAdminToken(baseUrl, serverRunning, mfaZone.getId());
         BaseClientDetails zoneClient = new BaseClientDetails("mfaAdmin", null, "", "client_credentials", "uaa.admin");
         zoneClient.setClientSecret("secret");
+        IntegrationTestUtils.deleteClientAsZoneAdmin(zoneAdminToken, baseUrl, mfaZone.getId(), "mfaAdmin");
         IntegrationTestUtils.createClientAsZoneAdmin(zoneAdminToken, baseUrl, mfaZone.getId(), zoneClient);
 
         String inZoneAdminToken = IntegrationTestUtils.getClientCredentialsToken(zoneUrl, "mfaAdmin", "secret");
 
+        clearMfaProviderIfAlreadyExists(zoneUrl, inZoneAdminToken, mfaProvider, "");
         MfaProvider result = IntegrationTestUtils.createGoogleMfaProvider(zoneUrl, inZoneAdminToken, mfaProvider, "");
         assertTrue("id is not empty", StringUtils.hasText(result.getId()));
 
 
+    }
+
+    /**
+     * Clear if already exists in order to prevent 409
+     */
+    private void clearMfaProviderIfAlreadyExists(String url, String token, MfaProvider<GoogleMfaProviderConfig> mfaProvider, String zoneSwitchId) {
+        List<MfaProvider<GoogleMfaProviderConfig>> mfaProviders = IntegrationTestUtils.getGoogleMfaProviders(url, token, zoneSwitchId);
+        mfaProviders
+                .stream()
+                .filter(p -> p.getName().equals(mfaProvider.getName()))
+                .map(MfaProvider::getId)
+                .forEach(
+                        id -> IntegrationTestUtils.deleteGoogleMfaProvider(url, token, id, zoneSwitchId)
+                );
     }
 
 }
