@@ -24,9 +24,10 @@ public class IntegrationTestUtils {
     public static final String UAA_BASE_URL = "http://localhost:8080/uaa";
     public static final String TEST_USERNAME = "marissa";
     public static final String TEST_PASSWORD = "koala";
+    public static final String CSRF_PARAMETER_NAME = "_csrf";
 
-    public static String extractCookieCsrf(String body) {
-        String pattern = "\\<input type=\\\"hidden\\\" name=\\\"_csrf\\\" value=\\\"(.*?)\\\""; //todo -check passes
+    public static String extractCsrfToken(String body) {
+        String pattern = "\\<input type=\\\"hidden\\\" name=\\\"" + CSRF_PARAMETER_NAME + "\\\" value=\\\"(.*?)\\\"";
 
         Pattern linkPattern = Pattern.compile(pattern);
         Matcher matcher = linkPattern.matcher(body);
