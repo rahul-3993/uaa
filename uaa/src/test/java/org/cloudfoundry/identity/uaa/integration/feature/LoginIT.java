@@ -58,7 +58,6 @@ import static org.hamcrest.Matchers.not;
 import static org.hamcrest.Matchers.startsWith;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertTrue;
@@ -125,7 +124,6 @@ public class LoginIT {
                                           String.class);
         cookies = loginResponse.getHeaders().get("Set-Cookie");
         MatcherAssert.assertThat(cookies, hasItem(startsWith("JSESSIONID")));
-        MatcherAssert.assertThat(cookies, hasItem(startsWith("X-Uaa-Csrf")));
         MatcherAssert.assertThat(cookies, hasItem(startsWith("Current-User")));
         headers.clear();
         boolean jsessionIdValidated = false;
@@ -297,15 +295,6 @@ public class LoginIT {
     }
 
     @Test
-    public void testCsrfIsResetDuringLoginPageReload() {
-        webDriver.get(baseUrl + "/login");
-        String csrf1 = webDriver.manage().getCookieNamed(CSRF_PARAMETER_NAME).getValue(); //todo - no longer cookie
-        webDriver.get(baseUrl + "/login");
-        String csrf2 = webDriver.manage().getCookieNamed(CSRF_PARAMETER_NAME).getValue();
-        assertNotEquals(csrf1, csrf2);
-    }
-
-    @Test
     public void testRedirectAfterUnsuccessfulLogin() throws Exception {
         RestTemplate template = new RestTemplate();
 
@@ -446,7 +435,7 @@ public class LoginIT {
 
         String redirectUri = "http://expected.com";
         webDriver.get(baseUrl + "/oauth/authorize?client_id=test&redirect_uri="+redirectUri);
-        ((JavascriptExecutor)webDriver).executeScript("document.getElementsByName('X-Uaa-Csrf')[0].value=''");
+        ((JavascriptExecutor)webDriver).executeScript("document.getElementsByName('" + CSRF_PARAMETER_NAME + "')[0].value=''");
         webDriver.manage().deleteCookieNamed("JSESSIONID");
 
         webDriver.findElement(By.xpath("//input[@value='Sign in']")).click();
