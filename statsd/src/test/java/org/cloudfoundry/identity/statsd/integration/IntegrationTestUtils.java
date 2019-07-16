@@ -26,7 +26,7 @@ public class IntegrationTestUtils {
     public static final String TEST_PASSWORD = "koala";
 
     public static String extractCookieCsrf(String body) {
-        String pattern = "\\<input type=\\\"hidden\\\" name=\\\"X-Uaa-Csrf\\\" value=\\\"(.*?)\\\"";
+        String pattern = "\\<input type=\\\"hidden\\\" name=\\\"_csrf\\\" value=\\\"(.*?)\\\""; //todo -check passes
 
         Pattern linkPattern = Pattern.compile(pattern);
         Matcher matcher = linkPattern.matcher(body);

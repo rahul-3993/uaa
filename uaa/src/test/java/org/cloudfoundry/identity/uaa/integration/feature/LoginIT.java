@@ -14,7 +14,6 @@ package org.cloudfoundry.identity.uaa.integration.feature;
 
 import com.dumbster.smtp.SimpleSmtpServer;
 import org.cloudfoundry.identity.uaa.integration.util.IntegrationTestUtils;
-import org.cloudfoundry.identity.uaa.security.web.CookieBasedCsrfTokenRepository;
 import org.cloudfoundry.identity.uaa.zone.BrandingInformation;
 import org.cloudfoundry.identity.uaa.zone.BrandingInformation.Banner;
 import org.cloudfoundry.identity.uaa.zone.IdentityZoneConfiguration;
@@ -52,6 +51,7 @@ import java.util.Collections;
 import java.util.List;
 
 import static org.cloudfoundry.identity.uaa.integration.util.IntegrationTestUtils.doesSupportZoneDNS;
+import static org.cloudfoundry.identity.uaa.mock.util.MockMvcUtils.CsrfPostProcessor.CSRF_PARAMETER_NAME;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.hasItem;
 import static org.hamcrest.Matchers.not;
@@ -121,7 +121,7 @@ public class LoginIT {
             }
         }
         String csrf = IntegrationTestUtils.extractCookieCsrf(loginResponse.getBody());
-        requestBody.add(CookieBasedCsrfTokenRepository.DEFAULT_CSRF_COOKIE_NAME, csrf);
+        requestBody.add(CSRF_PARAMETER_NAME, csrf);
 
         headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
         loginResponse = template.exchange(baseUrl + "/login.do",
@@ -304,9 +304,9 @@ public class LoginIT {
     @Test
     public void testCsrfIsResetDuringLoginPageReload() {
         webDriver.get(baseUrl + "/login");
-        String csrf1 = webDriver.manage().getCookieNamed(CookieBasedCsrfTokenRepository.DEFAULT_CSRF_COOKIE_NAME).getValue();
+        String csrf1 = webDriver.manage().getCookieNamed(CSRF_PARAMETER_NAME).getValue(); //todo - no longer cookie
         webDriver.get(baseUrl + "/login");
-        String csrf2 = webDriver.manage().getCookieNamed(CookieBasedCsrfTokenRepository.DEFAULT_CSRF_COOKIE_NAME).getValue();
+        String csrf2 = webDriver.manage().getCookieNamed(CSRF_PARAMETER_NAME).getValue();
         assertNotEquals(csrf1, csrf2);
     }
 
@@ -330,7 +330,7 @@ public class LoginIT {
         LinkedMultiValueMap<String,String> body = new LinkedMultiValueMap<>();
         body.add("username", testAccounts.getUserName());
         body.add("password", "invalidpassword");
-        body.add(CookieBasedCsrfTokenRepository.DEFAULT_CSRF_COOKIE_NAME, csrf);
+        body.add(CSRF_PARAMETER_NAME, csrf);
         loginResponse = template.exchange(baseUrl + "/login.do",
             HttpMethod.POST,
             new HttpEntity<>(body, headers),

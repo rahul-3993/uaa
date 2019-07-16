@@ -1340,6 +1340,8 @@ public final class MockMvcUtils {
     @RequiredArgsConstructor(access = AccessLevel.PRIVATE)
     public static class CsrfPostProcessor implements RequestPostProcessor {
 
+        public static final String CSRF_PARAMETER_NAME = "_csrf";
+
         private final HttpSession session;
         private boolean useInvalidToken = false;
 

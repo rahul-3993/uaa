@@ -49,8 +49,8 @@ import java.util.List;
 import java.util.Map;
 
 import static org.cloudfoundry.identity.uaa.integration.util.IntegrationTestUtils.getHeaders;
+import static org.cloudfoundry.identity.uaa.mock.util.MockMvcUtils.CsrfPostProcessor.CSRF_PARAMETER_NAME;
 import static org.cloudfoundry.identity.uaa.oauth.token.TokenConstants.GRANT_TYPE_AUTHORIZATION_CODE;
-import static org.cloudfoundry.identity.uaa.security.web.CookieBasedCsrfTokenRepository.DEFAULT_CSRF_COOKIE_NAME;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.hasItem;
 import static org.hamcrest.Matchers.startsWith;
@@ -191,7 +191,7 @@ public class AutologinIT {
             authorizeUrl = UriComponentsBuilder.fromHttpUrl(baseUrl)
                 .path("/oauth/authorize")
                 .queryParam("user_oauth_approval", "true")
-                .queryParam(DEFAULT_CSRF_COOKIE_NAME, IntegrationTestUtils.extractCookieCsrf(authorizeResponse.getBody()))
+                .queryParam(CSRF_PARAMETER_NAME, IntegrationTestUtils.extractCookieCsrf(authorizeResponse.getBody()))
                 .build().toUriString();
             authorizeResponse = template.exchange(authorizeUrl,
                                                   HttpMethod.POST,
@@ -238,7 +238,7 @@ public class AutologinIT {
 
         setCookiesFromResponse(cookieStore, loginResponse);
         String csrf = IntegrationTestUtils.extractCookieCsrf(loginResponse.getBody());
-        requestBody.add(DEFAULT_CSRF_COOKIE_NAME, csrf);
+        requestBody.add(CSRF_PARAMETER_NAME, csrf);
 
         headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
         loginResponse = restOperations.exchange(baseUrl + "/login.do",
@@ -267,7 +267,7 @@ public class AutologinIT {
         requestBody.clear();
         requestBody.add("clientId","app");
         requestBody.add("delete","");
-        requestBody.add(DEFAULT_CSRF_COOKIE_NAME, IntegrationTestUtils.extractCookieCsrf(profilePage.getBody()));
+        requestBody.add(CSRF_PARAMETER_NAME, IntegrationTestUtils.extractCookieCsrf(profilePage.getBody()));
         ResponseEntity<Void> revokeResponse = template.exchange(revokeApprovalsUrl,
                                                                 HttpMethod.POST,
                                                                 new HttpEntity<>(requestBody, getHeaders(cookieStore)),

@@ -22,6 +22,7 @@ import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 import java.util.Arrays;
 import java.util.Map;
 
+import static org.cloudfoundry.identity.uaa.mock.util.MockMvcUtils.CsrfPostProcessor.CSRF_PARAMETER_NAME;
 import static org.cloudfoundry.identity.uaa.mock.util.MockMvcUtils.CsrfPostProcessor.csrf;
 import static org.cloudfoundry.identity.uaa.mock.util.MockMvcUtils.performGet;
 import static org.cloudfoundry.identity.uaa.test.SnippetUtils.fieldWithPath;
@@ -97,7 +98,7 @@ class LoginInfoEndpointDocs extends EndpointDocs {
         Snippet requestParameters = requestParameters(
                 parameterWithName("username").required().type(STRING).description("The username of the user, sometimes the email address."),
                 parameterWithName("password").required().type(STRING).description("The user's password"),
-                parameterWithName("_csrf").required().type(STRING).description("Automatically configured by the server upon /login.")
+                parameterWithName(CSRF_PARAMETER_NAME).required().type(STRING).description("Automatically configured by the server upon /login.")
         );
 
         MockHttpSession session = new MockHttpSession();
