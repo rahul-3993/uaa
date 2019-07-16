@@ -846,42 +846,6 @@ public class IntegrationTestUtils {
         throw new RuntimeException("Invalid return code:" + clientCreate.getStatusCode());
     }
 
-    public static BaseClientDetails deleteClientAsZoneAdmin(String zoneAdminToken,
-                                                            String url,
-                                                            String zoneId,
-                                                            String clientId) {
-        RestTemplate template = new RestTemplate();
-        template.setErrorHandler(new ResponseErrorHandler() {
-            @Override
-            public boolean hasError(ClientHttpResponse response) {
-                return false;
-            }
-
-            @Override
-            public void handleError(ClientHttpResponse response) {
-            }
-        });
-
-        MultiValueMap<String, String> headers = new LinkedMultiValueMap<>();
-        headers.add("Accept", APPLICATION_JSON_VALUE);
-        headers.add("Authorization", "bearer " + zoneAdminToken);
-        headers.add("Content-Type", APPLICATION_JSON_VALUE);
-        headers.add(IdentityZoneSwitchingFilter.HEADER, zoneId);
-        HttpEntity getHeaders = new HttpEntity<>(headers);
-        ResponseEntity<String> clientCreate = template.exchange(
-                url + "/oauth/clients/" + clientId,
-                HttpMethod.DELETE,
-                getHeaders,
-                String.class
-        );
-        if (clientCreate.getStatusCode() == HttpStatus.OK) {
-            return JsonUtils.readValue(clientCreate.getBody(), BaseClientDetails.class);
-        } else if (clientCreate.getStatusCode() == HttpStatus.NOT_FOUND) {
-            return null;
-        }
-        throw new RuntimeException("Invalid return code:" + clientCreate.getStatusCode());
-    }
-
     public static BaseClientDetails createClient(String adminToken,
                                                  String url,
                                                  BaseClientDetails client) throws Exception {
