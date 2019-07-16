@@ -174,12 +174,12 @@ public class AutologinIT {
         int cookiesAdded = 0;
         headers = getAppBasicAuthHttpHeaders();
         for (String cookie : cookies) {
-            if (cookie.startsWith("X-Uaa-Csrf=") || cookie.startsWith("JSESSIONID=")) {
+            if (cookie.startsWith("JSESSIONID=")) {
                 headers.add("Cookie", cookie);
                 cookiesAdded++;
             }
         }
-        assertEquals(2, cookiesAdded);
+        assertEquals(1, cookiesAdded);
 
         //if we receive a 200, then we must approve our scopes
         if (HttpStatus.OK == authorizeResponse.getStatusCode()) {
@@ -242,7 +242,6 @@ public class AutologinIT {
                                                 String.class);
         cookies = loginResponse.getHeaders().get("Set-Cookie");
         assertThat(cookies, hasItem(startsWith("JSESSIONID")));
-        assertThat(cookies, hasItem(startsWith("X-Uaa-Csrf")));
         if (IdentityZoneHolder.get().getConfig().isAccountChooserEnabled()) {
             assertThat(cookies, hasItem(startsWith("Saved-Account-")));
         }
