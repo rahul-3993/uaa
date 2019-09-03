@@ -199,7 +199,7 @@ pipeline {
                         docker {
                             image "${NODE['IMAGE']}"
                             label "${NODE['LABEL']}"
-                            args '-v /var/lib/docker/.gradle:/root/.gradle --add-host "testzone1.localhost testzone2.localhost int-test-zone-uaa.localhost testzone3.localhost testzone4.localhost testzonedoesnotexist.localhost oidcloginit.localhost test-zone1.localhost test-zone2.localhost test-victim-zone.localhost test-platform-zone.localhost test-saml-zone.localhost test-app-zone.localhost app-zone.localhost platform-zone.localhost testsomeother2.ip.com testsomeother.ip.com uaa-acceptance-zone.localhost localhost":127.0.0.1'
+                            args '-v /var/lib/docker/.gradle:/root/.gradle --add-host "testzone1.localhost testzone2.localhost int-test-zone-uaa.localhost testzone3.localhost testzone4.localhost testzonedoesnotexist.localhost testzoneinactive.localhost oidcloginit.localhost test-zone1.localhost test-zone2.localhost test-victim-zone.localhost test-platform-zone.localhost test-saml-zone.localhost test-app-zone.localhost app-zone.localhost platform-zone.localhost testsomeother2.ip.com testsomeother.ip.com uaa-acceptance-zone.localhost localhost":127.0.0.1'
                         }
                     }
                     steps {
@@ -226,6 +226,12 @@ pipeline {
                             curl -v http://simplesamlphp2.cfapps.io/saml2/idp/metadata.php
                             pushd uaa
                                 env
+                                apt-get update || echo "problems were encountered when trying to update the package index, but let's continue anyway"
+                                DEBIAN_FRONTEND=noninteractive apt-get -qy install slapd ldap-utils
+                                /etc/init.d/slapd start 
+                                /etc/init.d/slapd status
+                                ldapadd -Y EXTERNAL -H ldapi:/// -f ./uaa/src/main/resources/ldap_db_init.ldif
+                                ldapadd -x -D 'cn=admin,dc=test,dc=com' -w password -f ./uaa/src/main/resources/ldap_init.ldif
                                ./gradlew --no-daemon --continue jacocoRootReportIntegrationTest
                             popd
                             '''

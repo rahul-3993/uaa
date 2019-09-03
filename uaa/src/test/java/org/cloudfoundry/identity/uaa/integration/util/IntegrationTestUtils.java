@@ -17,6 +17,7 @@ package org.cloudfoundry.identity.uaa.integration.util;
 import com.dumbster.smtp.SimpleSmtpServer;
 import com.dumbster.smtp.SmtpMessage;
 import com.fasterxml.jackson.core.type.TypeReference;
+import com.google.common.collect.Sets;
 import org.apache.commons.io.FileUtils;
 import org.apache.http.client.CookieStore;
 import org.apache.http.client.HttpClient;
@@ -88,22 +89,10 @@ import org.springframework.web.client.RestTemplate;
 
 import java.io.File;
 import java.io.IOException;
-import java.net.Inet4Address;
-import java.net.URI;
-import java.net.URISyntaxException;
-import java.net.URL;
-import java.net.UnknownHostException;
+import java.net.*;
 import java.security.SecureRandom;
 import java.text.SimpleDateFormat;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -118,6 +107,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.fail;
 import static org.springframework.http.HttpHeaders.ACCEPT;
 import static org.springframework.http.HttpHeaders.AUTHORIZATION;
 import static org.springframework.http.MediaType.APPLICATION_JSON_VALUE;
@@ -243,17 +233,26 @@ public class IntegrationTestUtils {
         }
     };
 
-    public static boolean doesSupportZoneDNS() {
+    public static void assertSupportsZoneDNS() {
+        Arrays.asList(
+                "testzone1.localhost",
+                "testzone2.localhost",
+                "testzone3.localhost",
+                "testzone4.localhost",
+                "testzonedoesnotexist.localhost",
+                "testzoneinactive.localhost"
+        ).forEach(IntegrationTestUtils::assertLoopback);
+    }
+
+    private static void assertLoopback(String host) {
+        InetAddress address;
         try {
-            return Arrays.equals(Inet4Address.getByName("testzone1.localhost").getAddress(), new byte[]{127, 0, 0, 1}) &&
-              Arrays.equals(Inet4Address.getByName("testzone2.localhost").getAddress(), new byte[]{127, 0, 0, 1}) &&
-              Arrays.equals(Inet4Address.getByName("testzone3.localhost").getAddress(), new byte[]{127, 0, 0, 1}) &&
-              Arrays.equals(Inet4Address.getByName("testzone4.localhost").getAddress(), new byte[]{127, 0, 0, 1}) &&
-              Arrays.equals(Inet4Address.getByName("testzonedoesnotexist.localhost").getAddress(), new byte[]{127, 0, 0, 1}) &&
-              Arrays.equals(Inet4Address.getByName("testzoneinactive.localhost").getAddress(), new byte[]{127, 0, 0, 1});
+            address = Inet4Address.getByName(host);
         } catch (UnknownHostException e) {
-            return false;
+            fail("no ip address found for " + host, e);
+            return;
         }
+        assertTrue(host + " resolves to " + address + " which is not a loopback address", address.isLoopbackAddress());
     }
 
     public static ClientCredentialsResourceDetails getClientCredentialsResource(String url,
