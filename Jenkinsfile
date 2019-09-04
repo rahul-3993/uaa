@@ -223,9 +223,13 @@ pipeline {
                             unset PROXY_PORT
                             unset PROXY_HOST
                             cat /etc/hosts
-                            curl -v http://simplesamlphp2.cfapps.io/saml2/idp/metadata.php
+                            curl -v http://simplesamlphp.uaa-acceptance.cf-app.com/saml2/idp/metadata.php
                             pushd uaa
                                 env
+                                wget https://chromedriver.storage.googleapis.com/77.0.3865.40/chromedriver_linux64.zip
+                                unzip chromedriver_linux64.zip
+                                mv chromedriver /usr/bin/
+                                chromedriver --version
                                 apt-get update || echo "problems were encountered when trying to update the package index, but let's continue anyway"
                                 DEBIAN_FRONTEND=noninteractive apt-get -qy install slapd ldap-utils
                                 /etc/init.d/slapd start 
