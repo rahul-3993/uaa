@@ -2254,21 +2254,9 @@ class IdentityZoneEndpointsMockMvcTests {
     }
 
     @Test
-    void testUpdateKeyProviderConfigDeniedForSystemZone() throws Exception{
-        MockHttpServletResponse result = getMockMvc().perform(
-                put("/identity-zones/" + IdentityZoneHolder.getUaaZone().getId())
-                        .header("Authorization", "Bearer " + adminToken)
-                        .header("X-Identity-Zone-Id", identityZoneId)
-                        .contentType(APPLICATION_JSON)
-                        .accept(APPLICATION_JSON))
-                .andExpect(status().isNoContent())
-                .andReturn().getResponse();
-    }
-
-    @Test
     void testCreateKeyProviderConfigDeniedForSystemZone() throws Exception {
         KeyProviderConfig keyProviderConfig = new KeyProviderConfig("clientId", "dcsTenantId");
-        getMockMvc().perform(
+        mockMvc.perform(
                 post("/identity-zones/" + IdentityZoneHolder.getUaaZone().getId() + "/key-provider-config")
                         .header("Authorization", "Bearer " + adminToken)
                         .contentType(APPLICATION_JSON)
@@ -2280,7 +2268,7 @@ class IdentityZoneEndpointsMockMvcTests {
 
     @Test
     void testGetKeyProviderConfigDeniedForSystemZone() throws Exception {
-        getMockMvc().perform(
+        mockMvc.perform(
                 get("/identity-zones/" + IdentityZoneHolder.getUaaZone().getId() + "/key-provider-config/1")
                         .header("Authorization", "Bearer " + adminToken)
                         .contentType(APPLICATION_JSON)
@@ -2291,7 +2279,7 @@ class IdentityZoneEndpointsMockMvcTests {
 
     @Test
     void testFindKeyProviderConfigDeniedForSystemZone() throws Exception {
-        getMockMvc().perform(
+        mockMvc.perform(
                 get("/identity-zones/" + IdentityZoneHolder.getUaaZone().getId() + "/key-provider-config")
                         .header("Authorization", "Bearer " + adminToken)
                         .contentType(APPLICATION_JSON)
@@ -2303,7 +2291,7 @@ class IdentityZoneEndpointsMockMvcTests {
 
     @Test
     void testDeleteKeyProviderConfigDeniedForSystemZone() throws Exception {
-        getMockMvc().perform(
+        mockMvc.perform(
                 delete("/identity-zones/" + IdentityZoneHolder.getUaaZone().getId() + "/key-provider-config/1")
                         .header("Authorization", "Bearer " + adminToken)
                         .contentType(APPLICATION_JSON)
@@ -2316,7 +2304,7 @@ class IdentityZoneEndpointsMockMvcTests {
     void testDeleteKeyProviderConfig() throws Exception {
         String identityZoneId = new RandomValueStringGenerator(5).generate();
         String keyProviderId = keyProviderSetup(identityZoneId, CREATED, CREATED, adminToken);
-        getMockMvc().perform(
+        mockMvc.perform(
                 delete("/identity-zones/" + identityZoneId + "/key-provider-config/" + keyProviderId)
                         .header("Authorization", "Bearer " + adminToken)
                         .header("X-Identity-Zone-Id", identityZoneId)
@@ -2330,7 +2318,7 @@ class IdentityZoneEndpointsMockMvcTests {
     void testDeleteKeyProviderConfigWithLowPrivilegeTokenIsForbidden() throws Exception {
         String identityZoneId = new RandomValueStringGenerator(5).generate();
         String keyProviderId = keyProviderSetup(identityZoneId, CREATED, CREATED, adminToken);
-        getMockMvc().perform(
+        mockMvc.perform(
                 delete("/identity-zones/" + identityZoneId + "/key-provider-config/" + keyProviderId)
                         .header("Authorization", "Bearer " + lowPriviledgeToken)
                         .header("X-Identity-Zone-Id", identityZoneId)
@@ -2363,7 +2351,7 @@ class IdentityZoneEndpointsMockMvcTests {
         String identityZoneId = new RandomValueStringGenerator(5).generate();
         String keyProviderId = keyProviderSetup(identityZoneId, CREATED, CREATED, adminToken);
         assertNotNull(keyProviderId);
-        MockHttpServletResponse response = getMockMvc().perform(
+        MockHttpServletResponse response = mockMvc.perform(
                 get("/identity-zones/" + identityZoneId + "/key-provider-config")
                         .header("Authorization", "Bearer " + adminToken)
                         .header("X-Identity-Zone-Id", identityZoneId)
@@ -2379,7 +2367,7 @@ class IdentityZoneEndpointsMockMvcTests {
         String identityZoneId = new RandomValueStringGenerator(5).generate();
         String keyProviderId = keyProviderSetup(identityZoneId, CREATED, CREATED, adminToken);
         assertNotNull(keyProviderId);
-        MockHttpServletResponse response = getMockMvc().perform(
+        MockHttpServletResponse response = mockMvc.perform(
                 get("/identity-zones/" + identityZoneId + "/key-provider-config")
                         .header("Authorization", "Bearer " + lowPriviledgeToken)
                         .header("X-Identity-Zone-Id", identityZoneId)
@@ -2392,7 +2380,7 @@ class IdentityZoneEndpointsMockMvcTests {
         String identityZoneId = new RandomValueStringGenerator(5).generate();
         String keyProviderId = keyProviderSetup(identityZoneId, CREATED, CREATED, adminToken);
         assertNotNull(keyProviderId);
-        MockHttpServletResponse response = getMockMvc().perform(
+        MockHttpServletResponse response = mockMvc.perform(
                 get("/identity-zones/" + identityZoneId + "/key-provider-config/" + keyProviderId)
                         .header("Authorization", "Bearer " + adminToken)
                         .header("X-Identity-Zone-Id", identityZoneId)
@@ -2407,7 +2395,7 @@ class IdentityZoneEndpointsMockMvcTests {
         String identityZoneId = new RandomValueStringGenerator(5).generate();
         String keyProviderId = keyProviderSetup(identityZoneId, CREATED, CREATED, adminToken);
         assertNotNull(keyProviderId);
-        MockHttpServletResponse response = getMockMvc().perform(
+        MockHttpServletResponse response = mockMvc.perform(
                 get("/identity-zones/" + identityZoneId + "/key-provider-config/" + keyProviderId)
                         .header("Authorization", "Bearer " + lowPriviledgeToken)
                         .header("X-Identity-Zone-Id", identityZoneId)
@@ -2418,12 +2406,12 @@ class IdentityZoneEndpointsMockMvcTests {
     @Test
     public void testDeleteZoneAlsoDeletesKeyProviders() throws Exception{
         String identityZoneId = new RandomValueStringGenerator(5).generate();
-        JdbcKeyProviderProvisioning jdbcKeyProviderProvisioning = getWebApplicationContext().getBean(JdbcKeyProviderProvisioning.class);
+        JdbcKeyProviderProvisioning jdbcKeyProviderProvisioning = webApplicationContext.getBean(JdbcKeyProviderProvisioning.class);
         String currentZoneId = IdentityZoneHolder.get().getId();
         String keyProviderId = keyProviderSetup(identityZoneId, CREATED, CREATED, adminToken);
         IdentityZoneHolder.get().setId(identityZoneId);
         assertEquals(keyProviderId, jdbcKeyProviderProvisioning.findActive().getId());
-        MockMvcUtils.deleteIdentityZone(identityZoneId, getMockMvc());
+        MockMvcUtils.deleteIdentityZone(identityZoneId, mockMvc);
 
         assertNull(jdbcKeyProviderProvisioning.findActive());
 
@@ -2435,7 +2423,7 @@ class IdentityZoneEndpointsMockMvcTests {
         client.setClientId("client1");
         client.setClientSecret("test");
         client.setAuthorizedGrantTypes(Collections.singleton("client_credentials"));
-        getMockMvc().perform(
+        mockMvc.perform(
                 post("/oauth/clients")
                         .header("Authorization", "Bearer " + adminToken)
                         .header("X-Identity-Zone-Id", identityZoneId)
@@ -2446,7 +2434,7 @@ class IdentityZoneEndpointsMockMvcTests {
 
         KeyProviderConfig keyProviderConfig = new KeyProviderConfig(null, IdentityZoneHolder.get().getId(),
                 client.getClientId(), "dcsTenantId");
-        MockHttpServletResponse response = getMockMvc().perform(
+        MockHttpServletResponse response = mockMvc.perform(
                 post("/identity-zones/" + identityZoneId + "/key-provider-config")
                         .header("Authorization", "Bearer " + token)
                         .header("X-Identity-Zone-Id", identityZoneId)

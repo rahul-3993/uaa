@@ -163,4 +163,5 @@ public class IdentityZoneConfiguration {
         } catch (MalformedURLException e) {
             throw new IllegalArgumentException("Invalid issuer format. Must be valid URL.");
         }
+    }
 }

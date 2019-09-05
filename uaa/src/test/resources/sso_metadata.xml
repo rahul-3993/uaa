@@ -1,0 +1,68 @@
+<md:EntityDescriptor xmlns:md="urn:oasis:names:tc:SAML:2.0:metadata" ID="ItXDQFkUDI6Bng1SZvSu6E4BdBQ" cacheDuration="PT1440M" entityID="gefssstg">
+<ds:Signature xmlns:ds="http://www.w3.org/2000/09/xmldsig#">
+<ds:SignedInfo>
+<ds:CanonicalizationMethod Algorithm="http://www.w3.org/2001/10/xml-exc-c14n#"/>
+<ds:SignatureMethod Algorithm="http://www.w3.org/2001/04/xmldsig-more#rsa-sha256"/>
+<ds:Reference URI="#ItXDQFkUDI6Bng1SZvSu6E4BdBQ">
+<ds:Transforms>
+<ds:Transform Algorithm="http://www.w3.org/2000/09/xmldsig#enveloped-signature"/>
+<ds:Transform Algorithm="http://www.w3.org/2001/10/xml-exc-c14n#"/>
+</ds:Transforms>
+<ds:DigestMethod Algorithm="http://www.w3.org/2001/04/xmlenc#sha256"/>
+<ds:DigestValue>knC0Mv7eG2sPWsg5XCbukVw/jCf0wqIjkrp1grYmcfs=</ds:DigestValue>
+</ds:Reference>
+</ds:SignedInfo>
+<ds:SignatureValue>
+uAhgvwXehN0TrnMlvPxoRb4YRQ9m66gbInwdvplmi0fAEIRoi7LM951HyBdC5iQOstOuBy43eXR8 aLsc6bydykmJqvCwjj21b6IbIMEAIWvQqbyDs4QGiezUm/zHtCKjb2KWOfWWTj/ZZvCNUeH8GCjt zaHfzDAlQqcwnoxkFgwsdy77jCOkrPIN0Bvq/Wdq3a3N8+JacqZtpdQc1YhWLTsDUAv3kVt9+nnE H0qq8YvGbYYTdrs2d1TV3QluSOQJf7DQv3sg2mV22E78oSmBZh5eoe9unolXze/bqvKA+1WEIhYD y41z4lrME4CFImPzUjWKFyu4RT2T4MJiaWn4hg==
+</ds:SignatureValue>
+<ds:KeyInfo>
+<ds:X509Data>
+<ds:X509Certificate>
+MIIF5DCCBMygAwIBAgIQYSNLG6X17Oob0kDl1OHV3jANBgkqhkiG9w0BAQsFADCBhjELMAkGA1UE BhMCVVMxCzAJBgNVBAgTAkRFMRMwEQYDVQQHEwpXaWxtaW5ndG9uMSQwIgYDVQQKExtDb3Jwb3Jh dGlvbiBTZXJ2aWNlIENvbXBhbnkxLzAtBgNVBAMTJlRydXN0ZWQgU2VjdXJlIENlcnRpZmljYXRl IEF1dGhvcml0eSA1MB4XDTE0MTIzMDAwMDAwMFoXDTE2MTIyOTIzNTk1OVowgeoxCzAJBgNVBAYT AlVTMQ4wDAYDVQQREwUwNjgyODELMAkGA1UECBMCQ1QxEjAQBgNVBAcTCUZhaXJmaWVsZDEdMBsG A1UECRMUMzEzNSBFYXN0b24gVHVybnBpa2UxITAfBgNVBAoTGEdlbmVyYWwgRWxlY3RyaWMgQ29t cGFueTEtMCsGA1UECxMkUHJvdmlkZWQgYnkgR2VuZXJhbCBFbGVjdHJpYyBDb21wYW55MRcwFQYD VQQLEw5FbnRlcnByaXNlIFNTTDEgMB4GA1UEAxMXZnNzLnN0YWdlLmdlY29tcGFueS5jb20wggEi MA0GCSqGSIb3DQEBAQUAA4IBDwAwggEKAoIBAQDDwDG6wkBYsJSqbSYpw0c76bUB1x5e4KL1jMDW DxrBGjW0smE8PmuPwpTKmjX19oJWx46eiroRZdU2BEWiQJ9yxV95gGNsdLH1105iubzc9dbxavGI YM9s/+qJRf6WfwDU7VQsURCqIN8eUtnPU8yoOhhkmIVo0u08PYjfBA4ucnwJ8wUhPOcu2NzsR+dQ Lv1pihXkKTdeluFDCJ8qXbX8h3sKLnMIW/8Bh44oj2iPR0Y+CU3RVAfuleAU17WhURSsFZxfzBXr JK0k0agnxkRan5JxmMadsC+jQohUKiv6UalIArH6Xkw5Kb9QNaSqSFlPdxuxzuZijVwVgpWOUHt5 AgMBAAGjggHmMIIB4jAfBgNVHSMEGDAWgBTyu1Xu/I/P0D8UaBqVfnkOqxcw9DAdBgNVHQ4EFgQU YSxVVCDkv7JPr93kv+Eb3XjYprswDgYDVR0PAQH/BAQDAgWgMAwGA1UdEwEB/wQCMAAwHQYDVR0l BBYwFAYIKwYBBQUHAwEGCCsGAQUFBwMCMEsGA1UdIAREMEIwNgYLKwYBBAGyMQECAggwJzAlBggr BgEFBQcCARYZaHR0cHM6Ly9jcHMudXNlcnRydXN0LmNvbTAIBgZngQwBAgIwUAYDVR0fBEkwRzBF oEOgQYY/aHR0cDovL2NybC51c2VydHJ1c3QuY29tL1RydXN0ZWRTZWN1cmVDZXJ0aWZpY2F0ZUF1 dGhvcml0eTUuY3JsMIGCBggrBgEFBQcBAQR2MHQwSwYIKwYBBQUHMAKGP2h0dHA6Ly9jcnQudXNl cnRydXN0LmNvbS9UcnVzdGVkU2VjdXJlQ2VydGlmaWNhdGVBdXRob3JpdHk1LmNydDAlBggrBgEF BQcwAYYZaHR0cDovL29jc3AudXNlcnRydXN0LmNvbTA/BgNVHREEODA2ghdmc3Muc3RhZ2UuZ2Vj b21wYW55LmNvbYIbd3d3LmZzcy5zdGFnZS5nZWNvbXBhbnkuY29tMA0GCSqGSIb3DQEBCwUAA4IB AQCDzQb0BMr5Cu+Ee1gcQf1ftJKZgUJibsi/8e3p7Lu88CoZLkIbfYv4XytGpmZsg60jL+eA3JEU 1OeGd+1eZwPMCcu/h3h/ftJDYIte00PMvRmMoavSxvF5dqaDrUFmu8lzIZgSA38m+MF+rRtqKgGI EYfTKb8BswukhaSw/EBUV2FDCrIsMrzxf+eHumi1E1PJ0NCQMCfSLwwp4sR/6O2/3Ust1brBHs3N 2WdQ0eGQWH6bcgosCsHw430/VWMdjPw+Ty9HlS9z6MtSMuoeBrMGxDKYxDlMmAxfqco17nFuPF8+ BznZCo5VAS8oqZgteL0ru363YbID3tbu1qPDdg64
+</ds:X509Certificate>
+</ds:X509Data>
+<ds:KeyValue>
+<ds:RSAKeyValue>
+<ds:Modulus>
+w8AxusJAWLCUqm0mKcNHO+m1AdceXuCi9YzA1g8awRo1tLJhPD5rj8KUypo19faCVseOnoq6EWXV NgRFokCfcsVfeYBjbHSx9ddOYrm83PXW8WrxiGDPbP/qiUX+ln8A1O1ULFEQqiDfHlLZz1PMqDoY ZJiFaNLtPD2I3wQOLnJ8CfMFITznLtjc7EfnUC79aYoV5Ck3XpbhQwifKl21/Id7Ci5zCFv/AYeO KI9oj0dGPglN0VQH7pXgFNe1oVEUrBWcX8wV6yStJNGoJ8ZEWp+ScZjGnbAvo0KIVCor+lGpSAKx +l5MOSm/UDWkqkhZT3cbsc7mYo1cFYKVjlB7eQ==
+</ds:Modulus>
+<ds:Exponent>AQAB</ds:Exponent>
+</ds:RSAKeyValue>
+</ds:KeyValue>
+</ds:KeyInfo>
+</ds:Signature>
+<md:IDPSSODescriptor protocolSupportEnumeration="urn:oasis:names:tc:SAML:2.0:protocol" WantAuthnRequestsSigned="false">
+<md:KeyDescriptor use="signing">
+<ds:KeyInfo xmlns:ds="http://www.w3.org/2000/09/xmldsig#">
+<ds:X509Data>
+<ds:X509Certificate>
+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
+</ds:X509Certificate>
+</ds:X509Data>
+</ds:KeyInfo>
+</md:KeyDescriptor>
+<md:NameIDFormat>
+urn:oasis:names:tc:SAML:1.1:nameid-format:unspecified
+</md:NameIDFormat>
+<md:SingleSignOnService Binding="urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST" Location="https://fss.stage.gecompany.com/fss/idp/SSO.saml2"/>
+<md:SingleSignOnService Binding="urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect" Location="https://fss.stage.gecompany.com/fss/idp/SSO.saml2"/>
+<saml:Attribute xmlns:saml="urn:oasis:names:tc:SAML:2.0:assertion" Name="ssoid" NameFormat="urn:oasis:names:tc:SAML:2.0:attrname-format:basic"/>
+<saml:Attribute xmlns:saml="urn:oasis:names:tc:SAML:2.0:assertion" Name="st" NameFormat="urn:oasis:names:tc:SAML:2.0:attrname-format:basic"/>
+<saml:Attribute xmlns:saml="urn:oasis:names:tc:SAML:2.0:assertion" Name="firstname" NameFormat="urn:oasis:names:tc:SAML:2.0:attrname-format:basic"/>
+<saml:Attribute xmlns:saml="urn:oasis:names:tc:SAML:2.0:assertion" Name="mail" NameFormat="urn:oasis:names:tc:SAML:2.0:attrname-format:basic"/>
+<saml:Attribute xmlns:saml="urn:oasis:names:tc:SAML:2.0:assertion" Name="telephonenumber" NameFormat="urn:oasis:names:tc:SAML:2.0:attrname-format:basic"/>
+<saml:Attribute xmlns:saml="urn:oasis:names:tc:SAML:2.0:assertion" Name="city" NameFormat="urn:oasis:names:tc:SAML:2.0:attrname-format:basic"/>
+<saml:Attribute xmlns:saml="urn:oasis:names:tc:SAML:2.0:assertion" Name="initials" NameFormat="urn:oasis:names:tc:SAML:2.0:attrname-format:basic"/>
+<saml:Attribute xmlns:saml="urn:oasis:names:tc:SAML:2.0:assertion" Name="cn" NameFormat="urn:oasis:names:tc:SAML:2.0:attrname-format:basic"/>
+<saml:Attribute xmlns:saml="urn:oasis:names:tc:SAML:2.0:assertion" Name="gessouid" NameFormat="urn:oasis:names:tc:SAML:2.0:attrname-format:basic"/>
+<saml:Attribute xmlns:saml="urn:oasis:names:tc:SAML:2.0:assertion" Name="title" NameFormat="urn:oasis:names:tc:SAML:2.0:attrname-format:basic"/>
+<saml:Attribute xmlns:saml="urn:oasis:names:tc:SAML:2.0:assertion" Name="georaclehrid" NameFormat="urn:oasis:names:tc:SAML:2.0:attrname-format:basic"/>
+<saml:Attribute xmlns:saml="urn:oasis:names:tc:SAML:2.0:assertion" Name="gevdsGroupIDmemberOf" NameFormat="urn:oasis:names:tc:SAML:2.0:attrname-format:basic"/>
+<saml:Attribute xmlns:saml="urn:oasis:names:tc:SAML:2.0:assertion" Name="lastname" NameFormat="urn:oasis:names:tc:SAML:2.0:attrname-format:basic"/>
+<saml:Attribute xmlns:saml="urn:oasis:names:tc:SAML:2.0:assertion" Name="street" NameFormat="urn:oasis:names:tc:SAML:2.0:attrname-format:basic"/>
+<saml:Attribute xmlns:saml="urn:oasis:names:tc:SAML:2.0:assertion" Name="company" NameFormat="urn:oasis:names:tc:SAML:2.0:attrname-format:basic"/>
+</md:IDPSSODescriptor>
+<md:ContactPerson contactType="administrative">
+<md:Company>General Electric Company</md:Company>
+</md:ContactPerson>
+</md:EntityDescriptor>
