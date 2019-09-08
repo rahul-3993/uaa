@@ -14,6 +14,7 @@ package org.cloudfoundry.identity.uaa.integration.feature;
 
 import com.dumbster.smtp.SimpleSmtpServer;
 import org.cloudfoundry.identity.uaa.test.UaaTestAccounts;
+import org.cloudfoundry.identity.uaa.util.ProxySettings;
 import org.openqa.selenium.Dimension;
 import org.openqa.selenium.chrome.ChromeDriver;
 import org.openqa.selenium.chrome.ChromeOptions;
@@ -38,6 +39,10 @@ import java.util.logging.Level;
 @Configuration
 @PropertySource("classpath:integration.test.properties")
 public class DefaultIntegrationTestConfig {
+
+    static {
+        new ProxySettings(); //to load proxy settings
+    }
 
     @Bean
     public IntegrationTestRule integrationTestRule(@Value("${integration.test.uaa_url}") String baseUrl, Environment environment) {
