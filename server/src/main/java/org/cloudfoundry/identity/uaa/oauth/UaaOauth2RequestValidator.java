@@ -28,12 +28,13 @@ import java.util.HashSet;
 import java.util.Set;
 import java.util.regex.Pattern;
 
+import static org.cloudfoundry.identity.uaa.oauth.token.TokenConstants.GRANT_TYPE_CLIENT_CREDENTIALS;
+import static org.cloudfoundry.identity.uaa.oauth.token.TokenConstants.GRANT_TYPE_JWT_BEARER;
 import static org.cloudfoundry.identity.uaa.oauth.token.TokenConstants.GRANT_TYPE_USER_TOKEN;
 import static org.springframework.security.oauth2.common.util.OAuth2Utils.CLIENT_ID;
 
 public class UaaOauth2RequestValidator implements OAuth2RequestValidator {
 
-    private static String CLIENT_CREDENTIALS = "client_credentials";
     private ClientServicesExtension clientDetailsService;
 
     public void setClientDetailsService(ClientServicesExtension clientDetailsService) {
@@ -41,7 +42,7 @@ public class UaaOauth2RequestValidator implements OAuth2RequestValidator {
     }
 
     public void validateScope(AuthorizationRequest authorizationRequest, ClientDetails client) throws InvalidScopeException {
-        if (CLIENT_CREDENTIALS.equalsIgnoreCase(authorizationRequest.getRequestParameters().get(OAuth2Utils.GRANT_TYPE))) {
+        if (GRANT_TYPE_CLIENT_CREDENTIALS.equalsIgnoreCase(authorizationRequest.getRequestParameters().get(OAuth2Utils.GRANT_TYPE))) {
             validateScope(authorizationRequest.getScope(), getAuthorities(client.getAuthorities()), false);
         } else {
             validateScope(authorizationRequest.getScope(), client.getScope(), true);
@@ -49,8 +50,8 @@ public class UaaOauth2RequestValidator implements OAuth2RequestValidator {
     }
 
     public void validateScope(TokenRequest tokenRequest, ClientDetails client) throws InvalidScopeException {
-        if (    OauthGrant.CLIENT_CREDENTIALS.equals(tokenRequest.getGrantType()) ||
-                OauthGrant.JWT_BEARER.equals(tokenRequest.getGrantType())) {
+        if (    GRANT_TYPE_CLIENT_CREDENTIALS.equals(tokenRequest.getGrantType()) ||
+                GRANT_TYPE_JWT_BEARER.equals(tokenRequest.getGrantType())) {
             validateScope(tokenRequest.getScope(), getAuthorities(client.getAuthorities()), false);
         } else if (GRANT_TYPE_USER_TOKEN.equalsIgnoreCase(tokenRequest.getGrantType())) {
             client = clientDetailsService.loadClientByClientId(tokenRequest.getRequestParameters().get(CLIENT_ID), IdentityZoneHolder.get().getId());
