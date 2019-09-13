@@ -3,7 +3,6 @@ package org.cloudfoundry.identity.uaa.provider.token;
 import com.ge.predix.pki.device.spi.DevicePublicKeyProvider;
 import com.ge.predix.pki.device.spi.PublicKeyNotFoundException;
 import org.bouncycastle.openssl.PEMWriter;
-import org.cloudfoundry.identity.uaa.oauth.OauthGrant;
 import org.cloudfoundry.identity.uaa.oauth.client.ClientConstants;
 import org.cloudfoundry.identity.uaa.provider.KeyProviderConfig;
 import org.cloudfoundry.identity.uaa.provider.KeyProviderProvisioning;
@@ -40,6 +39,7 @@ import java.util.Date;
 import java.util.Map;
 import java.util.Set;
 
+import static org.cloudfoundry.identity.uaa.oauth.token.TokenConstants.GRANT_TYPE_CLIENT_CREDENTIALS;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
@@ -87,7 +87,7 @@ public class JwtBearerAssertionTokenAuthenticatorTest {
         dcsClient.setClientId("dcsClient");
         KeyProviderConfig mockConfig = new KeyProviderConfig(dcsClient.getClientId(), "test-dcs-zone-guid");
         when(keyProviderConfigProvisioner.findActive()).thenReturn(mockConfig);
-        when(mockTokenGranter.grant(eq(OauthGrant.CLIENT_CREDENTIALS), any(TokenRequest.class))).thenReturn(getMockToken());
+        when(mockTokenGranter.grant(eq(GRANT_TYPE_CLIENT_CREDENTIALS), any(TokenRequest.class))).thenReturn(getMockToken());
         when(this.clientDetailsService.loadClientByClientId(dcsClient.getClientId())).thenReturn(dcsClient);
         String header = new MockClientAssertionHeader().mockSignedHeader(this.currentTimeSecs, DEVICE_1_ID, TENANT_ID);
         this.tokenAuthenticator.setClientDetailsService(this.clientDetailsService);
@@ -111,7 +111,7 @@ public class JwtBearerAssertionTokenAuthenticatorTest {
 
         Authentication authn = this.tokenAuthenticator.authenticate(token, header, MockKeyProvider.DEVICE1_PUBLIC_KEY);
 
-        verify(mockTokenGranter, never()).grant(eq(OauthGrant.CLIENT_CREDENTIALS), any());
+        verify(mockTokenGranter, never()).grant(eq(GRANT_TYPE_CLIENT_CREDENTIALS), any());
         Assert.assertEquals(DEVICE_1_CLIENT_ID, authn.getPrincipal());
         Assert.assertEquals(true, authn.isAuthenticated());
         Assert.assertEquals("", mockPublicKeyProvider.receivedZoneId);
@@ -129,7 +129,7 @@ public class JwtBearerAssertionTokenAuthenticatorTest {
 
         Authentication authn = this.tokenAuthenticator.authenticate(token, header, MockKeyProvider.DEVICE1_PUBLIC_KEY);
 
-        verify(mockTokenGranter, never()).grant(eq(OauthGrant.CLIENT_CREDENTIALS), any());
+        verify(mockTokenGranter, never()).grant(eq(GRANT_TYPE_CLIENT_CREDENTIALS), any());
         Assert.assertEquals(DEVICE_1_CLIENT_ID, authn.getPrincipal());
         Assert.assertEquals(true, authn.isAuthenticated());
         Assert.assertEquals("", mockPublicKeyProvider.receivedZoneId);

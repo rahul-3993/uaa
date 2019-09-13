@@ -700,7 +700,7 @@ class IdentityZoneEndpointDocs extends EndpointDocs {
                 "adminsecret",
                 "zones." + identityZoneId + ".admin");
 
-        getMockMvc().perform(
+        mockMvc.perform(
                 post("/identity-zones/{identityZoneId}/key-provider-config", identityZoneId)
                         .header("Authorization", "Bearer " + adminToken)
                         .header("X-Identity-Zone-Id", identityZoneId)
@@ -741,7 +741,7 @@ class IdentityZoneEndpointDocs extends EndpointDocs {
                 "zones." + identityZoneId + ".admin");
         KeyProviderConfig createdKeyProviderConfig = createKeyProviderConfig(identityZoneId, adminToken, keyProviderConfig);
 
-        getMockMvc().perform(
+        mockMvc.perform(
                 get("/identity-zones/{identityZoneId}/key-provider-config/{keyProviderId}", identityZoneId, createdKeyProviderConfig.getId())
                         .header("Authorization", "Bearer " + adminToken)
                         .header("X-Identity-Zone-Id", identityZoneId)
@@ -781,7 +781,7 @@ class IdentityZoneEndpointDocs extends EndpointDocs {
                 "zones." + identityZoneId + ".admin");
         createKeyProviderConfig(identityZoneId, adminToken, keyProviderConfig);
 
-        getMockMvc().perform(
+        mockMvc.perform(
                 get("/identity-zones/{identityZoneId}/key-provider-config", identityZoneId)
                         .header("Authorization", "Bearer " + adminToken)
                         .header("X-Identity-Zone-Id", identityZoneId)
@@ -819,7 +819,7 @@ class IdentityZoneEndpointDocs extends EndpointDocs {
                 "zones." + identityZoneId + ".admin");
         KeyProviderConfig createdKeyProviderConfig = createKeyProviderConfig(identityZoneId, adminToken, keyProviderConfig);
 
-        getMockMvc().perform(
+        mockMvc.perform(
                 delete("/identity-zones/{identityZoneId}/key-provider-config/{keyProviderId}", identityZoneId, createdKeyProviderConfig.getId())
                         .header("Authorization", "Bearer " + adminToken)
                         .header("X-Identity-Zone-Id", identityZoneId)
@@ -846,7 +846,7 @@ class IdentityZoneEndpointDocs extends EndpointDocs {
                 "admin",
                 "adminsecret",
                 "uaa.admin");
-        String response = getMockMvc().perform(
+        String response = mockMvc.perform(
                 get("/oauth/clients/admin")
                         .header("Authorization", "Bearer " + adminClientToken)
                         .contentType(APPLICATION_JSON))
@@ -857,7 +857,7 @@ class IdentityZoneEndpointDocs extends EndpointDocs {
         String zoneScope = "zones." + identityZone + ".admin";
         authorities.add(new SimpleGrantedAuthority(zoneScope));
         adminClient.setAuthorities(authorities);
-        getMockMvc().perform(
+        mockMvc.perform(
                 put("/oauth/clients/admin")
                         .header("Authorization", "Bearer " + adminClientToken)
                         .contentType(APPLICATION_JSON)
@@ -879,7 +879,7 @@ class IdentityZoneEndpointDocs extends EndpointDocs {
         client.setClientSecret(clientSecret);
         client.setAuthorizedGrantTypes(Collections.singleton("client_credentials"));
         client.setAuthorities(authorities);
-        getMockMvc().perform(
+        mockMvc.perform(
                 post("/oauth/clients")
                         .header("Authorization", "Bearer " + adminClientToken)
                         .header("X-Identity-Zone-Id", identityZoneId)
@@ -890,7 +890,7 @@ class IdentityZoneEndpointDocs extends EndpointDocs {
 
     private KeyProviderConfig createKeyProviderConfig(String identityZoneId, String adminToken,
             KeyProviderConfig keyProviderConfig) throws Exception {
-        String response = getMockMvc().perform(
+        String response = mockMvc.perform(
                 post("/identity-zones/{identityZoneId}/key-provider-config", identityZoneId)
                         .header("Authorization", "Bearer " + adminToken)
                         .header("X-Identity-Zone-Id", identityZoneId)

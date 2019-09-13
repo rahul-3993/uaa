@@ -11,7 +11,6 @@ import java.util.Map;
 
 import org.cloudfoundry.identity.uaa.ServerRunning;
 import org.cloudfoundry.identity.uaa.integration.util.IntegrationTestUtils;
-import org.cloudfoundry.identity.uaa.oauth.OauthGrant;
 import org.cloudfoundry.identity.uaa.oauth.client.ClientConstants;
 import org.cloudfoundry.identity.uaa.oauth.token.ClaimConstants;
 import org.cloudfoundry.identity.uaa.provider.KeyProviderConfig;
@@ -49,6 +48,9 @@ import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
 
 import com.fasterxml.jackson.core.type.TypeReference;
+
+import static org.cloudfoundry.identity.uaa.oauth.token.TokenConstants.GRANT_TYPE_CLIENT_CREDENTIALS;
+import static org.cloudfoundry.identity.uaa.oauth.token.TokenConstants.GRANT_TYPE_JWT_BEARER;
 
 @RunWith(SpringJUnit4ClassRunner.class)
 @ContextConfiguration(classes = DefaultIntegrationTestConfig.class)
@@ -96,7 +98,7 @@ public class JwtBearerGrantIT {
         // register client for jwt-bearer grant
         this.adminClient = (OAuth2RestTemplate) IntegrationTestUtils.getClientCredentialsTemplate(
                 IntegrationTestUtils.getClientCredentialsResource(uaaUrl, new String[0], "admin", "adminsecret"));
-        BaseClientDetails client = new BaseClientDetails(DEVICE_CLIENT_ID, "none", "uaa.none", OauthGrant.JWT_BEARER,
+        BaseClientDetails client = new BaseClientDetails(DEVICE_CLIENT_ID, "none", "uaa.none", GRANT_TYPE_JWT_BEARER,
                 CONFIGURED_SCOPE, null);
         // authorize device for test client
         client.addAdditionalInformation(ClientConstants.ALLOWED_DEVICE_ID, deviceId);
@@ -111,7 +113,7 @@ public class JwtBearerGrantIT {
 
         // call uaa/oauth/token
         LinkedMultiValueMap<String, String> formData = new LinkedMultiValueMap<String, String>();
-        formData.add(OAuth2Utils.GRANT_TYPE, OauthGrant.JWT_BEARER);
+        formData.add(OAuth2Utils.GRANT_TYPE, GRANT_TYPE_JWT_BEARER);
         formData.add(ASSERTION, token);
 
         HttpEntity<LinkedMultiValueMap<String, String>> requestEntity = new HttpEntity<>(formData, getHttpHeaders());
@@ -132,7 +134,7 @@ public class JwtBearerGrantIT {
                 System.currentTimeMillis(), 600, TENANT_ID, AUDIENCE);
         // call uaa/oauth/token
         LinkedMultiValueMap<String, String> formData = new LinkedMultiValueMap<String, String>();
-        formData.add(OAuth2Utils.GRANT_TYPE, OauthGrant.JWT_BEARER);
+        formData.add(OAuth2Utils.GRANT_TYPE, GRANT_TYPE_JWT_BEARER);
         formData.add(ASSERTION, token);
 
         HttpEntity<LinkedMultiValueMap<String, String>> requestEntity = new HttpEntity<>(formData, this.getHttpHeaders());
@@ -156,7 +158,7 @@ public class JwtBearerGrantIT {
                 System.currentTimeMillis(), 600, TENANT_ID, AUDIENCE);
         // call uaa/oauth/token
         LinkedMultiValueMap<String, String> formData = new LinkedMultiValueMap<String, String>();
-        formData.add(OAuth2Utils.GRANT_TYPE, OauthGrant.CLIENT_CREDENTIALS);
+        formData.add(OAuth2Utils.GRANT_TYPE, GRANT_TYPE_CLIENT_CREDENTIALS);
         formData.add(ASSERTION, token);
 
         HttpEntity<LinkedMultiValueMap<String, String>> requestEntity = new HttpEntity<>(formData, getHttpHeaders());
@@ -205,7 +207,7 @@ public class JwtBearerGrantIT {
 
         // call uaa/oauth/token
         LinkedMultiValueMap<String, String> formData = new LinkedMultiValueMap<String, String>();
-        formData.add(OAuth2Utils.GRANT_TYPE, OauthGrant.JWT_BEARER);
+        formData.add(OAuth2Utils.GRANT_TYPE, GRANT_TYPE_JWT_BEARER);
 
         HttpEntity<LinkedMultiValueMap<String, String>> requestEntity = new HttpEntity<>(formData, headers);
         try {
@@ -224,7 +226,7 @@ public class JwtBearerGrantIT {
 
         // call uaa/oauth/token
         LinkedMultiValueMap<String, String> formData = new LinkedMultiValueMap<String, String>();
-        formData.add(OAuth2Utils.GRANT_TYPE, OauthGrant.JWT_BEARER);
+        formData.add(OAuth2Utils.GRANT_TYPE, GRANT_TYPE_JWT_BEARER);
         formData.add(ASSERTION, "");
         HttpEntity<LinkedMultiValueMap<String, String>> requestEntity = new HttpEntity<>(formData, getHttpHeaders());
         try {
@@ -243,7 +245,7 @@ public class JwtBearerGrantIT {
 
         // call uaa/oauth/token
         LinkedMultiValueMap<String, String> formData = new LinkedMultiValueMap<String, String>();
-        formData.add(OAuth2Utils.GRANT_TYPE, OauthGrant.JWT_BEARER);
+        formData.add(OAuth2Utils.GRANT_TYPE, GRANT_TYPE_JWT_BEARER);
         HttpEntity<LinkedMultiValueMap<String, String>> requestEntity = new HttpEntity<>(formData, getHttpHeaders());
         try {
             this.tokenRestTemplate.postForEntity(this.baseUrl + "/oauth/token", requestEntity, String.class);
@@ -276,7 +278,7 @@ public class JwtBearerGrantIT {
                 AUDIENCE);
         // call uaa/oauth/token
         LinkedMultiValueMap<String, String> formData = new LinkedMultiValueMap<String, String>();
-        formData.add(OAuth2Utils.GRANT_TYPE, OauthGrant.JWT_BEARER);
+        formData.add(OAuth2Utils.GRANT_TYPE, GRANT_TYPE_JWT_BEARER);
         formData.add(ASSERTION, token);
         HttpEntity<LinkedMultiValueMap<String, String>> requestEntity = new HttpEntity<>(formData, headers);
         try {
@@ -329,7 +331,7 @@ public class JwtBearerGrantIT {
                 System.currentTimeMillis(), 600, TENANT_ID, AUDIENCE);
         // call uaa/oauth/token
         LinkedMultiValueMap<String, String> formData = new LinkedMultiValueMap<String, String>();
-        formData.add(OAuth2Utils.GRANT_TYPE, OauthGrant.JWT_BEARER);
+        formData.add(OAuth2Utils.GRANT_TYPE, GRANT_TYPE_JWT_BEARER);
         formData.add(ASSERTION, token);
 
         HttpEntity<LinkedMultiValueMap<String, String>> requestEntity = new HttpEntity<>(formData, headers);
@@ -370,7 +372,7 @@ public class JwtBearerGrantIT {
                 System.currentTimeMillis(), 600, TENANT_ID, AUDIENCE);
         // call uaa/oauth/token
         LinkedMultiValueMap<String, String> formData = new LinkedMultiValueMap<String, String>();
-        formData.add(OAuth2Utils.GRANT_TYPE, OauthGrant.JWT_BEARER);
+        formData.add(OAuth2Utils.GRANT_TYPE, GRANT_TYPE_JWT_BEARER);
         formData.add(ASSERTION, token);
 
         HttpEntity<LinkedMultiValueMap<String, String>> requestEntity = new HttpEntity<>(formData, new HttpHeaders());
@@ -397,7 +399,7 @@ public class JwtBearerGrantIT {
                 System.currentTimeMillis(), 600, TENANT_ID, AUDIENCE);
         // call uaa/oauth/token
         LinkedMultiValueMap<String, String> formData = new LinkedMultiValueMap<String, String>();
-        formData.add(OAuth2Utils.GRANT_TYPE, OauthGrant.JWT_BEARER);
+        formData.add(OAuth2Utils.GRANT_TYPE, GRANT_TYPE_JWT_BEARER);
         formData.add(ASSERTION, token);
 
         HttpEntity<LinkedMultiValueMap<String, String>> requestEntity = new HttpEntity<>(formData, headers);
@@ -426,7 +428,7 @@ public class JwtBearerGrantIT {
                 System.currentTimeMillis(), 600, TENANT_ID, AUDIENCE);
         // call uaa/oauth/token
         LinkedMultiValueMap<String, String> formData = new LinkedMultiValueMap<String, String>();
-        formData.add(OAuth2Utils.GRANT_TYPE, OauthGrant.JWT_BEARER);
+        formData.add(OAuth2Utils.GRANT_TYPE, GRANT_TYPE_JWT_BEARER);
         formData.add(ASSERTION, token);
 
         HttpEntity<LinkedMultiValueMap<String, String>> requestEntity = new HttpEntity<>(formData, headers);
@@ -452,7 +454,7 @@ public class JwtBearerGrantIT {
         Assert.assertTrue(scopes.contains(CONFIGURED_SCOPE));
         Assert.assertEquals(DEVICE_CLIENT_ID, claims.get(ClaimConstants.SUB));
         Assert.assertEquals(DEVICE_CLIENT_ID, claims.get(ClaimConstants.CLIENT_ID));
-        Assert.assertEquals(OauthGrant.JWT_BEARER, claims.get(ClaimConstants.GRANT_TYPE));
+        Assert.assertEquals(GRANT_TYPE_JWT_BEARER, claims.get(ClaimConstants.GRANT_TYPE));
         Assert.assertEquals("http://localhost:8080/uaa/oauth/token", claims.get(ClaimConstants.ISS));
         long currentTimestamp = System.currentTimeMillis() / 1000;
         String expirationTimestamp = (claims.get(ClaimConstants.EXP)).toString();

@@ -3,7 +3,6 @@ package org.cloudfoundry.identity.uaa.provider.token;
 import com.ge.predix.pki.device.spi.DevicePublicKeyProvider;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.cloudfoundry.identity.uaa.oauth.OauthGrant;
 import org.cloudfoundry.identity.uaa.provider.KeyProviderProvisioning;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.authentication.BadCredentialsException;
@@ -23,6 +22,8 @@ import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
+
+import static org.cloudfoundry.identity.uaa.oauth.token.TokenConstants.GRANT_TYPE_JWT_BEARER;
 
 public class JwtBearerAssertionAuthenticationFilter extends OncePerRequestFilter {
     private static final String PREDIX_CLIENT_ASSERTION_HEADER = "Predix-Client-Assertion";
@@ -65,7 +66,7 @@ public class JwtBearerAssertionAuthenticationFilter extends OncePerRequestFilter
         	if(grantType == null){
         		throw new MissingGrantTypeException("Missing grant type.");
         	}
-        	else if (grantType.equals(OauthGrant.JWT_BEARER)) {
+        	else if (grantType.equals(GRANT_TYPE_JWT_BEARER)) {
                 String assertion = request.getParameter("assertion");
                 Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
 

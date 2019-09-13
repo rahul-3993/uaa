@@ -5,7 +5,6 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import org.cloudfoundry.identity.uaa.ServerRunning;
 import org.cloudfoundry.identity.uaa.integration.feature.DefaultIntegrationTestConfig;
 import org.cloudfoundry.identity.uaa.integration.feature.IntegrationTestRule;
-import org.cloudfoundry.identity.uaa.oauth.OauthGrant;
 import org.cloudfoundry.identity.uaa.oauth.token.ClaimConstants;
 import org.cloudfoundry.identity.uaa.provider.token.MockAssertionToken;
 import org.cloudfoundry.identity.uaa.provider.token.MockClientAssertionHeader;
@@ -35,6 +34,7 @@ import org.springframework.web.client.RestTemplate;
 import java.util.List;
 import java.util.Map;
 
+import static org.cloudfoundry.identity.uaa.oauth.token.TokenConstants.GRANT_TYPE_JWT_BEARER;
 import static org.junit.Assert.assertEquals;
 
 @RunWith(SpringJUnit4ClassRunner.class)
@@ -104,7 +104,7 @@ public class JwtBearerGrantDegradedIntegrationTest {
                 System.currentTimeMillis(), 600, TENANT_ID, audience);
         // call uaa/oauth/token
         LinkedMultiValueMap<String, String> formData = new LinkedMultiValueMap<String, String>();
-        formData.add(OAuth2Utils.GRANT_TYPE, OauthGrant.JWT_BEARER);
+        formData.add(OAuth2Utils.GRANT_TYPE, GRANT_TYPE_JWT_BEARER);
         formData.add(ASSERTION, token);
 
         HttpEntity<LinkedMultiValueMap<String, String>> requestEntity = new HttpEntity<>(formData, headers);
@@ -141,7 +141,7 @@ public class JwtBearerGrantDegradedIntegrationTest {
         Assert.assertTrue(scopes.contains(CONFIGURED_SCOPE));
         assertEquals(DEVICE_CLIENT_ID, claims.get(ClaimConstants.SUB));
         assertEquals(DEVICE_CLIENT_ID, claims.get(ClaimConstants.CLIENT_ID));
-        assertEquals(OauthGrant.JWT_BEARER, claims.get(ClaimConstants.GRANT_TYPE));
+        assertEquals(GRANT_TYPE_JWT_BEARER, claims.get(ClaimConstants.GRANT_TYPE));
         assertEquals(this.baseUaaZoneUrl + "/oauth/token", claims.get(ClaimConstants.ISS));
         long currentTimestamp = System.currentTimeMillis() / 1000;
         String expirationTimestamp = (claims.get(ClaimConstants.EXP)).toString();

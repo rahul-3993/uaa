@@ -5,7 +5,6 @@ import com.ge.predix.pki.device.spi.DevicePublicKeyProvider;
 import com.ge.predix.pki.device.spi.PublicKeyNotFoundException;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.cloudfoundry.identity.uaa.oauth.OauthGrant;
 import org.cloudfoundry.identity.uaa.oauth.client.ClientConstants;
 import org.cloudfoundry.identity.uaa.oauth.token.ClaimConstants;
 import org.cloudfoundry.identity.uaa.provider.KeyProviderConfig;
@@ -31,6 +30,8 @@ import java.util.ArrayList;
 import java.util.Base64;
 import java.util.Collections;
 import java.util.Map;
+
+import static org.cloudfoundry.identity.uaa.oauth.token.TokenConstants.GRANT_TYPE_CLIENT_CREDENTIALS;
 
 public class JwtBearerAssertionTokenAuthenticator {
 
@@ -228,8 +229,8 @@ public class JwtBearerAssertionTokenAuthenticator {
                 if(dcsClient != null) {
                     //generate a token from this UAA
                     TokenRequest tokenRequest = new TokenRequest(null, dcsClient.getClientId(),
-                            Collections.singleton("pki.cert.key"), OauthGrant.CLIENT_CREDENTIALS);
-                    OAuth2AccessToken dcsAccessToken = dcsEndpointTokenGranter.grant(OauthGrant.CLIENT_CREDENTIALS, tokenRequest);
+                            Collections.singleton("pki.cert.key"), GRANT_TYPE_CLIENT_CREDENTIALS);
+                    OAuth2AccessToken dcsAccessToken = dcsEndpointTokenGranter.grant(GRANT_TYPE_CLIENT_CREDENTIALS, tokenRequest);
                     base64UrlEncodedPublicKey = this.clientPublicKeyProvider.getPublicKeyWithToken(tenantId, deviceId,
                             predixZoneId, dcsAccessToken.getValue());
                     this.logger.debug("Public Key for tenant: " + base64UrlEncodedPublicKey);

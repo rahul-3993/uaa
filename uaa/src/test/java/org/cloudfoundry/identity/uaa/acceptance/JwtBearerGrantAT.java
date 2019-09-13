@@ -3,7 +3,6 @@ package org.cloudfoundry.identity.uaa.acceptance;
 import com.fasterxml.jackson.core.type.TypeReference;
 import org.cloudfoundry.identity.uaa.integration.feature.DefaultIntegrationTestConfig;
 import org.cloudfoundry.identity.uaa.integration.util.IntegrationTestUtils;
-import org.cloudfoundry.identity.uaa.oauth.OauthGrant;
 import org.cloudfoundry.identity.uaa.oauth.client.ClientConstants;
 import org.cloudfoundry.identity.uaa.oauth.token.ClaimConstants;
 import org.cloudfoundry.identity.uaa.provider.token.MockAssertionToken;
@@ -42,6 +41,7 @@ import java.util.List;
 import java.util.Map;
 
 import static org.junit.Assert.assertEquals;
+import static org.cloudfoundry.identity.uaa.oauth.token.TokenConstants.GRANT_TYPE_JWT_BEARER;
 
 @RunWith(SpringJUnit4ClassRunner.class)
 @ContextConfiguration(classes = DefaultIntegrationTestConfig.class)
@@ -126,7 +126,7 @@ public class JwtBearerGrantAT {
 
     private void createUaaClientForDevice(final String deviceId) throws Exception {
         // register client for jwt-bearer grant
-        BaseClientDetails client = new BaseClientDetails(DEVICE_CLIENT_ID, "none", "uaa.none", OauthGrant.JWT_BEARER,
+        BaseClientDetails client = new BaseClientDetails(DEVICE_CLIENT_ID, "none", "uaa.none", GRANT_TYPE_JWT_BEARER,
                 CONFIGURED_SCOPE, null);
         // authorize device for test client
         client.addAdditionalInformation(ClientConstants.ALLOWED_DEVICE_ID, deviceId);
@@ -153,7 +153,7 @@ public class JwtBearerGrantAT {
                 System.currentTimeMillis(), 600, TENANT_ID, audience);
         // call uaa/oauth/token
         LinkedMultiValueMap<String, String> formData = new LinkedMultiValueMap<String, String>();
-        formData.add(OAuth2Utils.GRANT_TYPE, OauthGrant.JWT_BEARER);
+        formData.add(OAuth2Utils.GRANT_TYPE, GRANT_TYPE_JWT_BEARER);
         logger.info("<<<<<<<<<<<<<<<<<<<<Use JWT Grant to Exchange the token>>>>>>>>>>>>>"+token);
         formData.add(ASSERTION, token);
 
@@ -188,7 +188,7 @@ public class JwtBearerGrantAT {
         Assert.assertTrue(scopes.contains(CONFIGURED_SCOPE));
         Assert.assertEquals(DEVICE_CLIENT_ID, claims.get(ClaimConstants.SUB));
         Assert.assertEquals(DEVICE_CLIENT_ID, claims.get(ClaimConstants.CLIENT_ID));
-        Assert.assertEquals(OauthGrant.JWT_BEARER, claims.get(ClaimConstants.GRANT_TYPE));
+        Assert.assertEquals(GRANT_TYPE_JWT_BEARER, claims.get(ClaimConstants.GRANT_TYPE));
         Assert.assertEquals(audience, claims.get(ClaimConstants.ISS));
         long currentTimestamp = System.currentTimeMillis() / 1000;
         String expirationTimestamp = (claims.get(ClaimConstants.EXP)).toString();
