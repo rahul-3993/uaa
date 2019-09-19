@@ -5,6 +5,7 @@ dependencies {
   compile project(':cloudfoundry-identity-model')
   compile group: 'org.apache.tomcat.embed', name: 'tomcat-embed-core', version:parent.tomcatVersion
   compileOnly group: 'org.projectlombok', name: 'lombok', version: parent.lombokVersion
+  testCompileOnly group: 'org.projectlombok', name: 'lombok', version: parent.lombokVersion
   compile group: 'org.apache.tomcat', name: 'tomcat-jdbc', version:parent.tomcatJdbcPoolVersion
   //Audit service dependency
   compile (group: 'com.ge.predix.audit', name: 'audit-sdk', version:'0.0.6') {
