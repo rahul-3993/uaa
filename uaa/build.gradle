@@ -92,6 +92,7 @@ dependencies {
     testImplementation(libraries.javaxMail)
     testImplementation(libraries.greenmail)
     testCompileOnly(libraries.lombok)
+    testAnnotationProcessor(libraries.lombok)
 }
 
 ext {

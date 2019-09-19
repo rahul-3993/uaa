@@ -81,6 +81,8 @@ dependencies {
 
     compileOnly(libraries.lombok)
     testCompileOnly(libraries.lombok)
+    annotationProcessor(libraries.lombok)
+    testAnnotationProcessor(libraries.lombok)
 
     testImplementation(project(":cloudfoundry-identity-model").sourceSets.test.output)
 
