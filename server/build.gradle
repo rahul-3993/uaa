@@ -79,7 +79,8 @@ dependencies {
     implementation(libraries.javaxXmlBindCore)
     implementation(libraries.javaxXmlBindImpl)
 
-    compileOnly("org.projectlombok:lombok")
+    compileOnly(libraries.lombok)
+    testCompileOnly(libraries.lombok)
 
     testImplementation(project(":cloudfoundry-identity-model").sourceSets.test.output)
 

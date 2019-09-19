@@ -1,6 +1,7 @@
 package org.cloudfoundry.identity.uaa.mock.token;
 
 import com.fasterxml.jackson.core.type.TypeReference;
+import lombok.SneakyThrows;
 import org.apache.commons.collections.map.HashedMap;
 import org.apache.commons.httpclient.util.URIUtil;
 import org.cloudfoundry.identity.uaa.DefaultTestContext;
@@ -73,6 +74,7 @@ import org.springframework.security.crypto.codec.Base64;
 import org.springframework.security.oauth2.common.OAuth2RefreshToken;
 import org.springframework.security.oauth2.common.exceptions.InvalidTokenException;
 import org.springframework.security.oauth2.common.util.OAuth2Utils;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.httpBasic;
 import org.springframework.security.oauth2.common.util.RandomValueStringGenerator;
 import org.springframework.security.oauth2.provider.AuthorizationRequest;
 import org.springframework.security.oauth2.provider.OAuth2Authentication;
@@ -1698,10 +1700,12 @@ public class TokenMvcMockTests extends AbstractTokenMockMvcTests {
         assertNull(query.get("token"));
     }
 
-    @Test
-    void test_subdomain_redirect_url() throws Exception {
-        String redirectUri = "https://example.com/dashboard/?appGuid=app-guid&ace_config=test";
-        String subDomainUri = redirectUri.replace("example.com", "test.example.com");
+    private static final String URI_FORMAT = "https://%s/dashboard/?appGuid=app-guid&ace_config=test";
+
+    @SneakyThrows
+    private MockHttpServletResponse getAuthCode(String registeredDomain, String requestedDomain, ResultMatcher expectedHttpStatus) {
+        String redirectUri = String.format(URI_FORMAT, registeredDomain);
+        String subDomainUri = String.format(URI_FORMAT, requestedDomain);
         String clientId = "authclient-" + generator.generate();
         String scopes = "openid";
         setUpClients(clientId, scopes, scopes, GRANT_TYPES, true, redirectUri);
@@ -1709,25 +1713,38 @@ public class TokenMvcMockTests extends AbstractTokenMockMvcTests {
         String userScopes = "openid";
         ScimUser developer = setUpUser(jdbcScimUserProvisioning, jdbcScimGroupMembershipManager, jdbcScimGroupProvisioning, username, userScopes, OriginKeys.UAA, IdentityZoneHolder.get().getId());
         MockHttpSession session = getAuthenticatedSession(developer);
-
         String state = generator.generate();
         MockHttpServletRequestBuilder authRequest = get("/oauth/authorize")
-                .with(httpBasic(clientId, SECRET))
-                .session(session)
-                .param(OAuth2Utils.RESPONSE_TYPE, "code")
-                .param(SCOPE, "openid")
-                .param(OAuth2Utils.STATE, state)
-                .param(OAuth2Utils.CLIENT_ID, clientId)
-                .param(OAuth2Utils.REDIRECT_URI, subDomainUri);
+            .with(httpBasic(clientId, SECRET))
+            .session(session)
+            .param(OAuth2Utils.RESPONSE_TYPE, "code")
+            .param(SCOPE, "openid")
+            .param(OAuth2Utils.STATE, state)
+            .param(OAuth2Utils.CLIENT_ID, clientId)
+            .param(OAuth2Utils.REDIRECT_URI, subDomainUri);
+        return mockMvc.perform(authRequest).andExpect(expectedHttpStatus).andReturn().getResponse();
+    }
 
-        MvcResult result = mockMvc.perform(authRequest).andExpect(status().is3xxRedirection()).andReturn();
-        String location = result.getResponse().getHeader("Location");
+    @Test
+    void getAuthCode_wildcardRegisteredRedirect_redirectToSubdomainAllowed() {
+        MockHttpServletResponse response = getAuthCode("*.example.com", "test.example.com", status().is3xxRedirection());
+
+        assertTrue(response.containsHeader("Location"));
+        String location = response.getHeader("Location");
         location = location.substring(0, location.indexOf("&code="));
+        String subDomainUri = String.format(URI_FORMAT, "test.example.com");
         assertEquals(subDomainUri, location);
     }
 
     @Test
-    void invalidScopeErrorMessageIsNotShowingAllClientScopes() throws Exception {
+    void getAuthCode_registeredRedirectLacksWildcard_redirectToSubdomainForbidden() {
+        MockHttpServletResponse response = getAuthCode("example.com", "test.example.com", status().is4xxClientError());
+
+        assertFalse(response.containsHeader("Location"));
+    }
+
+    @Test
+    public void invalidScopeErrorMessageIsNotShowingAllClientScopes() throws Exception {
         String clientId = "testclient" + generator.generate();
         String scopes = "openid";
         setUpClients(clientId, scopes, scopes, GRANT_TYPE_AUTHORIZATION_CODE, true);

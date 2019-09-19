@@ -91,6 +91,7 @@ dependencies {
     testImplementation(libraries.springRestdocs)
     testImplementation(libraries.javaxMail)
     testImplementation(libraries.greenmail)
+    testCompileOnly(libraries.lombok)
 }
 
 ext {

@@ -44,6 +44,15 @@ public class LegacyRedirectResolver extends org.cloudfoundry.identity.uaa.oauth.
 
     private final SpecCompliantRedirectMatcher specCompliantRedirectMatcher = new SpecCompliantRedirectMatcher();
 
+    public LegacyRedirectResolver() {
+        super.setMatchSubdomains(false);
+    }
+
+    @Override
+    public void setMatchSubdomains(boolean matchSubdomains) {
+        throw new UnsupportedOperationException("to prevent partial open redirect, subdomains must not be matched");
+    }
+
     @Override
     protected boolean redirectMatches(String requestedRedirect, String clientRedirect) {
         try {
