@@ -11,4 +11,5 @@
         </constructor-arg>
     </bean>
     <bean class="org.springframework.session.config.annotation.web.http.SpringHttpSessionConfiguration"/>
+    <bean id="cookieSerializer" class="org.cloudfoundry.identity.uaa.web.UaaCookieSerializer" />
 </beans>
