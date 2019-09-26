@@ -38,12 +38,22 @@
           class="org.cloudfoundry.identity.uaa.provider.JdbcIdentityProviderProvisioning">
         <constructor-arg ref="jdbcTemplate"/>
     </bean>
+    <bean id="keyProviderProvisioning"
+          class="org.cloudfoundry.identity.uaa.provider.JdbcKeyProviderProvisioning">
+        <constructor-arg ref="jdbcTemplate"/>
+    </bean>
+    <bean id="keyProviderValidator"
+          class="org.cloudfoundry.identity.uaa.provider.KeyProviderValidator">
+        <property name="clientDetailsService" ref="jdbcClientDetailsService"/>
+    </bean>
 
     <bean id="identityZoneEndpoints" class="org.cloudfoundry.identity.uaa.zone.IdentityZoneEndpoints">
         <constructor-arg ref="identityZoneProvisioning"/>
         <constructor-arg ref="identityProviderProvisioning"/>
         <constructor-arg ref="zoneEndpointsClientRegistrationService"/>
         <constructor-arg ref="scimGroupProvisioning"/>
+        <constructor-arg ref="keyProviderProvisioning"/>
+        <constructor-arg ref="keyProviderValidator"/>
         <property name="validator" ref="identityZoneValidator"/>
     </bean>
 
@@ -111,6 +121,18 @@
         <intercept-url pattern="/**"
                        access="#oauth2.hasScopeInAuthZone('zones.write') or #oauth2.hasScopeInAuthZone('zones.{zone.id}.admin')"
                        method="DELETE"/>
+        <intercept-url pattern="/identity-zones/*/key-provider-config"
+                       access="#oauth2.hasScopeInAuthZone('zones.read') or #oauth2.hasScopeInAuthZone('zones.{zone.id}.admin') or #oauth2.hasScopeInAuthZone('zones.{zone.id}.read') or #oauth2.hasScope('zones.write')"
+                       method="GET"/>
+        <intercept-url pattern="/identity-zones/*/key-provider-config/*"
+                       access="#oauth2.hasScopeInAuthZone('zones.read') or #oauth2.hasScopeInAuthZone('zones.{zone.id}.admin') or #oauth2.hasScopeInAuthZone('zones.{zone.id}.read') or #oauth2.hasScope('zones.write')"
+                       method="GET"/>
+        <intercept-url pattern="/identity-zones/*/key-provider-config"
+                       access="#oauth2.hasScopeInAuthZone('zones.read') or #oauth2.hasScopeInAuthZone('zones.{zone.id}.admin') or #oauth2.hasScopeInAuthZone('zones.{zone.id}.read') or #oauth2.hasScope('zones.write')"
+                       method="POST"/>
+        <intercept-url pattern="/identity-zones/*/key-provider-config/*"
+                       access="#oauth2.hasScopeInAuthZone('zones.read') or #oauth2.hasScopeInAuthZone('zones.{zone.id}.admin') or #oauth2.hasScopeInAuthZone('zones.{zone.id}.read') or #oauth2.hasScope('zones.write')"
+                       method="DELETE"/>
         <intercept-url pattern="/**" access="denyAll"/>
 
         <custom-filter ref="resourceAgnosticAuthenticationFilter" before="PRE_AUTH_FILTER"/>
@@ -131,6 +153,14 @@
                         pointcut="execution(* *..IdentityZoneEndpoints+.createClient(..)) and args(identityZoneId,*)"/>
             <aop:before method="checkIdentityZoneId"
                         pointcut="execution(* *..IdentityZoneEndpoints+.deleteClient(..)) and args(identityZoneId,*)"/>
+            <aop:before method="checkIdentityZoneId"
+                        pointcut="execution(* *..IdentityZoneEndpoints+.createKeyProviderConfig(..)) and args(*,identityZoneId)"/>
+            <aop:before method="checkIdentityZoneId"
+                        pointcut="execution(* *..IdentityZoneEndpoints+.retrieveKeyProviderConfig(..)) and args(identityZoneId, *)"/>
+            <aop:before method="checkIdentityZoneId"
+                        pointcut="execution(* *..IdentityZoneEndpoints+.findKeyProviderConfigs(..)) and args(identityZoneId)"/>
+            <aop:before method="checkIdentityZoneId"
+                        pointcut="execution(* *..IdentityZoneEndpoints+.deleteKeyProviderConfig(..)) and args(identityZoneId, *)"/>
         </aop:aspect>
     </aop:config>
 

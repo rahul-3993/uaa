@@ -32,6 +32,7 @@ import org.cloudfoundry.identity.uaa.zone.MultitenancyFixture;
 import org.cloudfoundry.identity.uaa.zone.MultitenantJdbcClientDetailsService;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -77,7 +78,8 @@ public class JwtBearerGrantMockMvcTests extends AbstractTokenMockMvcTests {
     }
 
     @Test
-    void default_zone_jwt_grant() throws Exception {
+    @Disabled("GE Fork has its own JWT-bearer implementation")
+    void default_zone_jwt_grant () throws Exception {
         IdentityZone defaultZone = IdentityZone.getUaa();
         createProvider(defaultZone, getTokenVerificationKey(originZone.getIdentityZone()));
         perform_grant_in_zone(defaultZone,
@@ -87,6 +89,7 @@ public class JwtBearerGrantMockMvcTests extends AbstractTokenMockMvcTests {
     }
 
     @Test
+    @Disabled("GE Fork has its own JWT-bearer implementation")
     void non_default_zone_jwt_grant() throws Exception {
         String subdomain = generator.generate().toLowerCase();
         IdentityZone zone = MockMvcUtils.createOtherIdentityZoneAndReturnResult(subdomain,
@@ -101,6 +104,7 @@ public class JwtBearerGrantMockMvcTests extends AbstractTokenMockMvcTests {
     }
 
     @Test
+    @Disabled("GE Fork has its own JWT-bearer implementation")
     void defaultZoneJwtGrantWithInternalIdp() throws Exception {
         BaseClientDetails defaultZoneClient = setUpClients(generator.generate(), "", "openid", "password", true);
         defaultZoneClient.setClientSecret(SECRET);
@@ -115,6 +119,7 @@ public class JwtBearerGrantMockMvcTests extends AbstractTokenMockMvcTests {
     }
 
     @Test
+    @Disabled("GE Fork has its own JWT-bearer implementation")
     void jwtGrantWithInternalIdpWithIdTokenFromDifferentZone() throws Exception {
         IdentityZone defaultZone = IdentityZone.getUaa();
         perform_grant_in_zone(defaultZone, getUaaIdToken(originZone.getIdentityZone(), originClient, originUser))
@@ -122,6 +127,7 @@ public class JwtBearerGrantMockMvcTests extends AbstractTokenMockMvcTests {
     }
 
     @Test
+    @Disabled("GE Fork has its own JWT-bearer implementation")
     void assertion_missing() throws Exception {
         IdentityZone defaultZone = IdentityZone.getUaa();
         createProvider(defaultZone, getTokenVerificationKey(originZone.getIdentityZone()));
@@ -133,6 +139,7 @@ public class JwtBearerGrantMockMvcTests extends AbstractTokenMockMvcTests {
     }
 
     @Test
+    @Disabled("GE Fork has its own JWT-bearer implementation")
     void signature_mismatch() throws Exception {
         IdentityZone defaultZone = IdentityZone.getUaa();
         createProvider(defaultZone, "invalid-verification-key");

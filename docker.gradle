@@ -44,6 +44,8 @@ task createDockerfile(type: Dockerfile) {
   from 'tomcat:8.5-jre8'
   maintainer 'UAA team "$MAINTAINER_EMAIL"'
   instruction 'ENV LOGIN_CONFIG_URL WEB-INF/classes/required_configuration.yml'
+  instruction 'ENV ARTIFACTORY_READER $ARTIFACTORY_READER'
+  instruction 'ENV ARTIFACTORY_READER_PW $ARTIFACTORY_READER_PW'
   instruction 'ENV CLOUD_FOUNDRY_CONFIG_PATH /uaa'
   instruction 'RUN bash -c "rm -r /usr/local/tomcat/webapps/ROOT"'
   instruction 'RUN bash -c "rm -r /usr/local/tomcat/webapps/host-manager"'
@@ -79,7 +81,7 @@ task copyContainerFiles(type: Copy) {
 task buildImage(type: DockerBuildImage) {
   dependsOn copyContainerFiles
   inputDir = createDockerfile.destFile.parentFile
-  tag = System.getenv('DOCKER_REPO_URL') + '/uaa:' + version
+  tag = System.getenv('DOCKER_REPO_URL') + '/' + System.getenv('DOCKER_REPO_USER') + '/uaa:' + version
 }
 
 task createUaaContainer(type: DockerCreateContainer) {
@@ -87,7 +89,14 @@ task createUaaContainer(type: DockerCreateContainer) {
   targetImageId { buildImage.getImageId() }
   containerName = System.getenv('DOCKER_CONTAINER_NAME')
   portBindings = ['8080:8080']
-  env = ["CATALINA_OPTS='-Dspring.profiles.active=default'"]
+
+  env = ["CATALINA_OPTS='-Dspring.profiles.active=default'", 
+         "ENFORCE_CLIENT_ASSERTION_HEADER=" + System.getenv('ENFORCE_CLIENT_ASSERTION_HEADER'),
+         "KEY_PROVIDER_SERVICE_URL=" + System.getenv('KEY_PROVIDER_SERVICE_URL'),
+         "KEY_PROVIDER_TOKEN_URL=" + System.getenv('KEY_PROVIDER_TOKEN_URL'),
+         "KEY_PROVIDER_CLIENT_ID=" + System.getenv('KEY_PROVIDER_CLIENT_ID'),
+         "KEY_PROVIDER_CLIENT_SECRET=" + System.getenv('KEY_PROVIDER_CLIENT_SECRET'),
+         "KEY_PROVIDER_DEFAULT_INSTANCE=" + System.getenv('KEY_PROVIDER_DEFAULT_INSTANCE')]
 }
 
 task startUaaContainer(type: DockerStartContainer) {
@@ -97,7 +106,7 @@ task startUaaContainer(type: DockerStartContainer) {
 
 task pushUaaImage(type: DockerPushImage) {
   dependsOn buildImage
-  imageName = System.getenv('DOCKER_REPO_URL') + '/uaa:' + version
+  imageName = System.getenv('DOCKER_REPO_URL') + '/' + System.getenv('DOCKER_REPO_USER') + '/uaa:' + version
   registryCredentials = new DockerRegistryCredentials()
   registryCredentials.url = System.getenv('DOCKER_REPO_URL')
   registryCredentials.username = System.getenv('DOCKER_REPO_USER')
