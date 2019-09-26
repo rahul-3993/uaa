@@ -17,6 +17,9 @@ package org.cloudfoundry.identity.uaa.mock.util;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.warrenstrange.googleauth.GoogleAuthenticator;
 import com.warrenstrange.googleauth.GoogleAuthenticatorConfig;
+import lombok.AccessLevel;
+import lombok.RequiredArgsConstructor;
+import lombok.SneakyThrows;
 import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.lang.RandomStringUtils;
 import org.cloudfoundry.identity.uaa.audit.event.AbstractUaaEvent;
@@ -49,7 +52,6 @@ import org.cloudfoundry.identity.uaa.scim.ScimUser;
 import org.cloudfoundry.identity.uaa.scim.ScimUserProvisioning;
 import org.cloudfoundry.identity.uaa.scim.endpoints.ScimGroupEndpoints;
 import org.cloudfoundry.identity.uaa.scim.jdbc.JdbcScimUserProvisioning;
-import org.cloudfoundry.identity.uaa.security.web.CookieBasedCsrfTokenRepository;
 import org.cloudfoundry.identity.uaa.test.TestApplicationEventListener;
 import org.cloudfoundry.identity.uaa.user.UaaAuthority;
 import org.cloudfoundry.identity.uaa.user.UaaUserDatabase;
@@ -76,7 +78,6 @@ import org.springframework.context.event.ApplicationEventMulticaster;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.mock.web.MockHttpServletRequest;
-import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.mock.web.MockHttpSession;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
@@ -91,7 +92,6 @@ import org.springframework.security.oauth2.provider.client.BaseClientDetails;
 import org.springframework.security.web.PortResolverImpl;
 import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
 import org.springframework.security.web.csrf.CsrfToken;
-import org.springframework.security.web.csrf.CsrfTokenRepository;
 import org.springframework.security.web.savedrequest.DefaultSavedRequest;
 import org.springframework.security.web.savedrequest.SavedRequest;
 import org.springframework.test.web.servlet.MockMvc;
@@ -121,9 +121,9 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import static org.cloudfoundry.identity.uaa.mock.util.MockMvcUtils.CookieCsrfPostProcessor.cookieCsrf;
 import static org.cloudfoundry.identity.uaa.oauth.token.TokenConstants.GRANT_TYPE_AUTHORIZATION_CODE;
 import static org.cloudfoundry.identity.uaa.oauth.token.TokenConstants.TokenFormat.OPAQUE;
+import static org.cloudfoundry.identity.uaa.mock.util.MockMvcUtils.CsrfPostProcessor.csrf;
 import static org.cloudfoundry.identity.uaa.scim.ScimGroupMember.Type.USER;
 import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.hamcrest.Matchers.not;
@@ -197,11 +197,17 @@ public final class MockMvcUtils {
     }
 
     public static String performMfaPostVerifyWithCode(int code, MockMvc mvc, MockHttpSession session, String host) throws Exception {
+        mvc.perform(
+                get("/login/mfa/verify")
+                        .session(session)
+                        .header("Host", host)
+        )
+                .andExpect(status().isOk());
+
         return mvc.perform(post("/login/mfa/verify.do")
           .param("code", Integer.toString(code))
           .header("Host", host)
-          .session(session)
-          .with(cookieCsrf()))
+          .with(csrf(session)))
           .andExpect(status().is3xxRedirection())
           .andExpect(redirectedUrl("/login/mfa/completed"))
           .andReturn().getResponse().getRedirectedUrl();
@@ -223,19 +229,25 @@ public final class MockMvcUtils {
     }
 
     public static ResultActions performMfaRegistrationInZone(String username, String password, MockMvc mockMvc, String host, String[] firstAuthMethods, String[] afterMfaAuthMethods) throws Exception {
+        MockHttpSession session = new MockHttpSession();
+
+        mockMvc.perform(get("/login")
+                .session(session)
+                .header(HOST, host)
+        )
+                .andExpect(status().isOk());
 
         //ldap login
-        MockHttpSession session = (MockHttpSession) mockMvc.perform(
+        mockMvc.perform(
           post("/login.do")
-            .with(cookieCsrf())
+            .with(csrf(session))
             .header(HOST, host)
             .accept(MediaType.TEXT_HTML)
             .param("username", username)
             .param("password", password)
         )
           .andExpect(status().isFound())
-          .andExpect(redirectedUrl("/"))
-          .andReturn().getRequest().getSession(false);
+          .andExpect(redirectedUrl("/"));
 
         assertTrue(getUaaAuthentication(session).isAuthenticated());
         assertThat(getUaaAuthentication(session).getAuthenticationMethods(), containsInAnyOrder(firstAuthMethods));
@@ -347,6 +359,38 @@ public final class MockMvcUtils {
         SearchResults<ScimUser> results = JsonUtils.readValue(userResult.getResponse().getContentAsString(),
             new TypeReference<SearchResults<ScimUser>>(){});
         return results.getResources().get(0);
+    }
+
+    @SneakyThrows
+    public static ResultActions performGet(MockMvc mvc, MockHttpSession session, String urlTemplate, Object... uriVars) {
+        return mvc.perform(
+                get(urlTemplate, uriVars)
+                        .session(session)
+        );
+    }
+
+    @SneakyThrows
+    public static ResultActions getLoginForm(MockMvc mockMvc, MockHttpSession session) {
+        return performGet(mockMvc, session, "/login")
+                .andExpect(status().isOk());
+    }
+
+    @SneakyThrows
+    public static ResultActions getCreateAccountForm(MockMvc mockMvc, MockHttpSession session) {
+        return performGet(mockMvc, session, "/create_account")
+                .andExpect(status().isOk());
+    }
+
+    @SneakyThrows
+    public static ResultActions getForcePasswordChangeForm(MockMvc mockMvc, MockHttpSession session) {
+        return performGet(mockMvc, session, "/force_password_change")
+                .andExpect(status().isOk());
+    }
+
+    @SneakyThrows
+    public static ResultActions getChangePasswordForm(MockMvc mockMvc, MockHttpSession session) {
+        return performGet(mockMvc, session, "/change_password")
+                .andExpect(status().isOk());
     }
 
     public static class MockSavedRequest extends DefaultSavedRequest {
@@ -1370,52 +1414,35 @@ public final class MockMvcUtils {
         }
     }
 
-    public static class CookieCsrfPostProcessor implements RequestPostProcessor {
+    @RequiredArgsConstructor(access = AccessLevel.PRIVATE)
+    public static class CsrfPostProcessor implements RequestPostProcessor {
 
+        public static final String CSRF_PARAMETER_NAME = "_csrf";
+
+        private final HttpSession session;
         private boolean useInvalidToken = false;
 
-        public CookieCsrfPostProcessor useInvalidToken() {
+        public CsrfPostProcessor useInvalidToken() {
             useInvalidToken = true;
             return this;
         }
 
         public MockHttpServletRequest postProcessRequest(MockHttpServletRequest request) {
-
-            CsrfTokenRepository repository = new CookieBasedCsrfTokenRepository();
-            CsrfToken token = repository.generateToken(request);
-            repository.saveToken(token, request, new MockHttpServletResponse());
+            CsrfToken token = getCsrfToken(session);
             String tokenValue = token.getToken();
-            Cookie cookie = new Cookie(token.getParameterName(), tokenValue);
-            cookie.setHttpOnly(true);
-            Cookie[] cookies = request.getCookies();
-            if (cookies == null) {
-                request.setCookies(cookie);
-            } else {
-                addCsrfCookie(request, cookie, cookies);
-            }
+            request.setSession(session);
             request.setParameter(token.getParameterName(), useInvalidToken ? "invalid" + tokenValue : tokenValue);
             return request;
         }
 
-        protected void addCsrfCookie(MockHttpServletRequest request, Cookie cookie, Cookie[] cookies) {
-            boolean replaced = false;
-            for (int i = 0; i < cookies.length; i++) {
-                Cookie c = cookies[i];
-                if (cookie.getName().equals(c.getName())) {
-                    cookies[i] = cookie;
-                    replaced = true;
-                }
-            }
-            if (!replaced) {
-                Cookie[] newcookies = new Cookie[cookies.length + 1];
-                System.arraycopy(cookies, 0, newcookies, 0, cookies.length);
-                newcookies[cookies.length] = cookie;
-                request.setCookies(newcookies);
-            }
+        public static CsrfToken getCsrfToken(HttpSession session) {
+            CsrfToken token = (CsrfToken) session.getAttribute("org.springframework.security.web.csrf.HttpSessionCsrfTokenRepository.CSRF_TOKEN");
+            Assert.assertNotNull("need to first perform GET request in order to populate session with csrf token", token);
+            return token;
         }
 
-        public static CookieCsrfPostProcessor cookieCsrf() {
-            return new CookieCsrfPostProcessor();
+        public static CsrfPostProcessor csrf(HttpSession session) {
+            return new CsrfPostProcessor(session);
         }
     }
 

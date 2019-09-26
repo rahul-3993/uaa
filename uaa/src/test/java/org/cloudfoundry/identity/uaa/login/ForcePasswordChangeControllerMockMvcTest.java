@@ -11,7 +11,6 @@ import org.cloudfoundry.identity.uaa.provider.JdbcIdentityProviderProvisioning;
 import org.cloudfoundry.identity.uaa.provider.PasswordPolicy;
 import org.cloudfoundry.identity.uaa.provider.UaaIdentityProviderDefinition;
 import org.cloudfoundry.identity.uaa.scim.ScimUser;
-import org.cloudfoundry.identity.uaa.security.web.CookieBasedCsrfTokenRepository;
 import org.cloudfoundry.identity.uaa.util.JsonUtils;
 import org.cloudfoundry.identity.uaa.util.SessionUtils;
 import org.cloudfoundry.identity.uaa.zone.IdentityZone;
@@ -32,13 +31,12 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 import org.springframework.web.context.WebApplicationContext;
 
-import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpSession;
 import java.util.Date;
 import java.util.stream.Stream;
 
-import static org.cloudfoundry.identity.uaa.mock.util.MockMvcUtils.CookieCsrfPostProcessor.cookieCsrf;
-import static org.cloudfoundry.identity.uaa.mock.util.MockMvcUtils.performMfaRegistrationInZone;
+import static org.cloudfoundry.identity.uaa.mock.util.MockMvcUtils.*;
+import static org.cloudfoundry.identity.uaa.mock.util.MockMvcUtils.CsrfPostProcessor.csrf;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.springframework.http.MediaType.APPLICATION_JSON;
@@ -107,8 +105,7 @@ class ForcePasswordChangeControllerMockMvcTest {
                     .param("username", user.getUserName())
                     .param("password", "secret")
                     .session(session)
-                    .with(cookieCsrf())
-                    .param(CookieBasedCsrfTokenRepository.DEFAULT_CSRF_COOKIE_NAME, "csrf1");
+                    .with(csrf(session));
             mockMvc.perform(userForcePasswordChangePostLogin)
                     .andExpect(status().isFound())
                     .andExpect(redirectedUrl("/"));
@@ -128,7 +125,7 @@ class ForcePasswordChangeControllerMockMvcTest {
                     .param("password", "test")
                     .param("password_confirmation", "test")
                     .session(session)
-                    .with(cookieCsrf());
+                    .with(csrf(session));
             mockMvc.perform(validPost)
                     .andExpect(status().isFound())
                     .andExpect(redirectedUrl(("/force_password_change_completed")));
@@ -173,7 +170,7 @@ class ForcePasswordChangeControllerMockMvcTest {
                         .param("password", "test")
                         .param("password_confirmation", "test")
                         .session(session)
-                        .with(cookieCsrf());
+                        .with(csrf(session));
                 mockMvc.perform(validPost)
                         .andExpect(status().isFound())
                         .andExpect(redirectedUrl(("/force_password_change_completed")));
@@ -222,7 +219,6 @@ class ForcePasswordChangeControllerMockMvcTest {
                             .content(jsonStatus))
                     .andExpect(status().isOk());
             MockHttpSession session = new MockHttpSession();
-            Cookie cookie = new Cookie(CookieBasedCsrfTokenRepository.DEFAULT_CSRF_COOKIE_NAME, "csrf1");
 
             identityProvider.setConfig(new UaaIdentityProviderDefinition(passwordPolicyWithInvalidPassword.passwordPolicy, null));
             identityProviderProvisioning.update(identityProvider, identityProvider.getIdentityZoneId());
@@ -231,17 +227,17 @@ class ForcePasswordChangeControllerMockMvcTest {
                     .param("username", user.getUserName())
                     .param("password", "secret")
                     .session(session)
-                    .cookie(cookie)
-                    .param(CookieBasedCsrfTokenRepository.DEFAULT_CSRF_COOKIE_NAME, "csrf1");
+                    .with(csrf(session));
             mockMvc.perform(invalidPost)
                     .andExpect(status().isFound());
+
+            getForcePasswordChangeForm(mockMvc, session);
 
             MockHttpServletRequestBuilder validPost = post("/force_password_change")
                     .param("password", passwordPolicyWithInvalidPassword.password)
                     .param("password_confirmation", passwordPolicyWithInvalidPassword.password)
                     .session(session)
-                    .cookie(cookie)
-                    .with(cookieCsrf());
+                    .with(csrf(session));
             mockMvc.perform(validPost)
                     .andExpect(view().name("force_password_change"))
                     .andExpect(model().attribute("message", passwordPolicyWithInvalidPassword.errorMessage))
@@ -261,8 +257,7 @@ class ForcePasswordChangeControllerMockMvcTest {
                     .param("username", user.getUserName())
                     .param("password", "secret")
                     .session(session)
-                    .with(cookieCsrf())
-                    .param(CookieBasedCsrfTokenRepository.DEFAULT_CSRF_COOKIE_NAME, "csrf1");
+                    .with(csrf(session));
 
             mockMvc.perform(invalidPost)
                     .andExpect(status().isFound())
@@ -279,7 +274,7 @@ class ForcePasswordChangeControllerMockMvcTest {
                     .param("password", "test")
                     .param("password_confirmation", "test")
                     .session(session)
-                    .with(cookieCsrf());
+                    .with(csrf(session));
 
             mockMvc.perform(validPost)
                     .andExpect(status().isFound())
@@ -310,10 +305,10 @@ class ForcePasswordChangeControllerMockMvcTest {
         MockHttpServletRequestBuilder validPost = post("/force_password_change")
                 .param("password", "test")
                 .param("password_confirmation", "test");
-        validPost.with(cookieCsrf());
+
         mockMvc.perform(validPost)
                 .andExpect(status().isFound())
-                .andExpect(redirectedUrl(("http://localhost/login")));
+                .andExpect(redirectedUrl(("http://localhost/login?error=invalid_login_request")));
     }
 
 

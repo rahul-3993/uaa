@@ -73,7 +73,7 @@ import static java.lang.String.format;
 import static java.util.stream.Collectors.joining;
 import static org.cloudfoundry.identity.uaa.audit.AuditEventType.*;
 import static org.cloudfoundry.identity.uaa.integration.util.IntegrationTestUtils.RegexMatcher.matchesRegex;
-import static org.cloudfoundry.identity.uaa.mock.util.MockMvcUtils.CookieCsrfPostProcessor.cookieCsrf;
+import static org.cloudfoundry.identity.uaa.mock.util.MockMvcUtils.CsrfPostProcessor.csrf;
 import static org.cloudfoundry.identity.uaa.mock.util.MockMvcUtils.httpBearer;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.*;
@@ -213,8 +213,10 @@ class AuditCheckMockMvcTests {
 
     @Test
     void userLoginTest() throws Exception {
+        MockHttpSession session = getLoginForm();
+
         MockHttpServletRequestBuilder loginPost = post("/login.do")
-                .with(cookieCsrf())
+                .with(csrf(session))
                 .session(new MockHttpSession())
                 .accept(MediaType.TEXT_HTML_VALUE)
                 .param("username", testUser.getUserName())
@@ -278,8 +280,10 @@ class AuditCheckMockMvcTests {
 
     @Test
     void invalidPasswordLoginUnsuccessfulTest() throws Exception {
+        MockHttpSession session = getLoginForm();
+
         MockHttpServletRequestBuilder loginPost = post("/login.do")
-                .with(cookieCsrf())
+                .with(csrf(session))
                 .session(new MockHttpSession())
                 .accept(MediaType.TEXT_HTML_VALUE)
                 .param("username", testUser.getUserName())
@@ -472,8 +476,10 @@ class AuditCheckMockMvcTests {
     void userNotFoundLoginUnsuccessfulTest() throws Exception {
         String username = "test1234";
 
+        MockHttpSession session = getLoginForm();
+
         MockHttpServletRequestBuilder loginPost = post("/login.do")
-                .with(cookieCsrf())
+                .with(csrf(session))
                 .session(new MockHttpSession())
                 .accept(MediaType.TEXT_HTML_VALUE)
                 .param("username", username)
@@ -499,9 +505,9 @@ class AuditCheckMockMvcTests {
 
     @Test
     void userChangePasswordTest() throws Exception {
-        MockHttpSession session = new MockHttpSession();
+        MockHttpSession session = getLoginForm();
         MockHttpServletRequestBuilder loginPost = post("/login.do")
-                .with(cookieCsrf())
+                .with(csrf(session))
                 .session(session)
                 .accept(APPLICATION_JSON_VALUE)
                 .param("username", testUser.getUserName())
@@ -560,7 +566,7 @@ class AuditCheckMockMvcTests {
     void userChangeInvalidPasswordTest() throws Exception {
         MockHttpSession session = new MockHttpSession();
         MockHttpServletRequestBuilder loginPost = post("/login.do")
-                .with(cookieCsrf())
+                .with(csrf(session))
                 .session(session)
                 .accept(APPLICATION_JSON_VALUE)
                 .param("username", testUser.getUserName())
@@ -919,7 +925,6 @@ class AuditCheckMockMvcTests {
         resetAuditTestReceivers();
 
         MockHttpServletRequestBuilder userPost = post("/oauth/authorize")
-                .with(cookieCsrf())
                 .accept(APPLICATION_JSON_VALUE)
                 .contentType(MediaType.APPLICATION_JSON)
                 .session(new MockHttpSession())
@@ -1408,4 +1413,9 @@ class AuditCheckMockMvcTests {
         assertThat(memberIdsFromLogMessage, equalTo(Sets.newHashSet(expectedUserIds)));
     }
 
+    private MockHttpSession getLoginForm() {
+        MockHttpSession session = new MockHttpSession();
+        MockMvcUtils.getLoginForm(mockMvc, session);
+        return session;
+    }
 }

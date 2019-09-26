@@ -26,7 +26,6 @@ import org.cloudfoundry.identity.uaa.scim.ScimGroupExternalMember;
 import org.cloudfoundry.identity.uaa.scim.ScimGroupMember;
 import org.cloudfoundry.identity.uaa.scim.ScimUser;
 import org.cloudfoundry.identity.uaa.scim.ScimUser.PhoneNumber;
-import org.cloudfoundry.identity.uaa.security.web.CookieBasedCsrfTokenRepository;
 import org.cloudfoundry.identity.uaa.test.UaaTestAccounts;
 import org.cloudfoundry.identity.uaa.util.JsonUtils;
 import org.cloudfoundry.identity.uaa.zone.IdentityZone;
@@ -43,6 +42,7 @@ import org.springframework.http.*;
 import org.springframework.http.client.ClientHttpResponse;
 import org.springframework.http.client.HttpComponentsClientHttpRequestFactory;
 import org.springframework.http.converter.StringHttpMessageConverter;
+import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.crypto.codec.Base64;
 import org.springframework.security.oauth2.client.OAuth2RestTemplate;
 import org.springframework.security.oauth2.client.http.OAuth2ErrorHandler;
@@ -72,8 +72,8 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import static org.cloudfoundry.identity.uaa.oauth.token.TokenConstants.GRANT_TYPE_AUTHORIZATION_CODE;
+import static org.cloudfoundry.identity.uaa.mock.util.MockMvcUtils.CsrfPostProcessor.CSRF_PARAMETER_NAME;
 import static org.cloudfoundry.identity.uaa.provider.ExternalIdentityProviderDefinition.USER_NAME_ATTRIBUTE_NAME;
-import static org.cloudfoundry.identity.uaa.security.web.CookieBasedCsrfTokenRepository.DEFAULT_CSRF_COOKIE_NAME;
 import static org.cloudfoundry.identity.uaa.util.UaaHttpRequestUtils.createRequestFactory;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.core.StringStartsWith.startsWith;
@@ -124,6 +124,10 @@ public class IntegrationTestUtils {
             "</md:EntityDescriptor>\n";
 
     public static final String OIDC_ACCEPTANCE_URL = "https://oidc10.uaa-acceptance.cf-app.com/";
+
+    private static final Pattern CSRF_FORM_ELEMENT = Pattern.compile(
+            "\\<input type=\\\"hidden\\\" name=\\\"" + CSRF_PARAMETER_NAME + "\\\" value=\\\"(.*?)\\\""
+    );
 
     public static void updateUserToForcePasswordChange(RestTemplate restTemplate, String baseUrl, String adminToken, String userId) {
         updateUserToForcePasswordChange(restTemplate, baseUrl, adminToken, userId, null);
@@ -1223,11 +1227,11 @@ public class IntegrationTestUtils {
             assertTrue(response.getBody().contains("/login.do"));
             assertTrue(response.getBody().contains("username"));
             assertTrue(response.getBody().contains("password"));
-            String csrf = IntegrationTestUtils.extractCookieCsrf(response.getBody());
+            String csrf = IntegrationTestUtils.extracCsrfToken(response.getBody());
 
             formData.add("username", username);
             formData.add("password", password);
-            formData.add(CookieBasedCsrfTokenRepository.DEFAULT_CSRF_COOKIE_NAME, csrf);
+            formData.add(CSRF_PARAMETER_NAME, csrf);
 
             // Should be redirected to the original URL, but now authenticated
             result = serverRunning.postForResponse("/login.do", getHeaders(cookies), formData);
@@ -1258,7 +1262,7 @@ public class IntegrationTestUtils {
 
             formData.clear();
             formData.add(USER_OAUTH_APPROVAL, "true");
-            formData.add(DEFAULT_CSRF_COOKIE_NAME, IntegrationTestUtils.extractCookieCsrf(response.getBody()));
+            formData.add(CSRF_PARAMETER_NAME, IntegrationTestUtils.extracCsrfToken(response.getBody()));
             result = serverRunning.postForResponse("/oauth/authorize", getHeaders(cookies), formData);
             assertEquals(HttpStatus.FOUND, result.getStatusCode());
             location = result.getHeaders().getLocation().toString();
@@ -1305,11 +1309,8 @@ public class IntegrationTestUtils {
         return body;
     }
 
-    public static String extractCookieCsrf(String body) {
-        String pattern = "\\<input type=\\\"hidden\\\" name=\\\"X-Uaa-Csrf\\\" value=\\\"(.*?)\\\"";
-
-        Pattern linkPattern = Pattern.compile(pattern);
-        Matcher matcher = linkPattern.matcher(body);
+    public static String extracCsrfToken(String body) {
+        Matcher matcher = CSRF_FORM_ELEMENT.matcher(body);
         if (matcher.find()) {
             return matcher.group(1);
         }

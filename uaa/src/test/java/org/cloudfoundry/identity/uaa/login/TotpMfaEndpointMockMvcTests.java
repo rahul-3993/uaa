@@ -1,6 +1,7 @@
 package org.cloudfoundry.identity.uaa.login;
 
 import org.cloudfoundry.identity.uaa.DefaultTestContext;
+import lombok.SneakyThrows;
 import org.cloudfoundry.identity.uaa.audit.event.AbstractUaaEvent;
 import org.cloudfoundry.identity.uaa.authentication.event.MfaAuthenticationFailureEvent;
 import org.cloudfoundry.identity.uaa.authentication.event.MfaAuthenticationSuccessEvent;
@@ -37,11 +38,13 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
-import static org.cloudfoundry.identity.uaa.mock.util.MockMvcUtils.CookieCsrfPostProcessor.cookieCsrf;
+import static org.cloudfoundry.identity.uaa.mock.util.MockMvcUtils.CsrfPostProcessor.csrf;
 import static org.cloudfoundry.identity.uaa.mock.util.MockMvcUtils.createMfaProvider;
 import static org.cloudfoundry.identity.uaa.oauth.token.TokenConstants.GRANT_TYPE_AUTHORIZATION_CODE;
 import static org.hamcrest.CoreMatchers.containsString;
 import static org.hamcrest.CoreMatchers.is;
+import static org.cloudfoundry.identity.uaa.mock.util.MockMvcUtils.*;
+import static org.hamcrest.Matchers.hasItem;
 import static org.hamcrest.Matchers.instanceOf;
 import static org.junit.Assert.*;
 import static org.mockito.Mockito.*;
@@ -149,8 +152,7 @@ class TotpMfaEndpointMockMvcTests {
 
         ArgumentCaptor<AbstractUaaEvent> eventCaptor = ArgumentCaptor.forClass(AbstractUaaEvent.class);
         verify(applicationListener, atLeast(1)).onApplicationEvent(eventCaptor.capture());
-        assertEquals(9, eventCaptor.getAllValues().size());
-        assertThat(eventCaptor.getAllValues().get(7), instanceOf(MfaAuthenticationSuccessEvent.class));
+        assertThat(eventCaptor.getAllValues(), instanceOf(MfaAuthenticationSuccessEvent.class));
 
         mockMvc.perform(get(location)
                 .session(mockHttpSession))
@@ -164,7 +166,7 @@ class TotpMfaEndpointMockMvcTests {
         eventCaptor = ArgumentCaptor.forClass(AbstractUaaEvent.class);
         verify(applicationListener, atLeast(1)).onApplicationEvent(eventCaptor.capture());
         assertEquals(15, eventCaptor.getAllValues().size());
-        assertThat(eventCaptor.getAllValues().get(13), instanceOf(MfaAuthenticationSuccessEvent.class));
+        assertThat(eventCaptor.getAllValues(), instanceOf(MfaAuthenticationSuccessEvent.class));
     }
 
     @Test
@@ -181,8 +183,7 @@ class TotpMfaEndpointMockMvcTests {
             mockMvc.perform(post("/login/mfa/verify.do")
                     .param("code", Integer.toString(-1))
                     .header("Host", "localhost")
-                    .session(mockHttpSession)
-                    .with(cookieCsrf()))
+                    .session(mockHttpSession))
                     .andExpect(status().isOk());
         }
 
@@ -190,8 +191,7 @@ class TotpMfaEndpointMockMvcTests {
         String location = mockMvc.perform(post("/login/mfa/verify.do")
                 .param("code", Integer.toString(code))
                 .header("Host", "localhost")
-                .session(mockHttpSession)
-                .with(cookieCsrf()))
+                .session(mockHttpSession))
                 .andExpect(status().is3xxRedirection())
                 .andReturn().getResponse().getRedirectedUrl();
 
@@ -219,8 +219,7 @@ class TotpMfaEndpointMockMvcTests {
         //Not using param function because params won't end up in paramsMap.
         String oauthUrl = "/oauth/authorize?client_id=auth-client-id&client_secret=secret&redirect_uri=http://example.com";
         mockMvc.perform(get(oauthUrl)
-                .session(mockHttpSession)
-                .with(cookieCsrf()))
+                .session(mockHttpSession))
                 .andExpect(status().is3xxRedirection())
                 .andDo(print())
                 .andExpect(redirectedUrl("http://localhost/login"));
@@ -228,8 +227,7 @@ class TotpMfaEndpointMockMvcTests {
         performLoginWithSession(mockMvc, mockHttpSession, scimUser, password).andExpect(redirectedUrl("http://localhost" + oauthUrl));
 
         mockMvc.perform(get(oauthUrl)
-                .session(mockHttpSession)
-                .with(cookieCsrf()))
+                .session(mockHttpSession))
                 .andExpect(status().is3xxRedirection())
                 .andDo(print())
                 .andExpect(redirectedUrl("/login/mfa/register"));
@@ -240,8 +238,7 @@ class TotpMfaEndpointMockMvcTests {
         MockMvcUtils.performMfaPostVerifyWithCode(code, mockMvc, mockHttpSession);
 
         mockMvc.perform(get("/login/mfa/completed")
-                .session(mockHttpSession)
-                .with(cookieCsrf()))
+                .session(mockHttpSession))
                 .andExpect(status().is3xxRedirection())
                 .andDo(print())
                 .andExpect(redirectedUrl("http://localhost/oauth/authorize?client_id=auth-client-id&client_secret=secret&redirect_uri=http://example.com"));
@@ -251,9 +248,9 @@ class TotpMfaEndpointMockMvcTests {
     void testQRCodeCannotBeSubmittedWithoutLoggedInSession() throws Exception {
         mockMvc.perform(post("/login/mfa/verify.do")
                 .param("code", "1234")
-                .with(cookieCsrf()))
+                .session(mockHttpSession))
                 .andExpect(status().is3xxRedirection())
-                .andExpect(redirectedUrl("http://localhost/login"));
+                .andExpect(redirectedUrl("http://localhost/login?error=invalid_login_request"));
     }
 
     @Test
@@ -271,8 +268,7 @@ class TotpMfaEndpointMockMvcTests {
 
         ArgumentCaptor<AbstractUaaEvent> eventCaptor = ArgumentCaptor.forClass(AbstractUaaEvent.class);
         verify(applicationListener, atLeast(1)).onApplicationEvent(eventCaptor.capture());
-        assertEquals(9, eventCaptor.getAllValues().size());
-        assertThat(eventCaptor.getAllValues().get(7), instanceOf(MfaAuthenticationSuccessEvent.class));
+        assertThat(eventCaptor.getAllValues(), hasItem(instanceOf(MfaAuthenticationSuccessEvent.class)));
 
         mockMvc.perform(get("/")
                 .session(mockHttpSession))
@@ -283,32 +279,29 @@ class TotpMfaEndpointMockMvcTests {
 
         mockHttpSession = new MockHttpSession();
         performLoginWithSession(mockMvc, mockHttpSession, scimUser, password);
+        getMfaVerifyForm();
 
         mockMvc.perform(post("/login/mfa/verify.do")
                 .param("code", Integer.toString(code + 1))
                 .header("Host", "localhost")
-                .session(mockHttpSession)
-                .with(cookieCsrf()))
+                .with(csrf(mockHttpSession)))
                 .andExpect(status().is2xxSuccessful())
                 .andExpect(view().name("mfa/enter_code"));
 
         eventCaptor = ArgumentCaptor.forClass(AbstractUaaEvent.class);
         verify(applicationListener, atLeast(1)).onApplicationEvent(eventCaptor.capture());
-        assertEquals(15, eventCaptor.getAllValues().size());
-        assertThat(eventCaptor.getAllValues().get(13), instanceOf(MfaAuthenticationFailureEvent.class));
+        assertThat(eventCaptor.getAllValues(), hasItem(instanceOf(MfaAuthenticationFailureEvent.class)));
 
         mockMvc.perform(post("/login/mfa/verify.do")
                 .param("code", "ABCDEF")
                 .header("Host", "localhost")
-                .session(mockHttpSession)
-                .with(cookieCsrf()))
+                .with(csrf(mockHttpSession)))
                 .andExpect(status().is2xxSuccessful())
                 .andExpect(view().name("mfa/enter_code"));
 
         eventCaptor = ArgumentCaptor.forClass(AbstractUaaEvent.class);
         verify(applicationListener, atLeast(1)).onApplicationEvent(eventCaptor.capture());
-        assertEquals(17, eventCaptor.getAllValues().size());
-        assertThat(eventCaptor.getAllValues().get(15), instanceOf(MfaAuthenticationFailureEvent.class));
+        assertThat(eventCaptor.getAllValues(), hasItem(instanceOf(MfaAuthenticationFailureEvent.class)));
     }
 
     @Test
@@ -419,8 +412,7 @@ class TotpMfaEndpointMockMvcTests {
 
         ArgumentCaptor<AbstractUaaEvent> eventCaptor = ArgumentCaptor.forClass(AbstractUaaEvent.class);
         verify(applicationListener, atLeast(1)).onApplicationEvent(eventCaptor.capture());
-        assertEquals(9, eventCaptor.getAllValues().size());
-        assertThat(eventCaptor.getAllValues().get(7), instanceOf(MfaAuthenticationSuccessEvent.class));
+        assertThat(eventCaptor.getAllValues(), instanceOf(MfaAuthenticationSuccessEvent.class));
 
         mockMvc.perform(get("/")
                 .session(mockHttpSession))
@@ -435,7 +427,6 @@ class TotpMfaEndpointMockMvcTests {
 
         eventCaptor = ArgumentCaptor.forClass(AbstractUaaEvent.class);
         verify(applicationListener, atLeast(1)).onApplicationEvent(eventCaptor.capture());
-        assertEquals(16, eventCaptor.getAllValues().size());
         assertThat(eventCaptor.getAllValues().get(14), instanceOf(MfaAuthenticationSuccessEvent.class));
     }
 
@@ -462,11 +453,13 @@ class TotpMfaEndpointMockMvcTests {
     }
 
     private static ResultActions performLoginWithSession(MockMvc mockMvc, MockHttpSession session, ScimUser user, String password) throws Exception {
+        getLoginForm(mockMvc, session);
+
         return mockMvc.perform(post("/login.do")
                 .session(session)
                 .param("username", user.getUserName())
                 .param("password", password)
-                .with(cookieCsrf()))
+                .with(csrf(session)))
                 .andDo(print())
                 .andExpect(status().isFound());
     }
@@ -487,5 +480,11 @@ class TotpMfaEndpointMockMvcTests {
         mockMvc.perform(get(location)
                 .session(session))
                 .andExpect(redirectedUrl("/login/mfa/register"));
+    }
+
+    @SneakyThrows
+    private ResultActions getMfaVerifyForm() throws Exception {
+        return performGet(mockMvc, mockHttpSession, "/login/mfa/verify")
+                .andExpect(status().isOk());
     }
 }

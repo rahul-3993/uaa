@@ -50,6 +50,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.mock.web.MockHttpSession;
 import org.springframework.security.oauth2.common.util.RandomValueStringGenerator;
 import org.springframework.security.oauth2.provider.ClientDetails;
 import org.springframework.security.oauth2.provider.client.BaseClientDetails;
@@ -68,7 +69,7 @@ import java.util.Map;
 
 import static org.cloudfoundry.identity.uaa.codestore.ExpiringCodeType.REGISTRATION;
 import static org.cloudfoundry.identity.uaa.invitations.InvitationsEndpoint.USER_ID;
-import static org.cloudfoundry.identity.uaa.mock.util.MockMvcUtils.CookieCsrfPostProcessor.cookieCsrf;
+import static org.cloudfoundry.identity.uaa.mock.util.MockMvcUtils.CsrfPostProcessor.csrf;
 import static org.cloudfoundry.identity.uaa.zone.IdentityZoneSwitchingFilter.HEADER;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.notNullValue;
@@ -1478,18 +1479,21 @@ class ScimUserEndpointsMockMvcTests {
     }
 
     private ResultActions attemptLogin(ScimUser user) throws Exception {
+        MockHttpSession session = getLoginForm();
+
         return mockMvc
                 .perform(post("/login.do")
-                        .with(cookieCsrf())
+                        .with(csrf(session))
                         .param("username", user.getUserName())
                         .param("password", user.getPassword()));
     }
 
     private void attemptUnsuccessfulLogin(int numberOfAttempts, String username, String subdomain) throws Exception {
         String requestDomain = subdomain.equals("") ? "localhost" : subdomain + ".localhost";
+        MockHttpSession session = getLoginForm();
         MockHttpServletRequestBuilder post = post("/login.do")
                 .with(new SetServerNameRequestPostProcessor(requestDomain))
-                .with(cookieCsrf())
+                .with(csrf(session))
                 .param("username", username)
                 .param("password", "wrong_password");
         for (int i = 0; i < numberOfAttempts; i++) {
@@ -1548,13 +1552,19 @@ class ScimUserEndpointsMockMvcTests {
     }
 
     private void performAuthentication(ScimUser user, boolean success) throws Exception {
+        MockHttpSession session = getLoginForm();
         mockMvc.perform(
                 post("/login.do")
                         .accept("text/html")
-                        .with(cookieCsrf())
+                        .with(csrf(session))
                         .param("username", user.getUserName())
                         .param("password", USER_PASSWORD))
                 .andDo(print())
                 .andExpect(success ? authenticated() : unauthenticated());
+    }
+    private MockHttpSession getLoginForm() {
+        MockHttpSession session = new MockHttpSession();
+        MockMvcUtils.getLoginForm(mockMvc, session);
+        return session;
     }
 }
