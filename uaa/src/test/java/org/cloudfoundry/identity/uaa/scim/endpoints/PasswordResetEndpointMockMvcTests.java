@@ -28,6 +28,7 @@ import org.cloudfoundry.identity.uaa.zone.IdentityZoneHolder;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+import org.springframework.mock.web.MockHttpSession;
 import org.springframework.security.oauth2.common.util.OAuth2Utils;
 import org.springframework.security.oauth2.common.util.RandomValueStringGenerator;
 import org.springframework.test.web.servlet.MvcResult;
@@ -42,8 +43,7 @@ import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import static org.cloudfoundry.identity.uaa.mock.util.MockMvcUtils.CookieCsrfPostProcessor.cookieCsrf;
-import static org.cloudfoundry.identity.uaa.mock.util.MockMvcUtils.utils;
+import static org.cloudfoundry.identity.uaa.mock.util.MockMvcUtils.CsrfPostProcessor.csrf;
 import static org.cloudfoundry.identity.uaa.zone.IdentityZoneSwitchingFilter.HEADER;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.containsString;
@@ -73,7 +73,7 @@ public class PasswordResetEndpointMockMvcTests extends InjectedMockContextTest {
         user = new ScimUser(null, new RandomValueStringGenerator().generate()+"@test.org", "PasswordResetUserFirst", "PasswordResetUserLast");
         user.setPrimaryEmail(user.getUserName());
         user.setPassword("secr3T");
-        user = MockMvcUtils.utils().createUser(getMockMvc(), adminToken, user);
+        user = MockMvcUtils.createUser(getMockMvc(), adminToken, user);
     }
 
     @After
@@ -167,7 +167,10 @@ public class PasswordResetEndpointMockMvcTests extends InjectedMockContextTest {
         String code = getExpiringCode("app", "http://localhost:8080/app/");
         String email = user.getUserName();
 
+        MockHttpSession session = new MockHttpSession();
+
         MockHttpServletRequestBuilder get = get("/reset_password")
+            .session(session)
             .param("code", code)
             .param("email", email);
 
@@ -183,7 +186,7 @@ public class PasswordResetEndpointMockMvcTests extends InjectedMockContextTest {
             .param("email", email)
             .param("password", "newpass")
             .param("password_confirmation", "newpass")
-            .with(cookieCsrf());
+            .with(csrf(session));
 
         getMockMvc().perform(post)
             .andExpect(status().is3xxRedirection())
@@ -193,7 +196,7 @@ public class PasswordResetEndpointMockMvcTests extends InjectedMockContextTest {
             .param("username", user.getUserName())
             .param("password", "newpass")
             .param("form_redirect_uri", "http://localhost:8080/app/")
-            .with(cookieCsrf());
+            .with(csrf(session));
 
         getMockMvc().perform(post)
             .andExpect(status().is3xxRedirection())
@@ -271,7 +274,7 @@ public class PasswordResetEndpointMockMvcTests extends InjectedMockContextTest {
     @Test
     public void zoneAdminCanResetsAndChangePassword() throws Exception {
         String subdomain = generator.generate();
-        MockMvcUtils.IdentityZoneCreationResult result = utils().createOtherIdentityZoneAndReturnResult(subdomain, getMockMvc(), getWebApplicationContext(), null);
+        MockMvcUtils.IdentityZoneCreationResult result = MockMvcUtils.createOtherIdentityZoneAndReturnResult(subdomain, getMockMvc(), getWebApplicationContext(), null);
         IdentityZone identityZone = result.getIdentityZone();
         String zoneAdminScope = "zones." + identityZone.getId() + ".admin";
 
@@ -279,13 +282,13 @@ public class PasswordResetEndpointMockMvcTests extends InjectedMockContextTest {
 
         String zonifiedAdminClientId = generator.generate().toLowerCase();
         String zonifiedAdminClientSecret = generator.generate().toLowerCase();
-        utils().createClient(this.getMockMvc(), adminToken, zonifiedAdminClientId , zonifiedAdminClientSecret, Collections.singleton("oauth"), Collections.singletonList(zoneAdminScope), Arrays.asList(new String[]{"client_credentials", "password"}), "uaa.none");
+        MockMvcUtils.createClient(this.getMockMvc(), adminToken, zonifiedAdminClientId , zonifiedAdminClientSecret, Collections.singleton("oauth"), Collections.singletonList(zoneAdminScope), Arrays.asList(new String[]{"client_credentials", "password"}), "uaa.none");
         String zoneAdminAccessToken = testClient.getUserOAuthAccessToken(zonifiedAdminClientId, zonifiedAdminClientSecret, scimUser.getUserName(), "secr3T", zoneAdminScope);
 
         ScimUser userInZone = new ScimUser(null, new RandomValueStringGenerator().generate()+"@test.org", "PasswordResetUserFirst", "PasswordResetUserLast");
         userInZone.setPrimaryEmail(userInZone.getUserName());
         userInZone.setPassword("secr3T");
-        userInZone = MockMvcUtils.utils().createUserInZone(getMockMvc(), adminToken, userInZone, "",identityZone.getId());
+        userInZone = MockMvcUtils.createUserInZone(getMockMvc(), adminToken, userInZone, "",identityZone.getId());
 
         getMockMvc().perform(
             post("/password_resets")

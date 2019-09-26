@@ -15,7 +15,8 @@ import org.springframework.test.web.servlet.MvcResult;
 import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
 
-import static org.cloudfoundry.identity.uaa.mock.util.MockMvcUtils.CookieCsrfPostProcessor.cookieCsrf;
+import static org.cloudfoundry.identity.uaa.mock.util.MockMvcUtils.CsrfPostProcessor.csrf;
+import static org.cloudfoundry.identity.uaa.mock.util.MockMvcUtils.getLoginForm;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.not;
@@ -203,12 +204,13 @@ public class AuthorizationPromptNoneEntryPointMockMvcTests extends InjectedMockC
 
 
     private void login(MockHttpSession session) throws Exception {
+        getLoginForm(getMockMvc(), session);
+
         getMockMvc().perform(
           post("/login.do")
-            .with(cookieCsrf())
+            .with(csrf(session))
             .param("username", "marissa")
             .param("password", "koala")
-            .session(session)
         ).andExpect(redirectedUrl("/"));
     }
 }

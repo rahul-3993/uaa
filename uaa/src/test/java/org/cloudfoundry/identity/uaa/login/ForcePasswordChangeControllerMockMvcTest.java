@@ -1,9 +1,5 @@
 package org.cloudfoundry.identity.uaa.login;
 
-import javax.servlet.http.Cookie;
-import javax.servlet.http.HttpSession;
-import java.net.URLEncoder;
-import java.util.Date;
 
 import org.cloudfoundry.identity.uaa.account.UserAccountStatus;
 import org.cloudfoundry.identity.uaa.authentication.UaaAuthentication;
@@ -17,7 +13,6 @@ import org.cloudfoundry.identity.uaa.provider.JdbcIdentityProviderProvisioning;
 import org.cloudfoundry.identity.uaa.provider.PasswordPolicy;
 import org.cloudfoundry.identity.uaa.provider.UaaIdentityProviderDefinition;
 import org.cloudfoundry.identity.uaa.scim.ScimUser;
-import org.cloudfoundry.identity.uaa.security.web.CookieBasedCsrfTokenRepository;
 import org.cloudfoundry.identity.uaa.util.JsonUtils;
 import org.cloudfoundry.identity.uaa.zone.IdentityZone;
 import org.cloudfoundry.identity.uaa.zone.IdentityZoneConfiguration;
@@ -33,15 +28,18 @@ import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.test.web.servlet.ResultMatcher;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 
-import static org.cloudfoundry.identity.uaa.mock.util.MockMvcUtils.CookieCsrfPostProcessor.cookieCsrf;
-import static org.cloudfoundry.identity.uaa.mock.util.MockMvcUtils.performMfaRegistrationInZone;
+import javax.servlet.http.HttpSession;
+
+import java.util.Date;
+
+import static org.cloudfoundry.identity.uaa.mock.util.MockMvcUtils.*;
+import static org.cloudfoundry.identity.uaa.mock.util.MockMvcUtils.CsrfPostProcessor.csrf;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.springframework.http.MediaType.APPLICATION_JSON;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.cookie;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.model;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -58,12 +56,12 @@ public class ForcePasswordChangeControllerMockMvcTest extends InjectedMockContex
     @Before
     public void setup() throws Exception {
         String username = new RandomValueStringGenerator().generate() + "@test.org";
-        user = new ScimUser(null, username, "givenname","familyname");
+        user = new ScimUser(null, username, "givenname", "familyname");
         user.setPrimaryEmail(username);
         user.setPassword("secret");
         identityProviderProvisioning = getWebApplicationContext().getBean(JdbcIdentityProviderProvisioning.class);
-        token = MockMvcUtils.utils().getClientCredentialsOAuthAccessToken(getMockMvc(), "admin", "adminsecret", null, null);
-        user = MockMvcUtils.utils().createUser(getMockMvc(), token, user);
+        token = MockMvcUtils.getClientCredentialsOAuthAccessToken(getMockMvc(), "admin", "adminsecret", null, null);
+        user = MockMvcUtils.createUser(getMockMvc(), token, user);
         uaaZoneConfig = MockMvcUtils.getZoneConfiguration(getWebApplicationContext(), "uaa");
         adminToken = testClient.getClientCredentialsOAuthAccessToken(
             "admin",
@@ -104,16 +102,15 @@ public class ForcePasswordChangeControllerMockMvcTest extends InjectedMockContex
         forcePasswordChangeForUser();
         MockHttpSession session = new MockHttpSession();
 
+        getLoginForm(getMockMvc(), session);
         MockHttpServletRequestBuilder invalidPost = post("/login.do")
             .param("username", user.getUserName())
             .param("password", "secret")
             .session(session)
-            .with(cookieCsrf())
-            .param(CookieBasedCsrfTokenRepository.DEFAULT_CSRF_COOKIE_NAME, "csrf1");
+            .with(csrf(session));
         getMockMvc().perform(invalidPost)
             .andExpect(status().isFound())
-            .andExpect(redirectedUrl("/"))
-            .andExpect(currentUserCookie(user.getId()));
+            .andExpect(redirectedUrl("/"));
 
         assertTrue(getUaaAuthentication(session).isAuthenticated());
         assertTrue(getUaaAuthentication(session).isRequiresPasswordChange());
@@ -131,12 +128,13 @@ public class ForcePasswordChangeControllerMockMvcTest extends InjectedMockContex
     }
 
     public void completePasswordChange(MockHttpSession session) throws Exception {
+        getForcePasswordChangeForm(getMockMvc(), session);
+
         MockHttpServletRequestBuilder validPost = post("/force_password_change")
             .param("password", "test")
             .param("password_confirmation", "test")
-            .session(session)
-            .with(cookieCsrf());
-        validPost.with(cookieCsrf());
+            .with(csrf(session));
+        validPost.with(csrf(session));
         getMockMvc().perform(validPost)
             .andExpect(status().isFound())
             .andExpect(redirectedUrl(("/force_password_change_completed")));
@@ -160,7 +158,6 @@ public class ForcePasswordChangeControllerMockMvcTest extends InjectedMockContex
     public void force_password_change_with_invalid_password() throws Exception {
         forcePasswordChangeForUser();
         MockHttpSession session = new MockHttpSession();
-        Cookie cookie = new Cookie(CookieBasedCsrfTokenRepository.DEFAULT_CSRF_COOKIE_NAME, "csrf1");
 
         IdentityProvider identityProvider = identityProviderProvisioning.retrieveByOrigin(OriginKeys.UAA, IdentityZone.getUaa().getId());
         UaaIdentityProviderDefinition currentConfig = ((UaaIdentityProviderDefinition) identityProvider.getConfig());
@@ -169,21 +166,22 @@ public class ForcePasswordChangeControllerMockMvcTest extends InjectedMockContex
         try {
             identityProviderProvisioning.update(identityProvider, identityProvider.getIdentityZoneId());
 
+            getLoginForm(getMockMvc(), session);
+
             MockHttpServletRequestBuilder invalidPost = post("/login.do")
                 .param("username", user.getUserName())
                 .param("password", "secret")
                 .session(session)
-                .cookie(cookie)
-                .param(CookieBasedCsrfTokenRepository.DEFAULT_CSRF_COOKIE_NAME, "csrf1");
+                .with(csrf(session));
             getMockMvc().perform(invalidPost)
                 .andExpect(status().isFound());
+            getForcePasswordChangeForm(getMockMvc(), session);
 
             MockHttpServletRequestBuilder validPost = post("/force_password_change")
                 .param("password", "test")
                 .param("password_confirmation", "test")
                 .session(session)
-                .cookie(cookie)
-                .with(cookieCsrf());
+                .with(csrf(session));
             getMockMvc().perform(validPost)
                 .andExpect(view().name("force_password_change"))
                 .andExpect(model().attribute("message", "Password must be at least 15 characters in length."))
@@ -205,18 +203,16 @@ public class ForcePasswordChangeControllerMockMvcTest extends InjectedMockContex
         try {
             identityProviderProvisioning.update(identityProvider, identityProvider.getIdentityZoneId());
             MockHttpSession session = new MockHttpSession();
+            getLoginForm(getMockMvc(), session);
 
             MockHttpServletRequestBuilder invalidPost = post("/login.do")
                 .param("username", user.getUserName())
                 .param("password", "secret")
-                .session(session)
-                .with(cookieCsrf())
-                .param(CookieBasedCsrfTokenRepository.DEFAULT_CSRF_COOKIE_NAME, "csrf1");
+                .with(csrf(session));
 
             getMockMvc().perform(invalidPost)
                 .andExpect(status().isFound())
-                .andExpect(redirectedUrl("/"))
-                .andExpect(currentUserCookie(user.getId()));
+                .andExpect(redirectedUrl("/"));
 
             getMockMvc().perform(
                 get("/")
@@ -225,12 +221,12 @@ public class ForcePasswordChangeControllerMockMvcTest extends InjectedMockContex
                 .andExpect(status().isFound())
                 .andExpect(redirectedUrl("/force_password_change"));
 
+            getForcePasswordChangeForm(getMockMvc(), session);
+
             MockHttpServletRequestBuilder validPost = post("/force_password_change")
                 .param("password", "test")
                 .param("password_confirmation", "test")
-                .session(session)
-                .with(cookieCsrf());
-            validPost.with(cookieCsrf());
+                .with(csrf(session));
 
             getMockMvc().perform(validPost)
                 .andExpect(status().isFound())
@@ -258,10 +254,9 @@ public class ForcePasswordChangeControllerMockMvcTest extends InjectedMockContex
         MockHttpServletRequestBuilder validPost = post("/force_password_change")
                 .param("password", "test")
                 .param("password_confirmation", "test");
-        validPost.with(cookieCsrf());
         getMockMvc().perform(validPost)
                 .andExpect(status().isFound())
-                .andExpect(redirectedUrl(("http://localhost/login")));
+                .andExpect(redirectedUrl(("http://localhost/login?error=invalid_login_request")));
     }
 
     private void forcePasswordChangeForUser() throws Exception {
@@ -275,13 +270,5 @@ public class ForcePasswordChangeControllerMockMvcTest extends InjectedMockContex
                 .contentType(APPLICATION_JSON)
                 .content(jsonStatus))
             .andExpect(status().isOk());
-    }
-
-    private static ResultMatcher currentUserCookie(String userId) {
-        return result -> {
-            cookie().value("Current-User", URLEncoder.encode("{\"userId\":\"" + userId + "\"}", "UTF-8")).match(result);
-            cookie().maxAge("Current-User", 365*24*60*60);
-            cookie().path("Current-User", "").match(result);
-        };
     }
 }

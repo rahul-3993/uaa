@@ -84,7 +84,7 @@ import java.util.stream.Collectors;
 import static org.cloudfoundry.identity.uaa.audit.AuditEventType.ClientCreateSuccess;
 import static org.cloudfoundry.identity.uaa.audit.AuditEventType.ClientUpdateSuccess;
 import static org.cloudfoundry.identity.uaa.audit.AuditEventType.GroupCreatedEvent;
-import static org.cloudfoundry.identity.uaa.mock.util.MockMvcUtils.CookieCsrfPostProcessor.cookieCsrf;
+import static org.cloudfoundry.identity.uaa.mock.util.MockMvcUtils.CsrfPostProcessor.csrf;
 import static org.cloudfoundry.identity.uaa.mock.util.MockMvcUtils.getEventOfType;
 import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.hamcrest.Matchers.containsString;
@@ -242,10 +242,10 @@ public class AuditCheckMockMvcTests extends InjectedMockContextTest {
 
     @Test
     public void userLoginTest() throws Exception {
-        MockHttpSession session = new MockHttpSession();
+        MockHttpSession session = getLoginForm();
+
         MockHttpServletRequestBuilder loginPost = post("/login.do")
-            .with(cookieCsrf())
-            .session(session)
+            .with(csrf(session))
             .accept(MediaType.TEXT_HTML_VALUE)
             .param("username", testUser.getUserName())
             .param("password", testPassword);
@@ -293,11 +293,10 @@ public class AuditCheckMockMvcTests extends InjectedMockContextTest {
 
 
     @Test
-    public void invalidPasswordLoginFailedTest() throws Exception {
-        MockHttpSession session = new MockHttpSession();
+    public void invalidPasswordLoginUnsuccessfulTest() throws Exception {
+        MockHttpSession session = getLoginForm();
         MockHttpServletRequestBuilder loginPost = post("/login.do")
-            .with(cookieCsrf())
-            .session(session)
+            .with(csrf(session))
             .accept(MediaType.TEXT_HTML_VALUE)
             .param("username", testUser.getUserName())
             .param("password", "");
@@ -466,10 +465,10 @@ public class AuditCheckMockMvcTests extends InjectedMockContextTest {
     public void userNotFoundLoginFailedTest() throws Exception {
         String username = "test1234";
 
-        MockHttpSession session = new MockHttpSession();
+        MockHttpSession session = getLoginForm();
+
         MockHttpServletRequestBuilder loginPost = post("/login.do")
-            .with(cookieCsrf())
-            .session(session)
+            .with(csrf(session))
             .accept(MediaType.TEXT_HTML_VALUE)
             .param("username", username)
             .param("password", testPassword);
@@ -490,10 +489,9 @@ public class AuditCheckMockMvcTests extends InjectedMockContextTest {
 
     @Test
     public void userChangePasswordTest() throws Exception {
-        MockHttpSession session = new MockHttpSession();
+        MockHttpSession session = getLoginForm();
         MockHttpServletRequestBuilder loginPost = post("/login.do")
-            .with(cookieCsrf())
-            .session(session)
+            .with(csrf(session))
             .accept(APPLICATION_JSON_VALUE)
             .param("username", testUser.getUserName())
             .param("password", testPassword);
@@ -539,10 +537,9 @@ public class AuditCheckMockMvcTests extends InjectedMockContextTest {
 
     @Test
     public void userChangeInvalidPasswordTest() throws Exception {
-        MockHttpSession session = new MockHttpSession();
+        MockHttpSession session = getLoginForm();
         MockHttpServletRequestBuilder loginPost = post("/login.do")
-            .with(cookieCsrf())
-            .session(session)
+            .with(csrf(session))
             .accept(APPLICATION_JSON_VALUE)
             .param("username", testUser.getUserName())
             .param("password", testPassword);
@@ -772,24 +769,24 @@ public class AuditCheckMockMvcTests extends InjectedMockContextTest {
             "loginsecret",
             "oauth.login");
         MockHttpSession session = new MockHttpSession();
+
+        testListener.clearEvents();
+
         MockHttpServletRequestBuilder userPost = post("/oauth/authorize")
-            .with(cookieCsrf())
             .accept(APPLICATION_JSON_VALUE)
             .contentType(MediaType.APPLICATION_JSON)
-            .session(session)
+            .session(new MockHttpSession())
             .header("Authorization", "Bearer " + loginToken)
             .param("source", "login")
             .param(UaaAuthenticationDetails.ADD_NEW, "true")
             .param("username", username)
             .param("name", "Jacob Gyllenhammer")
             .param("email", "jacob@gyllenhammer.non")
-            .param("external_id","jacob")
-            .param("response_type","code")
-            .param("client_id","login")
+            .param("external_id", "jacob")
+            .param("response_type", "code")
+            .param("client_id", "login")
             .param("redirect_uri", "http://localhost:8080/uaa")
-            .param("state","erw342");
-
-        testListener.clearEvents();
+            .param("state", "erw342");
 
         getMockMvc().perform(userPost)
             .andExpect(status().isOk());
@@ -1094,4 +1091,9 @@ public class AuditCheckMockMvcTests extends InjectedMockContextTest {
         }
     }
 
+    private MockHttpSession getLoginForm() {
+        MockHttpSession session = new MockHttpSession();
+        MockMvcUtils.getLoginForm(getMockMvc(), session);
+        return session;
+    }
 }

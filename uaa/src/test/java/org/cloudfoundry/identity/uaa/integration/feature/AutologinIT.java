@@ -23,6 +23,7 @@ import org.apache.http.impl.client.BasicCookieStore;
 import org.apache.http.impl.cookie.BasicClientCookie;
 import org.cloudfoundry.identity.uaa.integration.util.IntegrationTestUtils;
 import org.cloudfoundry.identity.uaa.test.UaaTestAccounts;
+import org.cloudfoundry.identity.uaa.zone.IdentityZoneHolder;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -51,7 +52,8 @@ import org.springframework.web.util.UriComponentsBuilder;
 import java.net.URI;
 
 import static org.cloudfoundry.identity.uaa.integration.util.IntegrationTestUtils.getHeaders;
-import static org.cloudfoundry.identity.uaa.security.web.CookieBasedCsrfTokenRepository.DEFAULT_CSRF_COOKIE_NAME;
+import static org.cloudfoundry.identity.uaa.mock.util.MockMvcUtils.CsrfPostProcessor.CSRF_PARAMETER_NAME;
+import static org.cloudfoundry.identity.uaa.oauth.token.TokenConstants.GRANT_TYPE_AUTHORIZATION_CODE;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.hasItem;
 import static org.hamcrest.Matchers.startsWith;
@@ -181,19 +183,19 @@ public class AutologinIT {
         int cookiesAdded = 0;
         headers = getAppBasicAuthHttpHeaders();
         for (String cookie : cookies) {
-            if (cookie.startsWith("X-Uaa-Csrf=") || cookie.startsWith("JSESSIONID=")) {
+            if (cookie.startsWith("JSESSIONID=")) {
                 headers.add("Cookie", cookie);
                 cookiesAdded++;
             }
         }
-        assertEquals(2, cookiesAdded);
+        assertEquals(1, cookiesAdded);
 
         //if we receive a 200, then we must approve our scopes
         if (HttpStatus.OK == authorizeResponse.getStatusCode()) {
             authorizeUrl = UriComponentsBuilder.fromHttpUrl(baseUrl)
                 .path("/oauth/authorize")
                 .queryParam("user_oauth_approval", "true")
-                .queryParam(DEFAULT_CSRF_COOKIE_NAME, IntegrationTestUtils.extractCookieCsrf(authorizeResponse.getBody()))
+                .queryParam(CSRF_PARAMETER_NAME, IntegrationTestUtils.extracCsrfToken(authorizeResponse.getBody()))
                 .build().toUriString();
             authorizeResponse = template.exchange(authorizeUrl,
                                                   HttpMethod.POST,
@@ -239,8 +241,8 @@ public class AutologinIT {
                                                                  String.class);
 
         setCookiesFromResponse(cookieStore, loginResponse);
-        String csrf = IntegrationTestUtils.extractCookieCsrf(loginResponse.getBody());
-        requestBody.add(DEFAULT_CSRF_COOKIE_NAME, csrf);
+        String csrf = IntegrationTestUtils.extracCsrfToken(loginResponse.getBody());
+        requestBody.add(CSRF_PARAMETER_NAME, csrf);
 
         headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
         loginResponse = restOperations.exchange(baseUrl + "/login.do",
@@ -249,8 +251,9 @@ public class AutologinIT {
                                                 String.class);
         cookies = loginResponse.getHeaders().get("Set-Cookie");
         assertThat(cookies, hasItem(startsWith("JSESSIONID")));
-        assertThat(cookies, hasItem(startsWith("X-Uaa-Csrf")));
-        assertThat(cookies, hasItem(startsWith("Saved-Account-")));
+        if (IdentityZoneHolder.get().getConfig().isAccountChooserEnabled()) {
+            assertThat(cookies, hasItem(startsWith("Saved-Account-")));
+        }
         assertThat(cookies, hasItem(startsWith("Current-User")));
         cookieStore.clear();
         setCookiesFromResponse(cookieStore, loginResponse);
@@ -267,7 +270,7 @@ public class AutologinIT {
         requestBody.clear();
         requestBody.add("clientId","app");
         requestBody.add("delete","");
-        requestBody.add(DEFAULT_CSRF_COOKIE_NAME, IntegrationTestUtils.extractCookieCsrf(profilePage.getBody()));
+        requestBody.add(CSRF_PARAMETER_NAME, IntegrationTestUtils.extracCsrfToken(profilePage.getBody()));
         ResponseEntity<Void> revokeResponse = template.exchange(revokeApprovalsUrl,
                                                                 HttpMethod.POST,
                                                                 new HttpEntity<>(requestBody, getHeaders(cookieStore)),

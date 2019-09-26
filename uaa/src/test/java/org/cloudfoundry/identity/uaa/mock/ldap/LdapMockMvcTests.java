@@ -58,6 +58,7 @@ import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameters;
 import org.mockito.ArgumentCaptor;
+import org.springframework.context.ApplicationEvent;
 import org.springframework.context.ApplicationListener;
 import org.springframework.context.support.ClassPathXmlApplicationContext;
 import org.springframework.http.HttpStatus;
@@ -98,7 +99,8 @@ import java.util.Set;
 
 import static java.util.Collections.EMPTY_LIST;
 import static org.cloudfoundry.identity.uaa.constants.OriginKeys.LDAP;
-import static org.cloudfoundry.identity.uaa.mock.util.MockMvcUtils.CookieCsrfPostProcessor.cookieCsrf;
+import static org.cloudfoundry.identity.uaa.mock.util.MockMvcUtils.CsrfPostProcessor.csrf;
+import static org.cloudfoundry.identity.uaa.mock.util.MockMvcUtils.getLoginForm;
 import static org.cloudfoundry.identity.uaa.mock.util.MockMvcUtils.performMfaRegistrationInZone;
 import static org.cloudfoundry.identity.uaa.mock.util.MockMvcUtils.utils;
 import static org.cloudfoundry.identity.uaa.provider.ldap.ProcessLdapProperties.NONE;
@@ -147,7 +149,7 @@ public class LdapMockMvcTests  {
     private String host;
     private static XmlWebApplicationContext webApplicationContext;
     private static MockMvc mockMvc;
-    private ApplicationListener<AbstractUaaEvent> listener;
+    private ApplicationListener<ApplicationEvent> listener;
 
     public XmlWebApplicationContext getWebApplicationContext() {
         return webApplicationContext;
@@ -255,7 +257,7 @@ public class LdapMockMvcTests  {
         host = zone.getZone().getIdentityZone().getSubdomain() + ".localhost";
         IdentityZoneHolder.clear();
 
-        listener = (ApplicationListener<AbstractUaaEvent>) mock(ApplicationListener.class);
+        listener = (ApplicationListener<ApplicationEvent>) mock(ApplicationListener.class);
         getWebApplicationContext().addApplicationListener(listener);
     }
 
@@ -317,13 +319,12 @@ public class LdapMockMvcTests  {
         MockHttpSession session = (MockHttpSession) result.getRequest().getSession(false);
         String expectRedirectToLogin = "/login?success=invite_accepted&form_redirect_uri="+ URLEncoder.encode(redirectUri);
         getMockMvc().perform(post("/invitations/accept_enterprise.do")
-                                 .session(session)
                                  .param("enterprise_username", "marissa2")
                                  .param("enterprise_password", LDAP)
                                  .param("enterprise_email", "email")
                                  .param("code", code)
                                  .header(HOST, host)
-                                 .with(cookieCsrf()))
+                                 .with(csrf(session)))
             .andExpect(status().isFound())
             .andExpect(redirectedUrl(expectRedirectToLogin))
                 .andExpect(unauthenticated())
@@ -331,8 +332,7 @@ public class LdapMockMvcTests  {
 
         getMockMvc().perform(
                 get(expectRedirectToLogin)
-                        .with(cookieCsrf())
-                        .session(session)
+                        .with(csrf(session))
                         .header(HOST, host)
         )
             .andExpect(status().isOk())
@@ -342,10 +342,9 @@ public class LdapMockMvcTests  {
 
         getMockMvc().perform(
                 post("/login.do")
-                .with(cookieCsrf())
+                .with(csrf(session))
                 .param("username", "marissa2")
                 .param("password", LDAP)
-                .session(session)
                 .header(HOST, host)
                 .param("form_redirect_uri", redirectUri)
         )
@@ -385,13 +384,12 @@ public class LdapMockMvcTests  {
 
         session = (MockHttpSession) result.getRequest().getSession(false);
         getMockMvc().perform(post("/invitations/accept_enterprise.do")
-                                 .session(session)
                                  .param("enterprise_username", "marissa2")
                                  .param("enterprise_password", LDAP)
                                  .param("enterprise_email", "email")
                                  .param("code", code)
                                  .header(HOST, host)
-                                 .with(cookieCsrf()))
+                                 .with(csrf(session)))
             .andExpect(status().isUnprocessableEntity())
             .andExpect(content().string(containsString("The authenticated email does not match the invited email. Please log in using a different account.")))
             .andReturn();
@@ -726,8 +724,10 @@ public class LdapMockMvcTests  {
         assumeFalse(!(ldapProfile.contains("ldap-search-and-bind.xml") &&
             ldapGroup.contains("ldap-groups-map-to-scopes.xml")));
 
+        MockHttpSession session1 = new MockHttpSession();
 
         getMockMvc().perform(get("/login")
+                                 .session(session1)
                                  .header(HOST, host))
             .andExpect(status().isOk())
             .andExpect(view().name("login"))
@@ -735,7 +735,7 @@ public class LdapMockMvcTests  {
 
 
         getMockMvc().perform(post("/login.do").accept(TEXT_HTML_VALUE)
-                                 .with(cookieCsrf())
+                                 .with(csrf(session1))
                                  .header(HOST, host)
                                  .param("username", "marissa2")
                                  .param("password", LDAP))
@@ -753,8 +753,16 @@ public class LdapMockMvcTests  {
         provider.setActive(false);
         utils().createIdpUsingWebRequest(getMockMvc(), zone.getZone().getIdentityZone().getId(), zone.getZone().getZoneAdminToken(), provider, status().isOk(), true);
 
+        MockHttpSession session2 = new MockHttpSession(); //new session to store csrf token in session
+
+        getMockMvc().perform(get("/login")
+                                 .session(session2)
+                                 .header(HOST, host)
+        )
+                    .andExpect(status().isOk());
+
         getMockMvc().perform(post("/login.do").accept(TEXT_HTML_VALUE)
-                                 .with(cookieCsrf())
+                                 .with(csrf(session2))
                                  .header(HOST, host)
                                  .param("username", "marissa2")
                                  .param("password", LDAP))
@@ -767,7 +775,7 @@ public class LdapMockMvcTests  {
         utils().createIdpUsingWebRequest(getMockMvc(), zone.getZone().getIdentityZone().getId(), zone.getZone().getZoneAdminToken(), provider, status().isOk(), true);
 
         getMockMvc().perform(post("/login.do").accept(TEXT_HTML_VALUE)
-                                 .with(cookieCsrf())
+                                 .with(csrf(session2))
                                  .header(HOST, host)
                                  .param("username", "marissa2")
                                  .param("password", LDAP))
@@ -786,8 +794,12 @@ public class LdapMockMvcTests  {
 
     @Test
     public void testLogin_partial_result_exception_on_group_search() throws Exception {
+        MockHttpSession session = new MockHttpSession();
+
+        getLoginForm(getMockMvc(), session);
+
         getMockMvc().perform(post("/login.do").accept(TEXT_HTML_VALUE)
-                                 .with(cookieCsrf())
+                                 .with(csrf(session))
                                  .header(HOST, host)
                                  .param("username", "marissa8")
                                  .param("password", "ldap8"))
@@ -810,8 +822,12 @@ public class LdapMockMvcTests  {
         provider.getConfig().setGroupSearchBase("memberOf");
         updateLdapProvider();
 
+        MockHttpSession session = new MockHttpSession();
+
+        getLoginForm(mockMvc, session);
+
         Object securityContext = getMockMvc().perform(post("/login.do").accept(TEXT_HTML_VALUE)
-                                                          .with(cookieCsrf())
+                                                          .with(csrf(session))
                                                           .header(HOST, host)
                                                           .param("username", "marissa10")
                                                           .param("password", "ldap10"))
@@ -893,8 +909,11 @@ public class LdapMockMvcTests  {
 
     @Test
     public void testLogin() throws Exception {
+        MockHttpSession session = new MockHttpSession();
+
         getMockMvc().perform(
             get("/login")
+                .session(session)
                 .header(HOST, host))
             .andExpect(status().isOk())
             .andExpect(view().name("login"))
@@ -903,16 +922,16 @@ public class LdapMockMvcTests  {
         getMockMvc().perform(
             post("/login.do").accept(TEXT_HTML_VALUE)
                 .header(HOST, host)
-                .with(cookieCsrf())
+                .with(csrf(session))
                 .param("username", "marissa")
                 .param("password", "koaladsada"))
             .andExpect(status().isFound())
             .andExpect(unauthenticated())
             .andExpect(redirectedUrl("/login?error=login_failure"));
 
-        ArgumentCaptor<AbstractUaaEvent> captor = ArgumentCaptor.forClass(AbstractUaaEvent.class);
+        ArgumentCaptor<ApplicationEvent> captor = ArgumentCaptor.forClass(ApplicationEvent.class);
         verify(listener, atLeast(5)).onApplicationEvent(captor.capture());
-        List<AbstractUaaEvent> allValues = captor.getAllValues();
+        List<ApplicationEvent> allValues = captor.getAllValues();
         assertThat(allValues.get(4), instanceOf(IdentityProviderAuthenticationFailureEvent.class));
         IdentityProviderAuthenticationFailureEvent event = (IdentityProviderAuthenticationFailureEvent)allValues.get(4);
         assertEquals("marissa", event.getUsername());
@@ -957,10 +976,14 @@ public class LdapMockMvcTests  {
 
     @Test
     public void test_username_with_space() throws Exception {
+        MockHttpSession session = new MockHttpSession();
+
+        getLoginForm(getMockMvc(), session);
+
         getMockMvc().perform(
             post("/login.do").accept(TEXT_HTML_VALUE)
                 .header(HOST, host)
-                .with(cookieCsrf())
+                .with(csrf(session))
                 .param("username", "marissa 11")
                 .param("password", "ldap11"))
             .andExpect(status().isFound())
@@ -997,10 +1020,11 @@ public class LdapMockMvcTests  {
 
 
     protected void testSuccessfulLogin() throws Exception {
+        MockHttpSession session = new MockHttpSession();
+        getLoginForm(getMockMvc(), session);
         getMockMvc().perform(post("/login.do").accept(TEXT_HTML_VALUE)
                                  .header(HOST, host)
-                                 .with(cookieCsrf())
-
+                                 .with(csrf(session))
                                  .param("username", "marissa2")
                                  .param("password", LDAP))
             .andExpect(status().isFound())
@@ -1010,13 +1034,14 @@ public class LdapMockMvcTests  {
 
     @Test
     public void testAuthenticateWithUTF8Characters() throws Exception {
+        MockHttpSession session = new MockHttpSession();
+        getLoginForm(getMockMvc(), session);
         String username = "\u7433\u8D3A";
 
-        HttpSession session =
             getMockMvc().perform(
                 post("/login.do").accept(TEXT_HTML_VALUE)
                     .header(HOST, host)
-                    .with(cookieCsrf())
+                    .with(csrf(session))
                     .param("username", username)
                     .param("password", "koala"))
                 .andExpect(status().isFound())
@@ -1073,9 +1098,9 @@ public class LdapMockMvcTests  {
         getMockMvc().perform(post)
             .andExpect(status().isUnauthorized());
 
-        ArgumentCaptor<AbstractUaaEvent> captor = ArgumentCaptor.forClass(AbstractUaaEvent.class);
+        ArgumentCaptor<ApplicationEvent> captor = ArgumentCaptor.forClass(ApplicationEvent.class);
         verify(listener, atLeast(5)).onApplicationEvent(captor.capture());
-        List<AbstractUaaEvent> allValues = captor.getAllValues();
+        List<ApplicationEvent> allValues = captor.getAllValues();
         assertThat(allValues.get(3), instanceOf(IdentityProviderAuthenticationFailureEvent.class));
         IdentityProviderAuthenticationFailureEvent event = (IdentityProviderAuthenticationFailureEvent)allValues.get(3);
         assertEquals("marissa3", event.getUsername());
@@ -1228,9 +1253,12 @@ public class LdapMockMvcTests  {
     }
 
     private MvcResult performUiAuthentication(String username, String password, HttpStatus status, boolean authenticated) throws Exception {
+        MockHttpSession session = new MockHttpSession();
+
+        getLoginForm(getMockMvc(), session);
         MockHttpServletRequestBuilder post =
             post("/login.do")
-                .with(cookieCsrf())
+                .with(csrf(session))
                 .header(HOST, host)
                 .accept(MediaType.TEXT_HTML)
                 .param("username", username)

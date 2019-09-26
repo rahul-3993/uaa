@@ -48,8 +48,8 @@ import java.net.URL;
 import java.util.Arrays;
 import java.util.Collections;
 
-import static org.cloudfoundry.identity.uaa.mock.util.MockMvcUtils.CookieCsrfPostProcessor.cookieCsrf;
-import static org.cloudfoundry.identity.uaa.mock.util.MockMvcUtils.utils;
+
+import static org.cloudfoundry.identity.uaa.mock.util.MockMvcUtils.CsrfPostProcessor.csrf;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.endsWith;
 import static org.junit.Assert.assertEquals;
@@ -81,7 +81,7 @@ public class InvitationsServiceMockMvcTests extends InjectedMockContextTest {
     private String userInviteToken;
 
     public ZoneScimInviteData createZoneForInvites() throws Exception {
-        return utils().createZoneForInvites(getMockMvc(), getWebApplicationContext(), clientId, REDIRECT_URI);
+        return utils.createZoneForInvites(getMockMvc(), getWebApplicationContext(), clientId, REDIRECT_URI);
     }
 
     @Before
@@ -146,7 +146,7 @@ public class InvitationsServiceMockMvcTests extends InjectedMockContextTest {
         String clientId = "authclient-"+new RandomValueStringGenerator().generate();
         BaseClientDetails client = new BaseClientDetails(clientId, "", "openid","authorization_code","",redirectUri);
         client.setClientSecret("secret");
-        String adminToken = utils().getClientCredentialsOAuthAccessToken(getMockMvc(), "admin", "adminsecret", "", null);
+        String adminToken = utils.getClientCredentialsOAuthAccessToken(getMockMvc(), "admin", "adminsecret", "", null);
         MockMvcUtils.utils().createClient(getMockMvc(), adminToken, client);
 
         String state = new RandomValueStringGenerator().generate();
@@ -254,11 +254,10 @@ public class InvitationsServiceMockMvcTests extends InjectedMockContextTest {
         MockHttpSession session = (MockHttpSession) result.getRequest().getSession(false);
         result = getMockMvc().perform(
             post("/invitations/accept.do")
-                .session(session)
                 .param("password", "s3cret")
                 .param("password_confirmation", "s3cret")
-                .param("code",invalidCode)
-                .with(cookieCsrf())
+                .param("code", invalidCode)
+                .with(csrf(session))
         )
             .andExpect(status().isUnprocessableEntity())
             .andExpect(model().attribute("error_message_code", "code_expired"))
@@ -300,11 +299,10 @@ public class InvitationsServiceMockMvcTests extends InjectedMockContextTest {
         MockHttpSession session = (MockHttpSession) result.getRequest().getSession(false);
         result = getMockMvc().perform(
             post("/invitations/accept.do")
-                .session(session)
                 .param("password", "s3cret")
                 .param("password_confirmation", "s3cret")
-                .param("code",code)
-                .with(cookieCsrf())
+                .param("code", code)
+                .with(csrf(session))
         )
             .andExpect(status().isFound())
             .andExpect(redirectedUrl("/login?success=invite_accepted&form_redirect_uri=" + REDIRECT_URI))
@@ -389,7 +387,7 @@ public class InvitationsServiceMockMvcTests extends InjectedMockContextTest {
     }
 
     protected IdentityProvider createIdentityProvider(IdentityZoneCreationResult zone, String nameAndOriginKey, AbstractIdentityProviderDefinition definition) throws Exception {
-        return utils().createIdentityProvider(getMockMvc(), zone, nameAndOriginKey, definition);
+        return utils.createIdentityProvider(getMockMvc(), zone, nameAndOriginKey, definition);
     }
 
     protected SamlIdentityProviderDefinition getSamlIdentityProviderDefinition(IdentityZoneCreationResult zone, String entityID) {
@@ -402,11 +400,11 @@ public class InvitationsServiceMockMvcTests extends InjectedMockContextTest {
     }
 
     public URL inviteUser(String email, String userInviteToken, String subdomain, String clientId, String expectedOrigin) throws Exception {
-        return utils().inviteUser(getWebApplicationContext(), getMockMvc(), email, userInviteToken, subdomain, clientId, expectedOrigin,REDIRECT_URI);
+        return utils.inviteUser(getWebApplicationContext(), getMockMvc(), email, userInviteToken, subdomain, clientId, expectedOrigin,REDIRECT_URI);
     }
 
     private String extractInvitationCode(String inviteLink) throws Exception {
-        return utils().extractInvitationCode(inviteLink);
+        return utils.extractInvitationCode(inviteLink);
     }
 
 }

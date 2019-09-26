@@ -45,7 +45,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.Iterator;
 
-import static org.cloudfoundry.identity.uaa.mock.util.MockMvcUtils.CookieCsrfPostProcessor.cookieCsrf;
+import static org.cloudfoundry.identity.uaa.mock.util.MockMvcUtils.CsrfPostProcessor.csrf;
 import static org.cloudfoundry.identity.uaa.web.UaaSavedRequestAwareAuthenticationSuccessHandler.SAVED_REQUEST_SESSION_ATTRIBUTE;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.equalTo;
@@ -203,8 +203,10 @@ public class AccountsControllerMockMvcTests extends InjectedMockContextTest {
 
         MockMvcUtils.createOtherIdentityZoneAndReturnResult(getMockMvc(), getWebApplicationContext(), getBaseClientDetails() ,zone);
 
+        MockHttpSession session = getCreateAccountForm();
+
         getMockMvc().perform(post("/create_account.do")
-                                 .with(cookieCsrf())
+                                 .with(csrf(session))
                 .with(new SetServerNameRequestPostProcessor(subdomain + ".localhost"))
                 .param("email", userEmail)
                 .param("password", "secr3T")
@@ -241,8 +243,9 @@ public class AccountsControllerMockMvcTests extends InjectedMockContextTest {
         JdbcExpiringCodeStore store = getWebApplicationContext().getBean(JdbcExpiringCodeStore.class);
         store.setGenerator(generator);
 
+        MockHttpSession session = getCreateAccountForm();
         getMockMvc().perform(post("/create_account.do")
-                                 .with(cookieCsrf())
+                                 .with(csrf(session))
             .param("email", userEmail)
             .param("password", "secr3T")
             .param("password_confirmation", "secr3T"))
@@ -277,8 +280,9 @@ public class AccountsControllerMockMvcTests extends InjectedMockContextTest {
         JdbcExpiringCodeStore store = getWebApplicationContext().getBean(JdbcExpiringCodeStore.class);
         store.setGenerator(generator);
 
+        MockHttpSession session = getCreateAccountForm();
         getMockMvc().perform(post("/create_account.do")
-                                 .with(cookieCsrf())
+                                 .with(csrf(session))
             .param("email", userEmail)
             .param("password", "secr3T")
             .param("password_confirmation", "secr3T")
@@ -320,8 +324,9 @@ public class AccountsControllerMockMvcTests extends InjectedMockContextTest {
         JdbcExpiringCodeStore store = getWebApplicationContext().getBean(JdbcExpiringCodeStore.class);
         store.setGenerator(generator);
 
+        MockHttpSession session = getCreateAccountForm();
         getMockMvc().perform(post("/create_account.do")
-                                 .with(cookieCsrf())
+                                 .with(csrf(session))
             .param("email", userEmail)
             .param("password", "secr3T")
             .param("password_confirmation", "secr3T"))
@@ -370,8 +375,10 @@ public class AccountsControllerMockMvcTests extends InjectedMockContextTest {
             .content(JsonUtils.writeValueAsString(identityZone)))
                 .andExpect(status().isCreated());
 
+        MockHttpSession session = getCreateAccountForm();
+
         getMockMvc().perform(post("/create_account.do")
-                                 .with(cookieCsrf())
+                                 .with(csrf(session))
             .with(new SetServerNameRequestPostProcessor(subdomain + ".localhost"))
             .param("email", userEmail)
             .param("password", USER_PASSWORD)
@@ -420,11 +427,13 @@ public class AccountsControllerMockMvcTests extends InjectedMockContextTest {
         identityZone.setName(subdomain);
         identityZone.setId(new RandomValueStringGenerator().generate());
 
-        mockMvcUtils.createOtherIdentityZone(subdomain, getMockMvc(), getWebApplicationContext(), getBaseClientDetails());
+        MockMvcUtils.createOtherIdentityZone(subdomain, getMockMvc(), getWebApplicationContext(), getBaseClientDetails());
+
+        MockHttpSession session = getCreateAccountForm();
 
         getMockMvc().perform(post("/create_account.do")
             .with(new SetServerNameRequestPostProcessor(subdomain + ".localhost"))
-                                 .with(cookieCsrf())
+                                 .with(csrf(session))
             .param("email", userEmail)
             .param("password", "secr3T")
             .param("password_confirmation", "secr3T")
@@ -475,9 +484,10 @@ public class AccountsControllerMockMvcTests extends InjectedMockContextTest {
         JdbcExpiringCodeStore store = getWebApplicationContext().getBean(JdbcExpiringCodeStore.class);
         store.setGenerator(generator);
 
+        MockMvcUtils.getCreateAccountForm(getMockMvc(), session);
+
         getMockMvc().perform(post("/create_account.do")
-            .with(cookieCsrf())
-                .session(session)
+            .with(csrf(session))
                 .param("email", "testuser@test.org")
                 .param("password", "test-password")
                 .param("password_confirmation", "test-password"))
@@ -537,9 +547,10 @@ public class AccountsControllerMockMvcTests extends InjectedMockContextTest {
 
         BaseClientDetails clientDetails = createTestClient();
 
+        MockHttpSession session = getCreateAccountForm();
 
         getMockMvc().perform(post("/create_account.do")
-                                 .with(cookieCsrf())
+                                 .with(csrf(session))
                 .param("email", userEmail)
                 .param("password", USER_PASSWORD)
                 .param("password_confirmation", USER_PASSWORD)
@@ -573,10 +584,12 @@ public class AccountsControllerMockMvcTests extends InjectedMockContextTest {
 
     private ResultActions loginWithAccount(String subdomain) throws Exception {
 
+        MockHttpSession session = getCreateAccountForm();
+
         MockHttpServletRequestBuilder req = post("/login.do")
             .param("username", userEmail)
             .param("password", USER_PASSWORD)
-            .with(cookieCsrf());
+            .with(csrf(session));
 
         if(hasText(subdomain)){
             req.with(new SetServerNameRequestPostProcessor(subdomain + ".localhost"));
@@ -585,4 +598,11 @@ public class AccountsControllerMockMvcTests extends InjectedMockContextTest {
         return getMockMvc().perform(req)
             .andExpect(status().isFound());
     }
+
+    private MockHttpSession getCreateAccountForm() {
+        MockHttpSession session = new MockHttpSession();
+        MockMvcUtils.getCreateAccountForm(getMockMvc(), session);
+        return session;
+    }
+
 }

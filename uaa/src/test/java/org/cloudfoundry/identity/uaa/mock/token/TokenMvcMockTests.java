@@ -76,6 +76,7 @@ import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.mock.web.MockHttpSession;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.codec.Base64;
@@ -122,11 +123,11 @@ import java.util.TreeSet;
 import java.util.Collections;
 
 import static java.util.Collections.emptySet;
-import static org.cloudfoundry.identity.uaa.mock.util.MockMvcUtils.CookieCsrfPostProcessor.cookieCsrf;
 import static org.cloudfoundry.identity.uaa.mock.util.MockMvcUtils.getUserOAuthAccessToken;
 import static org.cloudfoundry.identity.uaa.mock.util.MockMvcUtils.setDisableInternalAuth;
 import static org.cloudfoundry.identity.uaa.oauth.TokenTestSupport.AUTHORIZATION_CODE;
 import static org.cloudfoundry.identity.uaa.oauth.TokenTestSupport.PASSWORD;
+import static org.cloudfoundry.identity.uaa.mock.util.MockMvcUtils.CsrfPostProcessor.csrf;
 import static org.cloudfoundry.identity.uaa.oauth.client.ClientConstants.REQUIRED_USER_GROUPS;
 import static org.cloudfoundry.identity.uaa.oauth.token.ClaimConstants.CLIENT_ID;
 import static org.cloudfoundry.identity.uaa.oauth.token.ClaimConstants.JTI;
@@ -1642,17 +1643,18 @@ public class TokenMvcMockTests extends AbstractTokenMockMvcTests {
 
         MockHttpSession session = getAuthenticatedSession(developer);
 
+        getAuthorizationForm(clientId, session);
+
         String state = new RandomValueStringGenerator().generate();
 
         getMockMvc().perform(
             post("/oauth/authorize")
-                .session(session)
                 .param(OAuth2Utils.RESPONSE_TYPE, "token")
                 .param("prompt", "none")
                 .param(OAuth2Utils.CLIENT_ID, clientId)
                 .param(OAuth2Utils.STATE, state)
                 .param(OAuth2Utils.REDIRECT_URI, redirectUrl)
-                .with(cookieCsrf())
+                .with(csrf(session))
         )
             .andExpect(status().is3xxRedirection())
             .andExpect(header().string("Location", startsWith(redirectUrl)))
@@ -1673,6 +1675,8 @@ public class TokenMvcMockTests extends AbstractTokenMockMvcTests {
 
         MockHttpSession session = getAuthenticatedSession(developer);
 
+        getAuthorizationForm(clientId, session);
+
         String state = generator.generate();
         AuthorizationRequest authorizationRequest = new AuthorizationRequest();
         authorizationRequest.setClientId(clientId);
@@ -1682,13 +1686,13 @@ public class TokenMvcMockTests extends AbstractTokenMockMvcTests {
         authorizationRequest.setState(state);
 
         session.setAttribute("authorizationRequest", authorizationRequest);
+        session.setAttribute("org.springframework.security.oauth2.provider.endpoint.AuthorizationEndpoint.ORIGINAL_AUTHORIZATION_REQUEST", unmodifiableMap(authorizationRequest));
 
-        MvcResult result  = getMockMvc().perform(
-            post("/oauth/authorize")
-                .session(session)
-                .with(cookieCsrf())
-                .param(OAuth2Utils.USER_OAUTH_APPROVAL, "true")
-                .param("scope.0","openid")
+        MvcResult result = getMockMvc().perform(
+                post("/oauth/authorize")
+                        .with(csrf(session))
+                        .param(OAuth2Utils.USER_OAUTH_APPROVAL, "true")
+                        .param("scope.0", "scope.openid")
         ).andExpect(status().is3xxRedirection()).andReturn();
 
         URL url = new URL(result.getResponse().getHeader("Location").replace("redirect#","redirect?"));
@@ -1709,6 +1713,8 @@ public class TokenMvcMockTests extends AbstractTokenMockMvcTests {
 
         MockHttpSession session = getAuthenticatedSession(developer);
 
+        getAuthorizationForm(clientId, session);
+
         String state = generator.generate();
 
         AuthorizationRequest authorizationRequest = new AuthorizationRequest();
@@ -1718,13 +1724,13 @@ public class TokenMvcMockTests extends AbstractTokenMockMvcTests {
         authorizationRequest.setResponseTypes(new TreeSet<>(Arrays.asList("code", "id_token")));
         authorizationRequest.setState(state);
         session.setAttribute("authorizationRequest", authorizationRequest);
+        session.setAttribute("org.springframework.security.oauth2.provider.endpoint.AuthorizationEndpoint.ORIGINAL_AUTHORIZATION_REQUEST", unmodifiableMap(authorizationRequest));
 
-        MvcResult result  = getMockMvc().perform(
-            post("/oauth/authorize")
-                .session(session)
-                .param(OAuth2Utils.USER_OAUTH_APPROVAL, "true")
-                .with(cookieCsrf())
-                .param("scope.0", "openid")
+        MvcResult result = getMockMvc().perform(
+                post("/oauth/authorize")
+                        .param(OAuth2Utils.USER_OAUTH_APPROVAL, "true")
+                        .with(csrf(session))
+                        .param("scope.0", "scope.openid")
         ).andExpect(status().is3xxRedirection()).andReturn();
 
         URL url = new URL(result.getResponse().getHeader("Location").replace("redirect#","redirect?"));
@@ -1739,7 +1745,7 @@ public class TokenMvcMockTests extends AbstractTokenMockMvcTests {
     private static final String URI_FORMAT = "https://%s/dashboard/?appGuid=app-guid&ace_config=test";
 
     @SneakyThrows
-    private MockHttpServletResponse getAuthCode(String registeredDomain, String requestedDomain, ResultMatcher expectedHttpStatus) {
+    private MockHttpServletResponse getAuthCode(String registeredDomain, String requestedDomain, ResultMatcher expectedHttpStatus) throws Exception {
         String redirectUri = String.format(URI_FORMAT, registeredDomain);
         String subDomainUri = String.format(URI_FORMAT, requestedDomain);
         String clientId = "authclient-" + generator.generate();
@@ -1762,7 +1768,7 @@ public class TokenMvcMockTests extends AbstractTokenMockMvcTests {
     }
 
     @Test
-    public void getAuthCode_wildcardRegisteredRedirect_redirectToSubdomainAllowed() {
+    public void getAuthCode_wildcardRegisteredRedirect_redirectToSubdomainAllowed() throws Exception {
         MockHttpServletResponse response = getAuthCode("*.example.com", "test.example.com", status().is3xxRedirection());
 
         assertTrue(response.containsHeader("Location"));
@@ -1773,7 +1779,7 @@ public class TokenMvcMockTests extends AbstractTokenMockMvcTests {
     }
 
     @Test
-    public void getAuthCode_registeredRedirectLacksWildcard_redirectToSubdomainForbidden() {
+    public void getAuthCode_registeredRedirectLacksWildcard_redirectToSubdomainForbidden() throws Exception {
         MockHttpServletResponse response = getAuthCode("example.com", "test.example.com", status().is4xxClientError());
 
         assertFalse(response.containsHeader("Location"));
@@ -1845,14 +1851,13 @@ public class TokenMvcMockTests extends AbstractTokenMockMvcTests {
 
     @Test
     public void ensure_that_form_redirect_is_not_a_parameter_unless_there_is_a_saved_request() throws Exception {
-        //make sure we don't create a session on the homepage
-        assertNull(
+        // GET login will return login form, which will be filled in with csrf token.
+        // HttpSessionCsrfTokenRepository will create a session if necessary, in which to store this token.
             getMockMvc().perform(
                 get("/login")
             )
                 .andDo(print())
-                .andExpect(content().string(not(containsString(FORM_REDIRECT_PARAMETER))))
-                .andReturn().getRequest().getSession(false));
+                .andExpect(content().string(not(containsString(FORM_REDIRECT_PARAMETER))));
 
         //if there is a session, but no saved request
         getMockMvc().perform(
@@ -1950,10 +1955,10 @@ public class TokenMvcMockTests extends AbstractTokenMockMvcTests {
             .andExpect(content().string(containsString(encodedRedirectUri)));
 
         //a failed login should survive the flow
-        //attempt to login without a session
+        //attempt to login with invalid password
         result = getMockMvc().perform(
             post("/login.do")
-                .with(cookieCsrf())
+                .with(csrf(session))
                 .param("form_redirect_uri", authUrl)
                 .param("username", username)
                 .param("password", "invalid")
@@ -1976,10 +1981,10 @@ public class TokenMvcMockTests extends AbstractTokenMockMvcTests {
             .andExpect(content().string(containsString(FORM_REDIRECT_PARAMETER)))
             .andExpect(content().string(containsString(encodedRedirectUri)));
 
-        //attempt to login without a session
+        //attempt to login with valid password
         getMockMvc().perform(
             post("/login.do")
-                .with(cookieCsrf())
+                .with(csrf(session))
                 .param("form_redirect_uri", authUrl)
                 .param("username", username)
                 .param("password", SECRET)
@@ -2041,7 +2046,7 @@ public class TokenMvcMockTests extends AbstractTokenMockMvcTests {
         IdentityZone baseZone = identityZoneProvisioning.retrieve("uaa");
         baseZone.setEnableRedirectUriCheck(false);
         identityZoneProvisioning.update(baseZone);
-        String redirectUri = "http*://**";
+        String redirectUri = "http*://example.com/**";
         HashSet redirectUris = new HashSet(Arrays.asList(redirectUri));
         String clientId = "authclient-"+ generator.generate();
         String scopes = "openid";
@@ -2052,13 +2057,11 @@ public class TokenMvcMockTests extends AbstractTokenMockMvcTests {
         String username = "authuser"+ generator.generate();
         String userScopes = "openid";
         ScimUser developer = setUpUser(username, userScopes, OriginKeys.UAA, IdentityZoneHolder.get().getId());
-        String basicDigestHeaderValue = "Basic "
-            + new String(org.apache.commons.codec.binary.Base64.encodeBase64((clientId + ":" + SECRET).getBytes()));
         MockHttpSession session = getAuthenticatedSession(developer);
         String state = generator.generate();
         String redirectUriQueryParam = "https://example.com/dashboard/?appGuid=app-guid&ace_config=test";
         MockHttpServletRequestBuilder authRequest = get("/oauth/authorize")
-            .header("Authorization", basicDigestHeaderValue)
+            .with(httpBasic(clientId, SECRET))
             .session(session)
             .param(OAuth2Utils.RESPONSE_TYPE, "code")
             .param(SCOPE, "openid")
@@ -2126,7 +2129,7 @@ public class TokenMvcMockTests extends AbstractTokenMockMvcTests {
         
         IdentityZoneHolder.set(identityZone);
         
-        String redirectUri = "http*://**";
+        String redirectUri = "http*://example.com/**";
         HashSet redirectUris = new HashSet(Arrays.asList(redirectUri));
         String clientId = "authclient-"+ generator.generate();
         String scopes = "openid";
@@ -2140,15 +2143,13 @@ public class TokenMvcMockTests extends AbstractTokenMockMvcTests {
         String username = "authuser"+ generator.generate();
         String userScopes = "openid";
         ScimUser developer = setUpUser(username, userScopes, OriginKeys.UAA, IdentityZoneHolder.get().getId());
-        String basicDigestHeaderValue = "Basic "
-            + new String(org.apache.commons.codec.binary.Base64.encodeBase64((clientId + ":" + SECRET).getBytes()));
         MockHttpSession session = getAuthenticatedSession(developer);
         String state = generator.generate();
         String redirectUriQueryParam = "https://example.com/dashboard/?appGuid=app-guid&ace_config=test";
         
         MockHttpServletRequestBuilder authRequest = get("/oauth/authorize")
             .with(new SetServerNameRequestPostProcessor(zoneId + ".localhost"))
-            .header("Authorization", basicDigestHeaderValue)
+            .with(httpBasic(clientId, SECRET))
             .session(session)
             .param(OAuth2Utils.RESPONSE_TYPE, "code")
             .param(SCOPE, "openid")
@@ -4149,5 +4150,58 @@ public class TokenMvcMockTests extends AbstractTokenMockMvcTests {
         public void setAuthentication(Authentication authentication) {
             this.authentication = authentication;
         }
+    }
+
+    Map<String, Object> unmodifiableMap(AuthorizationRequest authorizationRequest) {
+        Map<String, Object> authorizationRequestMap = new HashMap<>();
+
+        authorizationRequestMap.put(OAuth2Utils.CLIENT_ID, authorizationRequest.getClientId());
+        authorizationRequestMap.put(OAuth2Utils.STATE, authorizationRequest.getState());
+        authorizationRequestMap.put(OAuth2Utils.REDIRECT_URI, authorizationRequest.getRedirectUri());
+
+        if (authorizationRequest.getResponseTypes() != null) {
+            authorizationRequestMap.put(OAuth2Utils.RESPONSE_TYPE,
+                    Collections.unmodifiableSet(new HashSet<>(authorizationRequest.getResponseTypes())));
+        }
+        if (authorizationRequest.getScope() != null) {
+            authorizationRequestMap.put(OAuth2Utils.SCOPE,
+                    Collections.unmodifiableSet(new HashSet<>(authorizationRequest.getScope())));
+        }
+
+        authorizationRequestMap.put("approved", authorizationRequest.isApproved());
+
+        if (authorizationRequest.getResourceIds() != null) {
+            authorizationRequestMap.put("resourceIds",
+                    Collections.unmodifiableSet(new HashSet<String>(authorizationRequest.getResourceIds())));
+        }
+        if (authorizationRequest.getAuthorities() != null) {
+            authorizationRequestMap.put("authorities",
+                    Collections.unmodifiableSet(new HashSet<GrantedAuthority>(authorizationRequest.getAuthorities())));
+        }
+
+        return authorizationRequestMap;
+    }
+
+    /**
+     * In order to populate session with csrf token.
+     */
+    private void getAuthorizationForm(String clientId, MockHttpSession session) throws Exception {
+        String confirmationPage = "/oauth/confirm_access";
+        getMockMvc().perform(
+                get("/oauth/authorize")
+                        .param(RESPONSE_TYPE, "code")
+                        .param(CLIENT_ID, clientId)
+                        .session(session)
+                        .accept(MediaType.TEXT_HTML)
+        )
+                .andExpect(status().isOk())
+                .andExpect(forwardedUrl(confirmationPage))
+        ;
+        getMockMvc().perform(
+                get(confirmationPage)
+                        .session(session)
+        )
+                .andExpect(status().isOk())
+        ;
     }
 }

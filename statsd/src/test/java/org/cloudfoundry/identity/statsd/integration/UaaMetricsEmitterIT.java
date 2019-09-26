@@ -34,6 +34,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.web.client.RestTemplate;
 
+import static org.cloudfoundry.identity.statsd.integration.IntegrationTestUtils.CSRF_PARAMETER_NAME;
 import static org.cloudfoundry.identity.statsd.integration.IntegrationTestUtils.TEST_PASSWORD;
 import static org.cloudfoundry.identity.statsd.integration.IntegrationTestUtils.TEST_USERNAME;
 import static org.cloudfoundry.identity.statsd.integration.IntegrationTestUtils.UAA_BASE_URL;
@@ -172,12 +173,12 @@ public class UaaMetricsEmitterIT {
                 headers.add("Cookie", cookie);
             }
         }
-        String csrf = IntegrationTestUtils.extractCookieCsrf(loginResponse.getBody());
+        String csrf = IntegrationTestUtils.extractCsrfToken(loginResponse.getBody());
 
         LinkedMultiValueMap<String,String> body = new LinkedMultiValueMap<>();
         body.add("username", username);
         body.add("password", TEST_PASSWORD);
-        body.add("X-Uaa-Csrf", csrf);
+        body.add(CSRF_PARAMETER_NAME, csrf);
         loginResponse = template.exchange(UAA_BASE_URL + "/login.do",
                                           HttpMethod.POST,
                                           new HttpEntity<>(body, headers),

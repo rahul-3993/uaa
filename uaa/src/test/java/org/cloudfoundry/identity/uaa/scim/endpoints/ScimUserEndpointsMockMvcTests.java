@@ -54,6 +54,7 @@ import org.junit.Test;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.mock.web.MockHttpSession;
 import org.springframework.security.oauth2.common.util.RandomValueStringGenerator;
 import org.springframework.security.oauth2.provider.ClientDetails;
 import org.springframework.security.oauth2.provider.client.BaseClientDetails;
@@ -69,8 +70,9 @@ import java.util.List;
 import java.util.Map;
 
 import static org.cloudfoundry.identity.uaa.codestore.ExpiringCodeType.REGISTRATION;
-import static org.cloudfoundry.identity.uaa.mock.util.MockMvcUtils.CookieCsrfPostProcessor.cookieCsrf;
+import static org.cloudfoundry.identity.uaa.mock.util.MockMvcUtils.CsrfPostProcessor.csrf;
 import static org.cloudfoundry.identity.uaa.mock.util.MockMvcUtils.utils;
+import static org.cloudfoundry.identity.uaa.zone.IdentityZoneSwitchingFilter.HEADER;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.CoreMatchers.startsWith;
@@ -177,7 +179,7 @@ public class ScimUserEndpointsMockMvcTests extends InjectedMockContextTest {
             .contentType(APPLICATION_JSON)
             .content(requestBody);
         if (subdomain != null && !subdomain.equals("")) post.with(new SetServerNameRequestPostProcessor(subdomain + ".localhost"));
-        if (switchZone!=null) post.header(IdentityZoneSwitchingFilter.HEADER, switchZone);
+        if (switchZone != null) post.header(HEADER, switchZone);
 
         return getMockMvc().perform(post);
     }
@@ -490,10 +492,11 @@ public class ScimUserEndpointsMockMvcTests extends InjectedMockContextTest {
     }
 
     public void performAuthentication(ScimUser user, boolean success) throws Exception {
+        MockHttpSession session = getLoginForm();
         getMockMvc().perform(
             post("/login.do")
             .accept("text/html")
-            .with(cookieCsrf())
+            .with(csrf(session))
             .param("username", user.getUserName())
             .param("password", USER_PASSWORD))
             .andDo(print())
@@ -644,7 +647,7 @@ public class ScimUserEndpointsMockMvcTests extends InjectedMockContextTest {
     @Test
     public void testUnlockAccount() throws Exception {
         ScimUser userToLockout = createUser(uaaAdminToken);
-        attemptFailedLogin(5, userToLockout.getUserName(), "");
+        attemptUnsuccessfulLogin(5, userToLockout.getUserName(), "");
 
         UserAccountStatus alteredAccountStatus = new UserAccountStatus();
         alteredAccountStatus.setLocked(false);
@@ -659,7 +662,7 @@ public class ScimUserEndpointsMockMvcTests extends InjectedMockContextTest {
     @Test
     public void testAccountStatusEmptyPatchDoesNotUnlock() throws Exception {
         ScimUser userToLockout = createUser(uaaAdminToken);
-        attemptFailedLogin(5, userToLockout.getUserName(), "");
+        attemptUnsuccessfulLogin(5, userToLockout.getUserName(), "");
 
         updateAccountStatus(userToLockout, new UserAccountStatus())
                 .andExpect(status().isOk())
@@ -758,7 +761,7 @@ public class ScimUserEndpointsMockMvcTests extends InjectedMockContextTest {
     @Test
     public void testTryMultipleStatusUpdatesWithInvalidRemovalOfPasswordChange() throws Exception {
         ScimUser user = createUser(uaaAdminToken);
-        attemptFailedLogin(5, user.getUserName(), "");
+        attemptUnsuccessfulLogin(5, user.getUserName(), "");
 
         UserAccountStatus alteredAccountStatus = new UserAccountStatus();
         alteredAccountStatus.setPasswordChangeRequired(false);
@@ -786,18 +789,20 @@ public class ScimUserEndpointsMockMvcTests extends InjectedMockContextTest {
     }
 
     private ResultActions attemptLogin(ScimUser user) throws Exception {
+        MockHttpSession session = getLoginForm();
         return getMockMvc()
             .perform(post("/login.do")
-                         .with(cookieCsrf())
+                         .with(csrf(session))
                          .param("username", user.getUserName())
                          .param("password", user.getPassword()));
     }
 
-    private void attemptFailedLogin(int numberOfAttempts, String username, String subdomain) throws Exception {
+    private void attemptUnsuccessfulLogin(int numberOfAttempts, String username, String subdomain) throws Exception {
         String requestDomain = subdomain.equals("") ? "localhost" : subdomain + ".localhost";
+        MockHttpSession session = getLoginForm();
         MockHttpServletRequestBuilder post = post("/login.do")
           .with(new SetServerNameRequestPostProcessor(requestDomain))
-          .with(cookieCsrf())
+          .with(csrf(session))
           .param("username", username)
           .param("password", "wrong_password");
         for (int i = 0; i < numberOfAttempts ; i++) {
@@ -808,7 +813,7 @@ public class ScimUserEndpointsMockMvcTests extends InjectedMockContextTest {
 
     private void verifyUser(String token) throws Exception {
         ScimUserProvisioning usersRepository = getWebApplicationContext().getBean(ScimUserProvisioning.class);
-        String email = "joe@"+generator.generate().toLowerCase()+".com";
+        String email = "joe@" + generator.generate().toLowerCase() + ".com";
         ScimUser joel = new ScimUser(null, email, "Joel", "D'sa");
         joel.addEmail(email);
         joel = usersRepository.createUser(joel, "pas5Word", IdentityZoneHolder.get().getId());
@@ -1267,6 +1272,12 @@ public class ScimUserEndpointsMockMvcTests extends InjectedMockContextTest {
 
     private IdentityZone getIdentityZone() throws Exception {
         String subdomain = generator.generate();
-        return mockMvcUtils.createOtherIdentityZone(subdomain, getMockMvc(), getWebApplicationContext());
+        return MockMvcUtils.createOtherIdentityZone(subdomain, getMockMvc(), getWebApplicationContext());
+    }
+
+    private MockHttpSession getLoginForm() {
+        MockHttpSession session = new MockHttpSession();
+        MockMvcUtils.getLoginForm(getMockMvc(), session);
+        return session;
     }
 }

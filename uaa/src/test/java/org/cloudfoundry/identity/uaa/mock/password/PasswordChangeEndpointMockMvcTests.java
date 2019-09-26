@@ -14,6 +14,7 @@ package org.cloudfoundry.identity.uaa.mock.password;
 
 import org.cloudfoundry.identity.uaa.account.PasswordChangeRequest;
 import org.cloudfoundry.identity.uaa.mock.InjectedMockContextTest;
+import org.cloudfoundry.identity.uaa.mock.util.MockMvcUtils;
 import org.cloudfoundry.identity.uaa.scim.ScimUser;
 import org.cloudfoundry.identity.uaa.util.JsonUtils;
 import org.junit.Before;
@@ -24,8 +25,10 @@ import org.springframework.security.oauth2.provider.client.BaseClientDetails;
 import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 
-import static org.cloudfoundry.identity.uaa.mock.util.MockMvcUtils.CookieCsrfPostProcessor.cookieCsrf;
 import static org.cloudfoundry.identity.uaa.mock.util.MockMvcUtils.utils;
+import static org.cloudfoundry.identity.uaa.mock.util.MockMvcUtils.CsrfPostProcessor.csrf;
+import static org.cloudfoundry.identity.uaa.mock.util.MockMvcUtils.getChangePasswordForm;
+import static org.cloudfoundry.identity.uaa.mock.util.MockMvcUtils.getLoginForm;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNotSame;
 import static org.junit.Assert.assertTrue;
@@ -54,7 +57,7 @@ public class PasswordChangeEndpointMockMvcTests extends InjectedMockContextTest 
         BaseClientDetails clientDetails = new BaseClientDetails(clientId, null, null, "client_credentials", "password.write");
         clientDetails.setClientSecret(clientSecret);
 
-        utils().createClient(getMockMvc(), adminToken, clientDetails);
+        MockMvcUtils.createClient(getMockMvc(), adminToken, clientDetails);
 
         passwordWriteToken = testClient.getClientCredentialsOAuthAccessToken(clientId, clientSecret,"password.write");
     }
@@ -111,10 +114,9 @@ public class PasswordChangeEndpointMockMvcTests extends InjectedMockContextTest 
         ScimUser user = createUser();
 
         MockHttpSession session = new MockHttpSession();
-        session.invalidate();
+        getLoginForm(getMockMvc(), session);
         MockHttpSession afterLoginSession = (MockHttpSession) getMockMvc().perform(post("/login.do")
-            .with(cookieCsrf())
-            .session(session)
+            .with(csrf(session))
             .accept(TEXT_HTML_VALUE)
             .param("username", user.getUserName())
             .param("password", "secr3T"))
@@ -125,9 +127,9 @@ public class PasswordChangeEndpointMockMvcTests extends InjectedMockContextTest 
         assertNotNull(afterLoginSession);
         assertNotNull(afterLoginSession.getAttribute(HttpSessionSecurityContextRepository.SPRING_SECURITY_CONTEXT_KEY));
 
+        getChangePasswordForm(getMockMvc(), afterLoginSession);
         MockHttpSession afterPasswordChange = (MockHttpSession) getMockMvc().perform(post("/change_password.do")
-            .session(afterLoginSession)
-            .with(cookieCsrf())
+            .with(csrf(afterLoginSession))
             .accept(TEXT_HTML_VALUE)
             .param("current_password", "secr3T")
             .param("new_password", "secr3T1")
@@ -148,9 +150,9 @@ public class PasswordChangeEndpointMockMvcTests extends InjectedMockContextTest 
         ScimUser user = createUser();
 
         MockHttpSession session = new MockHttpSession();
+        getLoginForm(getMockMvc(), session);
         MockHttpSession afterLoginSessionA = (MockHttpSession) getMockMvc().perform(post("/login.do")
-            .with(cookieCsrf())
-            .session(session)
+            .with(csrf(session))
             .accept(TEXT_HTML_VALUE)
             .param("username", user.getUserName())
             .param("password", "secr3T"))
@@ -159,9 +161,9 @@ public class PasswordChangeEndpointMockMvcTests extends InjectedMockContextTest 
             .andReturn().getRequest().getSession(false);
 
         session = new MockHttpSession();
+        getLoginForm(getMockMvc(), session);
         MockHttpSession afterLoginSessionB = (MockHttpSession) getMockMvc().perform(post("/login.do")
-            .with(cookieCsrf())
-            .session(session)
+            .with(csrf(session))
             .accept(TEXT_HTML_VALUE)
             .param("username", user.getUserName())
             .param("password", "secr3T"))
@@ -178,9 +180,9 @@ public class PasswordChangeEndpointMockMvcTests extends InjectedMockContextTest 
 
         Thread.sleep(1000 - (System.currentTimeMillis() % 1000) + 1);
 
+        getChangePasswordForm(getMockMvc(), afterLoginSessionA);
         MockHttpSession afterPasswordChange = (MockHttpSession) getMockMvc().perform(post("/change_password.do")
-            .session(afterLoginSessionA)
-            .with(cookieCsrf())
+            .with(csrf(afterLoginSessionA))
             .accept(TEXT_HTML_VALUE)
             .param("current_password", "secr3T")
             .param("new_password", "secr3T1")
