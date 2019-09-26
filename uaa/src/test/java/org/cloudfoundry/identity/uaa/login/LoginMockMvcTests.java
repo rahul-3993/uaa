@@ -77,6 +77,7 @@ import java.net.URLDecoder;
 import java.net.URLEncoder;
 import java.sql.Timestamp;
 import java.util.*;
+import java.util.UUID;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -93,6 +94,11 @@ import static org.junit.Assert.*;
 import static org.junit.jupiter.api.Assumptions.assumeFalse;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
+import static org.springframework.http.HttpHeaders.ACCEPT;
+import static org.springframework.http.HttpHeaders.ACCEPT_LANGUAGE;
+import static org.springframework.http.HttpHeaders.ACCESS_CONTROL_ALLOW_ORIGIN;
+import static org.springframework.http.HttpHeaders.AUTHORIZATION;
+import static org.springframework.http.HttpHeaders.CONTENT_TYPE;
 import static org.springframework.http.HttpStatus.CREATED;
 import static org.springframework.http.MediaType.APPLICATION_JSON;
 import static org.springframework.http.MediaType.TEXT_HTML;
@@ -2193,6 +2199,153 @@ public class LoginMockMvcTests {
         httpHeaders.add("Access-Control-Request-Method", "GET");
         httpHeaders.add("Origin", "fuzzybunnies.com");
         mockMvc.perform(options("/logout.do").headers(httpHeaders)).andExpect(status().isForbidden());
+    }
+
+    @Test
+    public void testNullCorsPolicyConfigurationsforNonDefaultZone(
+            @Autowired IdentityZoneProvisioning identityZoneProvisioning
+        ) throws Exception {
+        String subdomain = "testzone"+ generator.generate();
+        IdentityZone zone = new IdentityZone();
+        zone.getConfig().getTokenPolicy().setKeys(Collections.singletonMap(subdomain+"_key", "key_for_"+subdomain));
+        zone.getConfig().getCorsPolicy().setDefaultConfiguration(null);
+        zone.getConfig().getCorsPolicy().setXhrConfiguration(null);
+        zone.setId(UUID.randomUUID().toString());
+        zone.setName(subdomain);
+        zone.setSubdomain(subdomain);
+        zone.setDescription(subdomain);
+        identityZoneProvisioning.create(zone);
+        IdentityZoneHolder.set(zone);
+
+        HttpHeaders httpHeaders = new HttpHeaders();
+        httpHeaders.add("Access-Control-Request-Headers", "Accept");
+        httpHeaders.add("Access-Control-Request-Method", "GET");
+        httpHeaders.add("Origin", "localhost");
+        mockMvc.perform(options("/logout.do").headers(httpHeaders)).andExpect(status().isOk());
+
+        httpHeaders.add("X-Requested-With", "XMLHttpRequest");
+        mockMvc.perform(options("/logout.do").headers(httpHeaders)).andExpect(status().isOk());
+
+    }
+
+    @Test
+    public void testDefaultCorsPolicyforNonDefaultZone(
+            @Autowired IdentityZoneProvisioning identityZoneProvisioning
+        ) throws Exception {
+        String subdomain = "testzone"+ generator.generate();
+        IdentityZone zone = new IdentityZone();
+        zone.getConfig().getTokenPolicy().setKeys(Collections.singletonMap(subdomain+"_key", "key_for_"+subdomain));
+        CorsConfiguration corsConfig = new CorsConfiguration();
+        corsConfig.setAllowedUris(Arrays.asList("^/uaa/userinfo$", "^/uaa/logout.do$"));
+        corsConfig.setAllowedOrigins(Arrays.asList("other.com$"));
+        corsConfig.setAllowedMethods(Arrays.asList("GET"));
+        corsConfig.setAllowedHeaders(Arrays.asList("Accept", "Authorization", "Content-Type"));
+        zone.getConfig().getCorsPolicy().setDefaultConfiguration(corsConfig);
+        zone.setId(UUID.randomUUID().toString());
+        zone.setName(subdomain);
+        zone.setSubdomain(subdomain);
+        zone.setDescription(subdomain);
+        identityZoneProvisioning.create(zone);
+        IdentityZoneHolder.set(zone);
+
+        //make POST call when only GET is allowed
+        mockMvc.perform(post("/oauth/token")
+                .header("Access-Control-Request-Method", "POST")
+                .header("Access-Control-Request-Headers", AUTHORIZATION + ", " + ACCEPT + ", " + CONTENT_TYPE)
+                .header("Origin", "other.com")
+                .with(new SetServerNameRequestPostProcessor(subdomain + ".localhost")))
+                .andExpect(status().isMethodNotAllowed());
+
+        //make preflight call with non matching origin
+        MvcResult mvcResult = mockMvc.perform(options("/uaa/userinfo")
+                .header("Access-Control-Request-Method", "GET")
+                .header("Access-Control-Request-Headers", AUTHORIZATION + ", " + ACCEPT + ", " + CONTENT_TYPE)
+                .header("Origin", "example.com")
+                .with(new SetServerNameRequestPostProcessor(subdomain + ".localhost")))
+                .andExpect(status().isForbidden()).andReturn();
+        assertEquals("Illegal origin", mvcResult.getResponse().getErrorMessage());
+
+        //make preflight call with non matching uri
+        mvcResult = mockMvc.perform(options("/uaa/users")
+                .header("Access-Control-Request-Method", "GET")
+                .header("Access-Control-Request-Headers", AUTHORIZATION + ", " + ACCEPT + ", " + CONTENT_TYPE)
+                .header("Origin", "other.com")
+                .with(new SetServerNameRequestPostProcessor(subdomain + ".localhost")))
+                .andExpect(status().isForbidden()).andReturn();
+        assertEquals("Illegal request URI", mvcResult.getResponse().getErrorMessage());
+
+        //make preflight call with header that is not allowed
+        mvcResult = mockMvc.perform(options("/uaa/logout.do")
+                .header("Access-Control-Request-Method", "GET")
+                .header("Access-Control-Request-Headers", AUTHORIZATION + ", " + ACCEPT + ", " + CONTENT_TYPE + ", " + ACCEPT_LANGUAGE)
+                .header("Origin", "other.com")
+                .with(new SetServerNameRequestPostProcessor(subdomain + ".localhost")))
+                .andExpect(status().isForbidden()).andReturn();
+        assertEquals("Illegal header requested", mvcResult.getResponse().getErrorMessage());
+        assertEquals("*", mvcResult.getResponse().getHeader(ACCESS_CONTROL_ALLOW_ORIGIN));
+    }
+
+    @Test
+    public void testXhrCorsPolicyforNonDefaultZone(
+            @Autowired IdentityZoneProvisioning identityZoneProvisioning
+        ) throws Exception {
+        String subdomain = "testzone"+ generator.generate();
+        IdentityZone zone = new IdentityZone();
+        zone.getConfig().getTokenPolicy().setKeys(Collections.singletonMap(subdomain+"_key", "key_for_"+subdomain));
+        CorsConfiguration corsConfig = new CorsConfiguration();
+        corsConfig.setAllowedUris(Arrays.asList("^/uaa/userinfo$", "^/uaa/logout.do$"));
+        corsConfig.setAllowedOrigins(Arrays.asList("other.com$"));
+        corsConfig.setAllowedMethods(Arrays.asList("GET"));
+
+        List allowedHeadersList = Arrays.asList("Accept", "Authorization", "Content-Type");
+        corsConfig.setAllowedHeaders(allowedHeadersList);
+        zone.getConfig().getCorsPolicy().setXhrConfiguration(corsConfig);
+        zone.setId(UUID.randomUUID().toString());
+        zone.setName(subdomain);
+        zone.setSubdomain(subdomain);
+        zone.setDescription(subdomain);
+        identityZoneProvisioning.create(zone);
+        IdentityZoneHolder.set(zone);
+
+        //make POST call when only GET is allowed
+        mockMvc.perform(post("/oauth/token")
+                .header("X-Requested-With", "XMLHttpRequest")
+                .header("Access-Control-Request-Method", "POST")
+                .header("Access-Control-Request-Headers", AUTHORIZATION + ", " + ACCEPT + ", " + CONTENT_TYPE)
+                .header("Origin", "other.com")
+                .with(new SetServerNameRequestPostProcessor(subdomain + ".localhost")))
+                .andExpect(status().isMethodNotAllowed());
+
+        //make preflight call with non matching origin
+        MvcResult mvcResult = mockMvc.perform(options("/uaa/userinfo")
+                .header("X-Requested-With", "XMLHttpRequest")
+                .header("Access-Control-Request-Method", "GET")
+                .header("Access-Control-Request-Headers", AUTHORIZATION + ", " + ACCEPT + ", " + CONTENT_TYPE)
+                .header("Origin", "example.com")
+                .with(new SetServerNameRequestPostProcessor(subdomain + ".localhost")))
+                .andExpect(status().isForbidden()).andReturn();
+        assertEquals("Illegal origin", mvcResult.getResponse().getErrorMessage());
+
+        //make preflight call with non matching uri
+        mvcResult = mockMvc.perform(options("/users")
+                .header("X-Requested-With", "XMLHttpRequest")
+                .header("Access-Control-Request-Method", "GET")
+                .header("Access-Control-Request-Headers", AUTHORIZATION + ", " + ACCEPT + ", " + CONTENT_TYPE)
+                .header("Origin", "other.com")
+                .with(new SetServerNameRequestPostProcessor(subdomain + ".localhost")))
+                .andExpect(status().isForbidden()).andReturn();
+        assertEquals("Illegal request URI", mvcResult.getResponse().getErrorMessage());
+
+        //make preflight call with header that is not allowed
+        mvcResult = mockMvc.perform(options("/uaa/logout.do")
+                .header("X-Requested-With", "XMLHttpRequest")
+                .header("Access-Control-Request-Method", "GET")
+                .header("Access-Control-Request-Headers", AUTHORIZATION + ", " + ACCEPT + ", " + CONTENT_TYPE + ", " + ACCEPT_LANGUAGE)
+                .header("Origin", "other.com")
+                .with(new SetServerNameRequestPostProcessor(subdomain + ".localhost")))
+                .andExpect(status().isForbidden()).andReturn();
+        assertEquals("other.com", mvcResult.getResponse().getHeader(ACCESS_CONTROL_ALLOW_ORIGIN));
+        assertEquals("Illegal header requested", mvcResult.getResponse().getErrorMessage());
     }
 
     @Test
