@@ -15,15 +15,13 @@
 
 package org.cloudfoundry.identity.uaa.oauth;
 
-import lombok.AllArgsConstructor;
-import lombok.Value;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
-import org.junit.jupiter.params.provider.EnumSource;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.springframework.security.oauth2.common.exceptions.RedirectMismatchException;
 import org.springframework.security.oauth2.provider.ClientDetails;
@@ -32,16 +30,9 @@ import org.springframework.security.oauth2.provider.client.BaseClientDetails;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
-import java.util.function.Predicate;
 import java.util.stream.Stream;
 
 import static com.google.common.collect.Lists.newArrayList;
-import static org.cloudfoundry.identity.uaa.oauth.AntPathRedirectResolverTests.RegisteredRedirectUri.*;
-import static org.cloudfoundry.identity.uaa.oauth.AntPathRedirectResolverTests.RequestedRedirectUri.Protocol.HTTPS;
-import static org.cloudfoundry.identity.uaa.oauth.AntPathRedirectResolverTests.RequestedRedirectUri.Protocol.IS_HTTP;
-import static org.cloudfoundry.identity.uaa.oauth.AntPathRedirectResolverTests.RequestedRedirectUri.Protocol.WS;
-import static org.cloudfoundry.identity.uaa.oauth.AntPathRedirectResolverTests.RequestedRedirectUri.SecondLevelDomain.NOT_PART_OF_DOMAIN_DOT_COM;
-import static org.cloudfoundry.identity.uaa.oauth.AntPathRedirectResolverTests.RequestedRedirectUri.SecondLevelDomain.PART_OF_DOMAIN_DOT_COM;
 import static org.cloudfoundry.identity.uaa.oauth.token.TokenConstants.GRANT_TYPE_AUTHORIZATION_CODE;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.equalTo;
@@ -56,165 +47,188 @@ class AntPathRedirectResolverTests {
 
     private final AntPathRedirectResolver resolver = new AntPathRedirectResolver();
 
-    enum RequestedRedirectUri {
+    @Nested
+    @DisplayName("matching http://domain.com")
+    class WhenMatchingAgainstJustTLD {
+        private final String clientRedirectUri = "http://domain.com";
 
-        eg01("http://subdomain.domain.com",                  IS_HTTP, domain.parts(3),     PART_OF_DOMAIN_DOT_COM, path.segments(0)),
-        eg02("http://another-subdomain.domain.com",          IS_HTTP, domain.parts(3),     PART_OF_DOMAIN_DOT_COM, path.segments(0)),
-        eg03("http://one.two.domain.com",                    IS_HTTP, domain.parts(4),     PART_OF_DOMAIN_DOT_COM, path.segments(0)),
-        eg04("http://domain.com/one",                        IS_HTTP, domain.parts(2),     PART_OF_DOMAIN_DOT_COM, path.segments(1)),
-        eg05("http://domain.com/another",                    IS_HTTP, domain.parts(2),     PART_OF_DOMAIN_DOT_COM, path.segments(1)),
-        eg06("http://domain.com/one/two",                    IS_HTTP, domain.parts(2),     PART_OF_DOMAIN_DOT_COM, path.segments(2)),
-        eg07("http://subdomain.domain.com/one",              IS_HTTP, domain.parts(3),     PART_OF_DOMAIN_DOT_COM, path.segments(1)),
-        eg08("http://subdomain.domain.com/another",          IS_HTTP, domain.parts(3),     PART_OF_DOMAIN_DOT_COM, path.segments(1)),
-        eg09("http://subdomain.domain.com/one/two",          IS_HTTP, domain.parts(3),     PART_OF_DOMAIN_DOT_COM, path.segments(2)),
-        eg10("http://another-subdomain.domain.com/one",      IS_HTTP, domain.parts(3),     PART_OF_DOMAIN_DOT_COM, path.segments(1)),
-        eg11("http://another-subdomain.domain.com/another",  IS_HTTP, domain.parts(3),     PART_OF_DOMAIN_DOT_COM, path.segments(1)),
-        eg12("http://another-subdomain.domain.com/one/two",  IS_HTTP, domain.parts(3),     PART_OF_DOMAIN_DOT_COM, path.segments(2)),
-        eg13("http://one.two.domain.com/one",                IS_HTTP, domain.parts(4),     PART_OF_DOMAIN_DOT_COM, path.segments(1)),
-        eg14("http://one.two.domain.com/another",            IS_HTTP, domain.parts(4),     PART_OF_DOMAIN_DOT_COM, path.segments(1)),
-        eg15("http://one.two.domain.com/one/two",            IS_HTTP, domain.parts(4),     PART_OF_DOMAIN_DOT_COM, path.segments(2)),
-        eg16("http://other-domain.com",                      IS_HTTP, domain.parts(2), NOT_PART_OF_DOMAIN_DOT_COM, path.segments(0)),
-        eg17("http://domain.io",                             IS_HTTP, domain.parts(2), NOT_PART_OF_DOMAIN_DOT_COM, path.segments(0)),
-        eg18("https://domain.com",                             HTTPS, domain.parts(2),     PART_OF_DOMAIN_DOT_COM, path.segments(0)),
-        eg19("ws://domain.com",                                   WS, domain.parts(2),     PART_OF_DOMAIN_DOT_COM, path.segments(0)),
-        ;
-
-        RequestedRedirectUri(String uri, Protocol protocol, domain d, SecondLevelDomain secondLevelDomain, path p) {
-            this.uri = uri;
-            http = protocol == IS_HTTP;
-            domainParts = d.parts;
-            belongsToDomainDotCom = secondLevelDomain == PART_OF_DOMAIN_DOT_COM;
-            pathSegements = p.segments;
+        @Test
+        void allSubdomainsShouldNotMatch() {
+            assertFalse(resolver.redirectMatches("http://subdomain.domain.com", clientRedirectUri));
+            assertFalse(resolver.redirectMatches("http://another-subdomain.domain.com", clientRedirectUri));
+            assertFalse(resolver.redirectMatches("http://one.two.domain.com", clientRedirectUri));
         }
 
-        enum Protocol {
-            IS_HTTP,
-            HTTPS,
-            WS,
+        @Test
+        void allPathsShouldMatch() {
+            assertTrue(resolver.redirectMatches("http://domain.com/one", clientRedirectUri));
+            assertTrue(resolver.redirectMatches("http://domain.com/another", clientRedirectUri));
+            assertTrue(resolver.redirectMatches("http://domain.com/one/two", clientRedirectUri));
         }
 
-        @Value
-        private static class domain {
-            int parts;
+        @Test
+        void allPathsInAnySubdomainShouldNotMatch() {
+            assertFalse(resolver.redirectMatches("http://subdomain.domain.com/one", clientRedirectUri));
+            assertFalse(resolver.redirectMatches("http://subdomain.domain.com/another", clientRedirectUri));
+            assertFalse(resolver.redirectMatches("http://subdomain.domain.com/one/two", clientRedirectUri));
 
-            static domain parts(int count) {
-                return new domain(count);
-            }
+            assertFalse(resolver.redirectMatches("http://another-subdomain.domain.com/one", clientRedirectUri));
+            assertFalse(resolver.redirectMatches("http://another-subdomain.domain.com/another", clientRedirectUri));
+            assertFalse(resolver.redirectMatches("http://another-subdomain.domain.com/one/two", clientRedirectUri));
+
+            assertFalse(resolver.redirectMatches("http://one.two.domain.com/one", clientRedirectUri));
+            assertFalse(resolver.redirectMatches("http://one.two.domain.com/another", clientRedirectUri));
+            assertFalse(resolver.redirectMatches("http://one.two.domain.com/one/two", clientRedirectUri));
         }
 
-        enum SecondLevelDomain {
-            PART_OF_DOMAIN_DOT_COM,
-            NOT_PART_OF_DOMAIN_DOT_COM,
+        @Test
+        void doesNotMatchDifferentTld() {
+            assertFalse(resolver.redirectMatches("http://other-domain.com", clientRedirectUri));
+            assertFalse(resolver.redirectMatches("http://domain.io", clientRedirectUri));
         }
 
-        @Value
-        private static class path {
-            int segments;
-
-            static path segments(int count) {
-                return new path(count);
-            }
+        @Test
+        void doesNotMatchDifferentProtocol() {
+            assertFalse(resolver.redirectMatches("https://domain.com", clientRedirectUri));
+            assertFalse(resolver.redirectMatches("ws://domain.com", clientRedirectUri));
         }
-
-        private final String uri;
-        private final boolean http;
-        private final int domainParts;
-        private final boolean belongsToDomainDotCom;
-        private final int pathSegements;
-
-
-        @Override
-        public String toString() {
-            return uri;
-        }
-
-    }
-
-    @AllArgsConstructor
-    enum RegisteredRedirectUri {
-
-        URI_WITHOUT_WILDCARDS(
-                "http://domain.com",
-                u -> u.http && u.domainParts == 2 && u.belongsToDomainDotCom
-        ),
-        URI_ALLOWING_SINGLE_PATH_SEGMENT(
-                "http://domain.com/*",
-                u -> u.http && u.domainParts == 2 && u.belongsToDomainDotCom && u.pathSegements <= 1
-        ),
-        URI_ALLOWING_MULTIPLE_PATH_SEGMENTS(
-                "http://domain.com/**",
-                u -> u.http && u.domainParts == 2 && u.belongsToDomainDotCom
-        ),
-        URI_ALLOWING_SUBDOMAINS(
-                "http://*.domain.com/**",
-                u -> u.http && u.domainParts >= 3 && u.belongsToDomainDotCom
-        ),
-        ;
-
-        private final String uri;
-        private final Predicate<RequestedRedirectUri> expectedMatcher;
-
-        @Override
-        public String toString() {
-            return uri;
-        }
-
-        public boolean expectedMatch(RequestedRedirectUri requestedRedirectUri) {
-            return expectedMatcher.test(requestedRedirectUri);
-        }
-
     }
 
     @Nested
-    @DisplayName("general matching")
-    class GeneralMatching {
+    @DisplayName("matching http://domain.com/*")
+    class WhenMatchingWithSinglePathPattern {
+        private final String clientRedirectUri = "http://domain.com/*";
 
-        @DisplayName("matching http://domain.com")
-        @ParameterizedTest(name = "{index} matching {0} against http://domain.com")
-        @EnumSource(RequestedRedirectUri.class)
-        void matchAgainstUriWithoutWildcards(RequestedRedirectUri requestedRedirectUri) {
-            match(requestedRedirectUri, URI_WITHOUT_WILDCARDS);
-        }
-
-        @DisplayName("matching http://domain.com/*")
-        @ParameterizedTest(name = "{index} matching {0} against http://domain.com/*")
-        @EnumSource(RequestedRedirectUri.class)
-        void matchAgainstUriThatAllowsSinglePathSegment(RequestedRedirectUri requestedRedirectUri) {
-            match(requestedRedirectUri, URI_ALLOWING_SINGLE_PATH_SEGMENT);
-        }
-
-        @DisplayName("matching http://domain.com/**")
-        @ParameterizedTest(name = "{index} matching {0} against http://domain.com/**")
-        @EnumSource(RequestedRedirectUri.class)
-        void matchAgainstUriThatAllowsMulipltePathSegments(RequestedRedirectUri requestedRedirectUri) {
-            match(requestedRedirectUri, URI_ALLOWING_MULTIPLE_PATH_SEGMENTS);
-        }
-
-        @DisplayName("matching http://*.domain.com/**")
-        @ParameterizedTest(name = "{index} matching {0} against http://*.domain.com/**")
-        @EnumSource(RequestedRedirectUri.class)
-        void matchAgainstUriThatAllowsSubdomains(RequestedRedirectUri requestedRedirectUri) {
-            match(requestedRedirectUri, URI_ALLOWING_SUBDOMAINS);
-        }
-
-        private void match(RequestedRedirectUri requestedRedirectUri, RegisteredRedirectUri registeredRedirectUri) {
-            boolean expectedMatch = registeredRedirectUri.expectedMatch(requestedRedirectUri);
-
-            boolean actualMatch = resolver.redirectMatches(requestedRedirectUri.uri, registeredRedirectUri.uri);
-
-            if (expectedMatch) {
-                assertTrue("expected " + requestedRedirectUri.uri + " to match " + registeredRedirectUri + " but did not match", actualMatch);
-            } else {
-                assertFalse("expected " + requestedRedirectUri.uri + " not to match " + registeredRedirectUri + " but did match", actualMatch);
-            }
-        }
-
-        @DisplayName("should not be able to set subdomain matching")
         @Test
-        void setMatchSubdomains_throwsException() {
-            assertThrows(Exception.class, () -> resolver.setMatchSubdomains(true));
+        void shouldNotMatchSubdomains() {
+            assertFalse(resolver.redirectMatches("http://subdomain.domain.com", clientRedirectUri));
+            assertFalse(resolver.redirectMatches("http://another-subdomain.domain.com", clientRedirectUri));
+            assertFalse(resolver.redirectMatches("http://one.two.domain.com", clientRedirectUri));
         }
 
+        @Test
+        void allPathsShouldMatch() {
+            assertTrue(resolver.redirectMatches("http://domain.com/one", clientRedirectUri));
+            assertTrue(resolver.redirectMatches("http://domain.com/another", clientRedirectUri));
+            assertFalse(resolver.redirectMatches("http://domain.com/one/two", clientRedirectUri));
+        }
+
+        @Test
+        void shouldNotMatchSubdomainsWithPaths() {
+            assertFalse(resolver.redirectMatches("http://subdomain.domain.com/one", clientRedirectUri));
+            assertFalse(resolver.redirectMatches("http://subdomain.domain.com/another", clientRedirectUri));
+            assertFalse(resolver.redirectMatches("http://subdomain.domain.com/one/two", clientRedirectUri));
+
+            assertFalse(resolver.redirectMatches("http://another-subdomain.domain.com/one", clientRedirectUri));
+            assertFalse(resolver.redirectMatches("http://another-subdomain.domain.com/another", clientRedirectUri));
+            assertFalse(resolver.redirectMatches("http://another-subdomain.domain.com/one/two", clientRedirectUri));
+
+            assertFalse(resolver.redirectMatches("http://one.two.domain.com/one", clientRedirectUri));
+            assertFalse(resolver.redirectMatches("http://one.two.domain.com/another", clientRedirectUri));
+            assertFalse(resolver.redirectMatches("http://one.two.domain.com/one/two", clientRedirectUri));
+        }
+
+        @Test
+        void doesNotMatchDifferentTld() {
+            assertFalse(resolver.redirectMatches("http://other-domain.com", clientRedirectUri));
+            assertFalse(resolver.redirectMatches("http://domain.io", clientRedirectUri));
+        }
+
+        @Test
+        void doesNotMatchDifferentProtocol() {
+            assertFalse(resolver.redirectMatches("https://domain.com", clientRedirectUri));
+            assertFalse(resolver.redirectMatches("ws://domain.com", clientRedirectUri));
+        }
+    }
+
+    @Nested
+    @DisplayName("matching http://domain.com/**")
+    class WhenMatchingWithAllSubPathsPattern {
+        private final String clientRedirectUri = "http://domain.com/**";
+
+        @Test
+        void shouldNotMatchSubdomains() {
+            assertFalse(resolver.redirectMatches("http://subdomain.domain.com", clientRedirectUri));
+            assertFalse(resolver.redirectMatches("http://another-subdomain.domain.com", clientRedirectUri));
+            assertFalse(resolver.redirectMatches("http://one.two.domain.com", clientRedirectUri));
+        }
+
+        @Test
+        void allPathsShouldMatch() {
+            assertTrue(resolver.redirectMatches("http://domain.com/one", clientRedirectUri));
+            assertTrue(resolver.redirectMatches("http://domain.com/another", clientRedirectUri));
+            assertTrue(resolver.redirectMatches("http://domain.com/one/two", clientRedirectUri));
+        }
+
+        @Test
+        void shouldNotMatchSubdomainsWithPaths() {
+            assertFalse(resolver.redirectMatches("http://subdomain.domain.com/one", clientRedirectUri));
+            assertFalse(resolver.redirectMatches("http://subdomain.domain.com/another", clientRedirectUri));
+            assertFalse(resolver.redirectMatches("http://subdomain.domain.com/one/two", clientRedirectUri));
+
+            assertFalse(resolver.redirectMatches("http://another-subdomain.domain.com/one", clientRedirectUri));
+            assertFalse(resolver.redirectMatches("http://another-subdomain.domain.com/another", clientRedirectUri));
+            assertFalse(resolver.redirectMatches("http://another-subdomain.domain.com/one/two", clientRedirectUri));
+
+            assertFalse(resolver.redirectMatches("http://one.two.domain.com/one", clientRedirectUri));
+            assertFalse(resolver.redirectMatches("http://one.two.domain.com/another", clientRedirectUri));
+            assertFalse(resolver.redirectMatches("http://one.two.domain.com/one/two", clientRedirectUri));
+        }
+
+        @Test
+        void doesNotMatchDifferentTld() {
+            assertFalse(resolver.redirectMatches("http://other-domain.com", clientRedirectUri));
+            assertFalse(resolver.redirectMatches("http://domain.io", clientRedirectUri));
+        }
+
+        @Test
+        void doesNotMatchDifferentProtocol() {
+            assertFalse(resolver.redirectMatches("https://domain.com", clientRedirectUri));
+            assertFalse(resolver.redirectMatches("ws://domain.com", clientRedirectUri));
+        }
+    }
+
+
+    @DisplayName("matching http://*.domain.com/**")
+    @ParameterizedTest(name = "{index} matching {0} against http://*.domain.com/**")
+    @CsvSource({
+            "http://subdomain.domain.com,                   true",
+            "http://another-subdomain.domain.com,           true",
+            "http://one.two.domain.com,                     true",
+            "http://domain.com/one,                         false",
+            "http://domain.com/another,                     false",
+            "http://domain.com/one/two,                     false",
+            "http://subdomain.domain.com/one,               true",
+            "http://subdomain.domain.com/another,           true",
+            "http://subdomain.domain.com/one/two,           true",
+            "http://another-subdomain.domain.com/one,       true",
+            "http://another-subdomain.domain.com/another,   true",
+            "http://another-subdomain.domain.com/one/two,   true",
+            "http://one.two.domain.com/one,                 true",
+            "http://one.two.domain.com/another,             true",
+            "http://one.two.domain.com/one/two,             true",
+            "http://other-domain.com,                       false",
+            "http://domain.io,                              false",
+            "https://domain.com,                            false",
+            "ws://domain.com,                               false",
+    })
+    void matchAgainstUriThatAllowsSubdomains(String requestedRedirectUri, boolean expectedMatch) {
+        String registeredRedirectUri = "http://*.domain.com/**";
+
+        boolean actualMatch = resolver.redirectMatches(requestedRedirectUri, registeredRedirectUri);
+
+        if (expectedMatch) {
+            assertTrue("expected " + requestedRedirectUri + " to match " + registeredRedirectUri + " but did not match", actualMatch);
+        } else {
+            assertFalse("expected " + requestedRedirectUri + " not to match " + registeredRedirectUri + " but did match", actualMatch);
+        }
+    }
+
+
+    @DisplayName("should not be able to set subdomain matching")
+    @Test
+    void setMatchSubdomains_throwsException() {
+        assertThrows(Exception.class, () -> resolver.setMatchSubdomains(true));
     }
 
 
