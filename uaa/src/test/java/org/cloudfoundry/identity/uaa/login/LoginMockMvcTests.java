@@ -141,6 +141,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.cookie;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.forwardedUrl;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.model;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrlPattern;
@@ -1395,22 +1396,16 @@ public class LoginMockMvcTests {
         uaaIdentityProvider.setActive(false);
         jdbcIdentityProviderProvisioning.update(uaaIdentityProvider, uaaIdentityProvider.getIdentityZoneId());
 
-        MvcResult mvcResult = mockMvc.perform(get("/login").accept(TEXT_HTML)
+        mockMvc.perform(get("/login").accept(TEXT_HTML)
                 .servletPath("/login")
                 .with(new SetServerNameRequestPostProcessor(identityZone.getSubdomain() + ".localhost")))
                 .andExpect(status().isFound())
-                .andReturn();
-        String location = mvcResult.getResponse().getHeader("Location");
-        Map<String, String> queryParams =
-                UriComponentsBuilder.fromUriString(location).build().getQueryParams().toSingleValueMap();
-
-        assertThat(location, startsWith("https://accounts.google.com/o/oauth2/v2/auth"));
-        assertThat(queryParams, hasEntry("client_id", "uaa"));
-        assertThat(queryParams, hasEntry("response_type", "code+id_token"));
-        assertThat(queryParams, hasEntry("redirect_uri", "http%3A%2F%2F" + identityZone.getSubdomain() + ".localhost%2Flogin%2Fcallback%2F" + oauthAlias));
-        assertThat(queryParams, hasEntry("scope", "openid+roles"));
-        assertThat(queryParams, hasKey("nonce"));
-
+               .andExpect(
+                   header()
+                       .string("Location",
+                               startsWith("https://accounts.google.com/o/oauth2/v2/auth?client_id=uaa&response_type=code+id_token&redirect_uri=http%3A%2F%2F" + identityZone.getSubdomain() + ".localhost%2Flogin%2Fcallback%2F" + oauthAlias + "&scope=openid+roles&nonce=")
+                       )
+               );
         IdentityZoneHolder.clear();
     }
 
@@ -2308,11 +2303,11 @@ public class LoginMockMvcTests {
                 .with(csrf(session))
                 .header("Accept", TEXT_HTML)
                 .session(session)
-                .param("email", "marissa@other.domain")
+                .param("email", "marissa@test.org")
                 .with(new SetServerNameRequestPostProcessor(zone.getSubdomain() + ".localhost")))
                 .andExpect(status().isFound())
                 .andExpect(model().attributeExists("zone_name"))
-                .andExpect(view().name("idp_discovery/password"));
+               .andExpect(redirectedUrl("/saml/discovery?returnIDParam=idp&entityID=" + zone.getSubdomain() + ".cloudfoundry-saml-login&idp=" + originKey + "&isPassive=true"));
     }
 
     @Test
@@ -2327,23 +2322,20 @@ public class LoginMockMvcTests {
 
         MockHttpSession session = new MockHttpSession();
         getLoginForm(mockMvc, session);
-        MvcResult mvcResult = mockMvc.perform(post("/login/idp_discovery")
+        mockMvc.perform(post("/login/idp_discovery")
                 .with(csrf(session))
                 .header("Accept", TEXT_HTML)
                 .servletPath("/login/idp_discovery")
                 .param("email", "marissa@test.org")
                 .with(new SetServerNameRequestPostProcessor(zone.getSubdomain() + ".localhost")))
                 .andExpect(status().isFound())
-                .andReturn();
-        String location = mvcResult.getResponse().getHeader("Location");
-        Map<String, String> queryParams =
-                UriComponentsBuilder.fromUriString(location).build().getQueryParams().toSingleValueMap();
-
-        assertThat(location, startsWith("http://myauthurl.com"));
-        assertThat(queryParams, hasEntry("client_id", "id"));
-        assertThat(queryParams, hasEntry("response_type", "id_token+code"));
-        assertThat(queryParams, hasEntry("redirect_uri", "http%3A%2F%2F" + subdomain + ".localhost%2Flogin%2Fcallback%2F" + originKey));
-        assertThat(queryParams, hasKey("nonce"));
+                .andExpect(
+                    header()
+                        .string(
+                            "Location",
+                            startsWith("http://myauthurl.com?client_id=id&response_type=id_token+code&redirect_uri=http%3A%2F%2F"+subdomain+".localhost%2Flogin%2Fcallback%2F" +originKey+"&nonce=")
+                        )
+                );
     }
 
     @Test
