@@ -34,6 +34,7 @@ import org.cloudfoundry.identity.uaa.scim.ScimGroup;
 import org.cloudfoundry.identity.uaa.scim.ScimUser;
 import org.cloudfoundry.identity.uaa.scim.ScimUser.Name;
 import org.cloudfoundry.identity.uaa.scim.ScimUser.PhoneNumber;
+import org.cloudfoundry.identity.uaa.scim.jdbc.JdbcScimGroupProvisioning;
 import org.cloudfoundry.identity.uaa.test.UaaTestAccounts;
 import org.cloudfoundry.identity.uaa.util.JsonUtils;
 import org.cloudfoundry.identity.uaa.zone.IdentityZone;
@@ -73,12 +74,9 @@ import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestOperations;
 import org.springframework.web.client.RestTemplate;
 
-import java.net.Inet4Address;
-import java.net.UnknownHostException;
-import java.util.Arrays;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
+import java.util.stream.Stream;
 
 import static org.cloudfoundry.identity.uaa.integration.util.IntegrationTestUtils.ZONE_NAME_TEMPLATE;
 import static org.cloudfoundry.identity.uaa.provider.saml.SamlKeyManagerFactoryTests.certificate1;
@@ -153,17 +151,23 @@ public class SamlLoginWithLocalIdpIT {
         IntegrationTestUtils.createGroup(token, "", baseUrl, group);
     }
 
+    /**
+     * Note that {@link JdbcScimGroupProvisioning#deleteByIdentityZone} automatically deletes zone admin groups.
+     * Hence in this cleanup method, we first need to check if the group has already been deleted.
+     */
     @After
     public void cleanup() {
         String token = IntegrationTestUtils.getClientCredentialsToken(baseUrl, "admin", "adminsecret");
-        String groupId = IntegrationTestUtils.getGroup(token, "", baseUrl, "zones.testzone1.admin").getId();
-        IntegrationTestUtils.deleteGroup(token, "", baseUrl, groupId);
+        Stream.of("zones.testzone1.admin", "zones.testzone2.admin", "zones.uaa.admin").forEach(
+                groupName -> deleteGroupIfExists(token, groupName)
+        );
+    }
 
-        groupId = IntegrationTestUtils.getGroup(token, "", baseUrl, "zones.testzone2.admin").getId();
-        IntegrationTestUtils.deleteGroup(token, "", baseUrl, groupId);
-
-        groupId = IntegrationTestUtils.getGroup(token, "", baseUrl, "zones.uaa.admin").getId();
-        IntegrationTestUtils.deleteGroup(token, "", baseUrl, groupId);
+    private void deleteGroupIfExists(String token, String displayName) {
+        ScimGroup group = IntegrationTestUtils.getGroup(token, "", baseUrl, displayName);
+        if (group != null) {
+            IntegrationTestUtils.deleteGroup(token, "", baseUrl, group.getId());
+        }
     }
 
     /**
