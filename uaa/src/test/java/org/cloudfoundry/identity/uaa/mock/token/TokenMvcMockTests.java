@@ -1,6 +1,7 @@
 package org.cloudfoundry.identity.uaa.mock.token;
 
 import com.fasterxml.jackson.core.type.TypeReference;
+import lombok.SneakyThrows;
 import org.apache.commons.collections.map.HashedMap;
 import org.apache.commons.httpclient.util.URIUtil;
 import org.cloudfoundry.identity.uaa.account.UserInfoResponse;
@@ -35,7 +36,6 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.opensaml.xml.ConfigurationException;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.mock.web.MockHttpServletRequest;
@@ -77,9 +77,8 @@ import java.util.*;
 
 import static java.util.Collections.emptySet;
 import static org.cloudfoundry.identity.uaa.mock.util.JwtTokenUtils.getClaimsForToken;
-import static org.cloudfoundry.identity.uaa.mock.util.MockMvcUtils.CookieCsrfPostProcessor.cookieCsrf;
-import static org.cloudfoundry.identity.uaa.mock.util.MockMvcUtils.getUserOAuthAccessToken;
-import static org.cloudfoundry.identity.uaa.mock.util.MockMvcUtils.setDisableInternalAuth;
+import static org.cloudfoundry.identity.uaa.mock.util.MockMvcUtils.*;
+import static org.cloudfoundry.identity.uaa.mock.util.MockMvcUtils.CsrfPostProcessor.csrf;
 import static org.cloudfoundry.identity.uaa.oauth.client.ClientConstants.REQUIRED_USER_GROUPS;
 import static org.cloudfoundry.identity.uaa.oauth.token.ClaimConstants.CLIENT_ID;
 import static org.cloudfoundry.identity.uaa.oauth.token.ClaimConstants.JTI;
@@ -1601,17 +1600,18 @@ public class TokenMvcMockTests extends AbstractTokenMockMvcTests {
 
         MockHttpSession session = getAuthenticatedSession(developer);
 
+        getAuthorizationForm(clientId, session);
+
         String state = new RandomValueStringGenerator().generate();
 
         mockMvc.perform(
                 post("/oauth/authorize")
-                        .session(session)
                         .param(OAuth2Utils.RESPONSE_TYPE, "token")
                         .param("prompt", "none")
                         .param(OAuth2Utils.CLIENT_ID, clientId)
                         .param(OAuth2Utils.STATE, state)
                         .param(OAuth2Utils.REDIRECT_URI, redirectUrl)
-                        .with(cookieCsrf())
+                        .with(csrf(session))
         )
                 .andExpect(status().is3xxRedirection())
                 .andExpect(header().string("Location", startsWith(redirectUrl)))
@@ -1629,6 +1629,8 @@ public class TokenMvcMockTests extends AbstractTokenMockMvcTests {
 
         MockHttpSession session = getAuthenticatedSession(developer);
 
+        getAuthorizationForm(clientId, session);
+
         String state = generator.generate();
         AuthorizationRequest authorizationRequest = new AuthorizationRequest();
         authorizationRequest.setClientId(clientId);
@@ -1642,8 +1644,7 @@ public class TokenMvcMockTests extends AbstractTokenMockMvcTests {
 
         MvcResult result = mockMvc.perform(
                 post("/oauth/authorize")
-                        .session(session)
-                        .with(cookieCsrf())
+                        .with(csrf(session))
                         .param(OAuth2Utils.USER_OAUTH_APPROVAL, "true")
                         .param("scope.0", "scope.openid")
         ).andExpect(status().is3xxRedirection()).andReturn();
@@ -1666,6 +1667,8 @@ public class TokenMvcMockTests extends AbstractTokenMockMvcTests {
 
         MockHttpSession session = getAuthenticatedSession(developer);
 
+        getAuthorizationForm(clientId, session);
+
         String state = generator.generate();
 
         AuthorizationRequest authorizationRequest = new AuthorizationRequest();
@@ -1679,9 +1682,8 @@ public class TokenMvcMockTests extends AbstractTokenMockMvcTests {
 
         MvcResult result = mockMvc.perform(
                 post("/oauth/authorize")
-                        .session(session)
                         .param(OAuth2Utils.USER_OAUTH_APPROVAL, "true")
-                        .with(cookieCsrf())
+                        .with(csrf(session))
                         .param("scope.0", "scope.openid")
         ).andExpect(status().is3xxRedirection()).andReturn();
 
@@ -1693,10 +1695,12 @@ public class TokenMvcMockTests extends AbstractTokenMockMvcTests {
         assertNull(query.get("token"));
     }
 
-    @Test
-    void test_subdomain_redirect_url() throws Exception {
-        String redirectUri = "https://example.com/dashboard/?appGuid=app-guid&ace_config=test";
-        String subDomainUri = redirectUri.replace("example.com", "test.example.com");
+    private static final String URI_FORMAT = "https://%s/dashboard/?appGuid=app-guid&ace_config=test";
+
+    @SneakyThrows
+    private MockHttpServletResponse getAuthCode(String registeredDomain, String requestedDomain, ResultMatcher expectedHttpStatus) {
+        String redirectUri = String.format(URI_FORMAT, registeredDomain);
+        String subDomainUri = String.format(URI_FORMAT, requestedDomain);
         String clientId = "authclient-" + generator.generate();
         String scopes = "openid";
         setUpClients(clientId, scopes, scopes, GRANT_TYPES, true, redirectUri);
@@ -1707,7 +1711,6 @@ public class TokenMvcMockTests extends AbstractTokenMockMvcTests {
 
         String state = generator.generate();
         MockHttpServletRequestBuilder authRequest = get("/oauth/authorize")
-                .with(httpBasic(clientId, SECRET))
                 .session(session)
                 .param(OAuth2Utils.RESPONSE_TYPE, "code")
                 .param(SCOPE, "openid")
@@ -1715,10 +1718,25 @@ public class TokenMvcMockTests extends AbstractTokenMockMvcTests {
                 .param(OAuth2Utils.CLIENT_ID, clientId)
                 .param(OAuth2Utils.REDIRECT_URI, subDomainUri);
 
-        MvcResult result = mockMvc.perform(authRequest).andExpect(status().is3xxRedirection()).andReturn();
-        String location = result.getResponse().getHeader("Location");
+        return mockMvc.perform(authRequest).andExpect(expectedHttpStatus).andReturn().getResponse();
+    }
+
+    @Test
+    void getAuthCode_wildcardRegisteredRedirect_redirectToSubdomainAllowed() {
+        MockHttpServletResponse response = getAuthCode("*.example.com", "test.example.com", status().is3xxRedirection());
+
+        assertTrue(response.containsHeader("Location"));
+        String location = response.getHeader("Location"); 
         location = location.substring(0, location.indexOf("&code="));
+        String subDomainUri = String.format(URI_FORMAT, "test.example.com");
         assertEquals(subDomainUri, location);
+    }
+
+    @Test
+    void getAuthCode_registeredRedirectLacksWildcard_redirectToSubdomainForbidden() {
+        MockHttpServletResponse response = getAuthCode("example.com", "test.example.com", status().is4xxClientError());
+
+        assertFalse(response.containsHeader("Location"));
     }
 
     @Test
@@ -1781,14 +1799,14 @@ public class TokenMvcMockTests extends AbstractTokenMockMvcTests {
 
     @Test
     void ensure_that_form_redirect_is_not_a_parameter_unless_there_is_a_saved_request() throws Exception {
-        //make sure we don't create a session on the homepage
-        assertNull(
-                mockMvc.perform(
-                        get("/login")
-                )
-                        .andDo(print())
-                        .andExpect(content().string(not(containsString(FORM_REDIRECT_PARAMETER))))
-                        .andReturn().getRequest().getSession(false));
+        // GET login will return login form, which will be filled in with csrf token.
+        // HttpSessionCsrfTokenRepository will create a session if necessary, in which to store this token.
+        mockMvc.perform(
+                get("/login")
+        )
+                .andDo(print())
+                .andExpect(content().string(not(containsString(FORM_REDIRECT_PARAMETER))))
+        ;
 
         //if there is a session, but no saved request
         mockMvc.perform(
@@ -1875,10 +1893,10 @@ public class TokenMvcMockTests extends AbstractTokenMockMvcTests {
                 .andExpect(content().string(containsString(encodedRedirectUri)));
 
         //a failed login should survive the flow
-        //attempt to login without a session
+        //attempt to login with invalid password
         result = mockMvc.perform(
                 post("/login.do")
-                        .with(cookieCsrf())
+                        .with(csrf(session))
                         .param("form_redirect_uri", authUrl)
                         .param("username", username)
                         .param("password", "invalid")
@@ -1901,10 +1919,10 @@ public class TokenMvcMockTests extends AbstractTokenMockMvcTests {
                 .andExpect(content().string(containsString(FORM_REDIRECT_PARAMETER)))
                 .andExpect(content().string(containsString(encodedRedirectUri)));
 
-        //attempt to login without a session
+        //attempt to login with valid password
         mockMvc.perform(
                 post("/login.do")
-                        .with(cookieCsrf())
+                        .with(csrf(session))
                         .param("form_redirect_uri", authUrl)
                         .param("username", username)
                         .param("password", SECRET)
@@ -4590,4 +4608,28 @@ public class TokenMvcMockTests extends AbstractTokenMockMvcTests {
 
         return authorizationRequestMap;
     }
+
+    /**
+     * In order to populate session with csrf token.
+     */
+    private void getAuthorizationForm(String clientId, MockHttpSession session) throws Exception {
+        String confirmationPage = "/oauth/confirm_access";
+        mockMvc.perform(
+                get("/oauth/authorize")
+                        .param(RESPONSE_TYPE, "code")
+                        .param(CLIENT_ID, clientId)
+                        .session(session)
+                        .accept(MediaType.TEXT_HTML)
+        )
+                .andExpect(status().isOk())
+                .andExpect(forwardedUrl(confirmationPage))
+        ;
+        mockMvc.perform(
+                get(confirmationPage)
+                        .session(session)
+        )
+                .andExpect(status().isOk())
+        ;
+    }
+
 }
