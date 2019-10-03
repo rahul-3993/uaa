@@ -241,7 +241,7 @@ public class TotpMfaEndpointMockMvcTests extends InjectedMockContextTest{
         getMfaVerifyForm();
 
         getMockMvc().perform(post("/login/mfa/verify.do")
-                .param("code", Integer.toString(code + 1))
+                .param("code", Integer.toString(code+1))
                 .header("Host", "localhost")
                 .with(csrf(session)))
                 .andExpect(status().is2xxSuccessful())

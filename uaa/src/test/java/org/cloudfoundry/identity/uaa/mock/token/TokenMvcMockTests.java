@@ -2046,7 +2046,7 @@ public class TokenMvcMockTests extends AbstractTokenMockMvcTests {
         IdentityZone baseZone = identityZoneProvisioning.retrieve("uaa");
         baseZone.setEnableRedirectUriCheck(false);
         identityZoneProvisioning.update(baseZone);
-        String redirectUri = "http*://example.com/**";
+        String redirectUri = "http*://**";
         HashSet redirectUris = new HashSet(Arrays.asList(redirectUri));
         String clientId = "authclient-"+ generator.generate();
         String scopes = "openid";
@@ -2129,7 +2129,7 @@ public class TokenMvcMockTests extends AbstractTokenMockMvcTests {
         
         IdentityZoneHolder.set(identityZone);
         
-        String redirectUri = "http*://example.com/**";
+        String redirectUri = "http*://**";
         HashSet redirectUris = new HashSet(Arrays.asList(redirectUri));
         String clientId = "authclient-"+ generator.generate();
         String scopes = "openid";

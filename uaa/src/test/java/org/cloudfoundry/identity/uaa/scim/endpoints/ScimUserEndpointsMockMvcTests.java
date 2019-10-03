@@ -72,7 +72,6 @@ import java.util.Map;
 import static org.cloudfoundry.identity.uaa.codestore.ExpiringCodeType.REGISTRATION;
 import static org.cloudfoundry.identity.uaa.mock.util.MockMvcUtils.CsrfPostProcessor.csrf;
 import static org.cloudfoundry.identity.uaa.mock.util.MockMvcUtils.utils;
-import static org.cloudfoundry.identity.uaa.zone.IdentityZoneSwitchingFilter.HEADER;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.CoreMatchers.startsWith;
@@ -179,7 +178,7 @@ public class ScimUserEndpointsMockMvcTests extends InjectedMockContextTest {
             .contentType(APPLICATION_JSON)
             .content(requestBody);
         if (subdomain != null && !subdomain.equals("")) post.with(new SetServerNameRequestPostProcessor(subdomain + ".localhost"));
-        if (switchZone != null) post.header(HEADER, switchZone);
+        if (switchZone!=null) post.header(IdentityZoneSwitchingFilter.HEADER, switchZone);
 
         return getMockMvc().perform(post);
     }
@@ -813,7 +812,7 @@ public class ScimUserEndpointsMockMvcTests extends InjectedMockContextTest {
 
     private void verifyUser(String token) throws Exception {
         ScimUserProvisioning usersRepository = getWebApplicationContext().getBean(ScimUserProvisioning.class);
-        String email = "joe@" + generator.generate().toLowerCase() + ".com";
+        String email = "joe@"+generator.generate().toLowerCase()+".com";
         ScimUser joel = new ScimUser(null, email, "Joel", "D'sa");
         joel.addEmail(email);
         joel = usersRepository.createUser(joel, "pas5Word", IdentityZoneHolder.get().getId());

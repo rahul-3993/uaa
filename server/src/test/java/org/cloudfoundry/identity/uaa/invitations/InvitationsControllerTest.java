@@ -54,7 +54,6 @@ import org.springframework.web.servlet.config.annotation.DefaultServletHandlerCo
 import org.springframework.web.servlet.config.annotation.EnableWebMvc;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurerAdapter;
 
-import java.net.InetAddress;
 import java.net.URL;
 import java.sql.Timestamp;
 import java.util.Arrays;

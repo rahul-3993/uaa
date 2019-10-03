@@ -109,6 +109,7 @@ import static java.util.Collections.EMPTY_LIST;
 import static java.util.Collections.singleton;
 import static java.util.Collections.singletonList;
 import static org.cloudfoundry.identity.uaa.constants.OriginKeys.LDAP;
+import static org.cloudfoundry.identity.uaa.constants.OriginKeys.ORIGIN;
 import static org.cloudfoundry.identity.uaa.constants.OriginKeys.UAA;
 import static org.cloudfoundry.identity.uaa.mock.util.MockMvcUtils.CsrfPostProcessor.CSRF_PARAMETER_NAME;
 import static org.cloudfoundry.identity.uaa.mock.util.MockMvcUtils.CsrfPostProcessor.csrf;
@@ -186,7 +187,7 @@ public class LoginMockMvcTests extends InjectedMockContextTest {
         webApplicationContext = getWebApplicationContext();
         mockEnvironment = (MockEnvironment) webApplicationContext.getEnvironment();
         f.setAccessible(true);
-        propertySource = (MockPropertySource) ReflectionUtils.getField(f, mockEnvironment);
+        propertySource = (MockPropertySource)ReflectionUtils.getField(f, mockEnvironment);
         for (String s : propertySource.getPropertyNames()) {
             originalProperties.put(s, propertySource.getProperty(s));
         }
@@ -794,6 +795,7 @@ public class LoginMockMvcTests extends InjectedMockContextTest {
         user.setPassword("Secr3t");
         return user;
     }
+
     @Test
     public void testLogOut() throws Exception {
         getMockMvc().perform(get("/uaa/logout.do").contextPath("/uaa"))
@@ -1480,23 +1482,16 @@ public class LoginMockMvcTests extends InjectedMockContextTest {
         uaaIdentityProvider.setActive(false);
         identityProviderProvisioning.update(uaaIdentityProvider, uaaIdentityProvider.getIdentityZoneId());
 
-        MvcResult mvcResult = getMockMvc().perform(get("/login").accept(TEXT_HTML)
+        getMockMvc().perform(get("/login").accept(TEXT_HTML)
             .servletPath("/login")
             .with(new SetServerNameRequestPostProcessor(identityZone.getSubdomain() + ".localhost")))
             .andExpect(status().isFound())
-            .andReturn();
-
-        String location = mvcResult.getResponse().getHeader("Location");
-        Map<String, String> queryParams =
-            UriComponentsBuilder.fromUriString(location).build().getQueryParams().toSingleValueMap();
-
-        assertThat(location, startsWith("https://accounts.google.com/o/oauth2/v2/auth"));
-        assertThat(queryParams, hasEntry("client_id", "uaa"));
-        assertThat(queryParams, hasEntry("response_type", "code+id_token"));
-        assertThat(queryParams, hasEntry("redirect_uri", "http%3A%2F%2F" + identityZone.getSubdomain() + ".localhost%2Flogin%2Fcallback%2F" + oauthAlias));
-        assertThat(queryParams, hasEntry("scope", "openid+roles"));
-        assertThat(queryParams, hasKey("nonce"));
-
+            .andExpect(
+                header()
+                    .string("Location",
+                        startsWith("https://accounts.google.com/o/oauth2/v2/auth?client_id=uaa&response_type=code+id_token&redirect_uri=http%3A%2F%2F" + identityZone.getSubdomain() + ".localhost%2Flogin%2Fcallback%2F" + oauthAlias + "&scope=openid+roles&nonce=")
+                    )
+            );
         IdentityZoneHolder.clear();
     }
 
@@ -2029,6 +2024,7 @@ public class LoginMockMvcTests extends InjectedMockContextTest {
             .param("client_id", "random")
             .param("password", "password")
             .param("password_confirmation", "yield_unprocessable_entity");
+
         getMockMvc().perform(post)
             .andExpect(status().isFound())
             .andExpect(redirectedUrlPattern("accept?error_message_code=form_error&code=*"))
@@ -2040,6 +2036,7 @@ public class LoginMockMvcTests extends InjectedMockContextTest {
             .param("client_id", "random")
             .param("password", "password")
             .param("password_confirmation", "yield_unprocessable_entity");
+
         getMockMvc().perform(post)
             .andExpect(status().isForbidden())
             .andExpect(forwardedUrl("/invalid_request"));
@@ -2430,13 +2427,13 @@ public class LoginMockMvcTests extends InjectedMockContextTest {
         getLoginForm(getMockMvc(), session);
 
         getMockMvc().perform(post("/login/idp_discovery")
-            .with(csrf(session))
+                                 .with(csrf(session))
             .header("Accept", TEXT_HTML)
             .session(session)
-            .param("email", "marissa@other.domain")
+            .param("email", "marissa@test.org")
             .with(new SetServerNameRequestPostProcessor(zone.getSubdomain() + ".localhost")))
-                    .andExpect(model().attributeExists("zone_name"))
-                    .andExpect(view().name("idp_discovery/password"));
+            .andExpect(status().isFound())
+            .andExpect(redirectedUrl("/saml/discovery?returnIDParam=idp&entityID=" + zone.getSubdomain() + ".cloudfoundry-saml-login&idp=" + originKey + "&isPassive=true"));
     }
 
     @Test
@@ -2449,23 +2446,20 @@ public class LoginMockMvcTests extends InjectedMockContextTest {
 
         MockHttpSession session = new MockHttpSession();
         getLoginForm(getMockMvc(), session);
-        MvcResult mvcResult = getMockMvc().perform(post("/login/idp_discovery")
+        getMockMvc().perform(post("/login/idp_discovery")
             .with(csrf(session))
             .header("Accept", TEXT_HTML)
             .servletPath("/login/idp_discovery")
             .param("email", "marissa@test.org")
             .with(new SetServerNameRequestPostProcessor(zone.getSubdomain() + ".localhost")))
             .andExpect(status().isFound())
-            .andReturn();
-        String location = mvcResult.getResponse().getHeader("Location");
-        Map<String, String> queryParams =
-                UriComponentsBuilder.fromUriString(location).build().getQueryParams().toSingleValueMap();
-
-        assertThat(location, startsWith("http://myauthurl.com"));
-        assertThat(queryParams, hasEntry("client_id", "id"));
-        assertThat(queryParams, hasEntry("response_type", "id_token+code"));
-        assertThat(queryParams, hasEntry("redirect_uri", "http%3A%2F%2F" + subdomain + ".localhost%2Flogin%2Fcallback%2F" + originKey));
-        assertThat(queryParams, hasKey("nonce"));
+            .andExpect(
+                header()
+                    .string(
+                        "Location",
+                        startsWith("http://myauthurl.com?client_id=id&response_type=id_token+code&redirect_uri=http%3A%2F%2F"+subdomain+".localhost%2Flogin%2Fcallback%2F" +originKey+"&nonce=")
+                    )
+            );
     }
 
     @Test
@@ -2529,7 +2523,7 @@ public class LoginMockMvcTests extends InjectedMockContextTest {
 
         getLoginForm(getMockMvc(), session);
         getMockMvc().perform(post("/login/idp_discovery")
-            .with(csrf(session))
+                                 .with(csrf(session))
             .header("Accept", TEXT_HTML)
             .param("email", "marissa@other.domain")
             .with(new SetServerNameRequestPostProcessor(zone.getSubdomain() + ".localhost")))
@@ -2555,7 +2549,7 @@ public class LoginMockMvcTests extends InjectedMockContextTest {
 
         getLoginForm(getMockMvc(), session);
         getMockMvc().perform(post("/login/idp_discovery")
-            .with(csrf(session))
+                                 .with(csrf(session))
             .header("Accept", TEXT_HTML)
             .param("email", "marissa@test.org")
             .with(new SetServerNameRequestPostProcessor(zone.getSubdomain() + ".localhost")))
@@ -2575,7 +2569,7 @@ public class LoginMockMvcTests extends InjectedMockContextTest {
 
         getLoginForm(getMockMvc(), session);
         getMockMvc().perform(post("/login/idp_discovery")
-            .with(csrf(session))
+                                 .with(csrf(session))
             .header("Accept", TEXT_HTML)
             .session(session)
             .param("email", "marissa@other.domain")
@@ -2602,7 +2596,7 @@ public class LoginMockMvcTests extends InjectedMockContextTest {
 
         getLoginForm(getMockMvc(), session);
         getMockMvc().perform(post("/login/idp_discovery")
-            .with(csrf(session))
+                                 .with(csrf(session))
             .header("Accept", TEXT_HTML)
             .param("email", "marissa@testLdap.org")
             .with(new SetServerNameRequestPostProcessor(zone.getSubdomain() + ".localhost")))
@@ -2762,7 +2756,7 @@ public class LoginMockMvcTests extends InjectedMockContextTest {
             .contextPath("/uaa")
             .param("username", username)
             .param("password", "wrong_password");
-        for (int i = 0; i < numberOfAttempts; i++) {
+        for (int i = 0; i < numberOfAttempts ; i++) {
             getMockMvc().perform(post)
                 .andExpect(redirectedUrl("/uaa/login?error=login_failure"))
                 .andExpect(emptyCurrentUserCookie());
