@@ -68,6 +68,7 @@ public class DefaultIntegrationTestConfig {
           "--allow-running-insecure-content",
           "--allow-insecure-localhost",
           "--no-sandbox",
+          "--disable-dev-shm-usage",
           "--disable-gpu"
         );
 
