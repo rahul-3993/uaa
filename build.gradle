@@ -60,14 +60,7 @@ allprojects {
                 username geArtifactoryReader
                 password geArtifactoryReaderPassword
             }
-            url 'https://devcloud.swcoe.ge.com/artifactory/PREDIX'
-        }
-        maven {
-            credentials {
-                username geArtifactoryReader
-                password geArtifactoryReaderPassword
-            }
-            url 'https://devcloud.swcoe.ge.com/artifactory/PREDIX-SNAPSHOT'
+            url 'https://artifactory.build.ge.com/predix-virtual'
         }
         // Repositories required to download jwt-bearer-key-provider
         maven {
@@ -75,14 +68,7 @@ allprojects {
                 username geArtifactoryReader
                 password geArtifactoryReaderPassword
             }
-            url 'https://devcloud.swcoe.ge.com/artifactory/MAAXA-MVN'
-        }
-        maven {
-            credentials {
-                username geArtifactoryReader
-                password geArtifactoryReaderPassword
-            }
-            url 'https://devcloud.swcoe.ge.com/artifactory/MAAXA-MVN-SNAPSHOT'
+            url 'https://artifactory.build.ge.com/artifactory/MAAXA'
         }
         maven {
             url 'https://build.shibboleth.net/nexus/content/repositories/releases/'
@@ -179,6 +165,13 @@ subprojects {
         maven { url 'https://jitpack.io' }
         maven { url "https://repo.spring.io/release" }
         maven { url "https://repo.maven.apache.org/maven2" }
+        maven {
+            credentials {
+                username geArtifactoryReader
+                password geArtifactoryReaderPassword
+            }
+            url 'https://artifactory.build.ge.com/predix-virtual'
+        }
     }
 
     tasks.withType(Test) {
