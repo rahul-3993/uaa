@@ -1,13 +1,9 @@
 #!/usr/bin/env groovy
-def devcloudArtServer = Artifactory.server('devcloud')
+def buildGeArtServer = Artifactory.server('build.ge')
 
 @Library(['PPCmanifest','security-ci-commons-shared-lib']) _
 def NODE = nodeDetails("uaa")
 def APP_VERSION = 'UNKNOWN'
-def BINTRAY_LOCATION = 'UNKNOWN'
-def BINTRAY_ARTIFACT1 = 'UNKNOWN'
-def BINTRAY_ARTIFACT2 = 'UNKNOWN'
-def BINTRAY_JENKINSFILE = 'UNKNOWN'
 
 pipeline {
     agent none
@@ -23,7 +19,7 @@ pipeline {
         booleanParam(name: 'MOCK_MVC_TESTS', defaultValue: true, description: 'Run Mock MVC tests')
         booleanParam(name: 'INTEGRATION_TESTS', defaultValue: true, description: 'Run Integration tests')
         booleanParam(name: 'DEGRADED_TESTS', defaultValue: true, description: 'Run degraded mode tests')
-        booleanParam(name: 'PUSH_TO_DEVCLOUD', defaultValue: false, description: 'Publish to build artifactory')
+        booleanParam(name: 'PUSH_TO_BUILD_GE', defaultValue: false, description: 'Publish to build artifactory')
     }
     stages {
         stage('Build and run Tests') {
@@ -392,14 +388,11 @@ pipeline {
             }
         }
         stage('Upload Build Artifact') {
-            environment {
-                BINTRAY_CREDS = credentials("BINTRAY_CREDS")
-            }
             agent {
                 label 'dind'
             }
             when {
-                expression { params.PUSH_TO_DEVCLOUD == true }
+                expression { params.PUSH_TO_BUILD_GE == true }
             }
             steps{
                 dir('uaa') {
@@ -422,40 +415,12 @@ pipeline {
                        "files": [
                            {
                                "pattern": "build/cloudfoundry-identity-uaa-${APP_VERSION}.war",
-                               "target": "MAAXA-MVN/builds/uaa/${APP_VERSION}/"
+                               "target": "MAAXA/builds/uaa/${APP_VERSION}/"
                            }
                        ]
                     }"""
-                    def buildInfo = devcloudArtServer.upload(uploadSpec)
-                    devcloudArtServer.publishBuildInfo(buildInfo)
-
-                    BINTRAY_LOCATION = "https://api.bintray.com/content/gedigital/Rosneft/uaa/${APP_VERSION}"
-                    echo "BINTRAY_LOCATION=${BINTRAY_LOCATION}"
-
-                    BINTRAY_ARTIFACT1="predix-uaa/cloudfoundry-identity-uaa-${APP_VERSION}.war"
-                    LOCAL_ARTIFACT1="build/cloudfoundry-identity-uaa-${APP_VERSION}.war"
-
-                    BINTRAY_ARTIFACT2="predix-uaa/ppc-uaa-deploy-${APP_VERSION}.tgz"
-                    LOCAL_ARTIFACT2="ppc-uaa-deploy-${APP_VERSION}.tgz"
-
-                    BINTRAY_JENKINSFILE="predix-uaa/PPCDeployJenkinsfile-${APP_VERSION}"
-                    LOCAL_JENKINSFILE="uaa/PPCDeployJenkinsfile"
-
-                    echo 'package offline install files to CLZ'
-                    sh """#!/bin/bash -ex
-                        # currently only pulls config for rosneft PPC, maybe parameterize per PPC later
-                        # TODO: compose .toml file and push along with tar and war
-                        tar -zcf $LOCAL_ARTIFACT2 uaa-cf-release
-    
-                        curl -vvv -T $LOCAL_ARTIFACT1 -u$BINTRAY_CREDS_USR:$BINTRAY_CREDS_PSW $BINTRAY_LOCATION/$BINTRAY_ARTIFACT1?override=1
-                        
-                        curl -vvv -T $LOCAL_ARTIFACT2 -u$BINTRAY_CREDS_USR:$BINTRAY_CREDS_PSW $BINTRAY_LOCATION/$BINTRAY_ARTIFACT2?override=1
-                        
-                        curl -vvv -T $LOCAL_JENKINSFILE -u$BINTRAY_CREDS_USR:$BINTRAY_CREDS_PSW $BINTRAY_LOCATION/$BINTRAY_JENKINSFILE?override=1
-    
-                        echo 'publish file in bintray'
-                        curl -X POST -u$BINTRAY_CREDS_USR:$BINTRAY_CREDS_PSW $BINTRAY_LOCATION/publish
-                    """
+                    def buildInfo = buildGeArtServer.upload(uploadSpec)
+                    buildGeArtServer.publishBuildInfo(buildInfo)
                 }
             }
             post {
@@ -467,16 +432,26 @@ pipeline {
                 }
             }
         }
-        stage('Updating manifest for cloudfoundry-identity-uaa.war') {
+
+        stage('Trigger publish to Bintray') {
+            when {
+                expression { params.PUSH_TO_BUILD_GE == true }
+            }
             steps {
-                PPC_Update("Rosneft","uaa","${APP_VERSION}","uaa","${BINTRAY_ARTIFACT1}","artifact","snapshot","uaa/${APP_VERSION}/${BINTRAY_JENKINSFILE}");
+                script {
+                    build job: "PublishBintray/${env.BRANCH_NAME}",
+                    wait: false
+                }
+            }
+            post {
+                success {
+                    echo 'Trigger publishing to Bintray succeeded'
+                }
+                failure {
+                    echo 'Trigger publishing to Bintray failed'
+                }
             }
         }
-        stage('Updating manifest for ppc-uaa-deploy.tgz') {
-            steps {
-                PPC_Update("Rosneft","uaa","${APP_VERSION}","uaa","${BINTRAY_ARTIFACT2}","artifact","snapshot","uaa/${APP_VERSION}/${BINTRAY_JENKINSFILE}");
-            }
-        }      
     }
     post {
         success {
