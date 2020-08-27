@@ -1,13 +1,9 @@
 #!/usr/bin/env groovy
-def devcloudArtServer = Artifactory.server('devcloud')
+def buildGeArtServer = Artifactory.server('build.ge')
 
 @Library(['PPCmanifest','security-ci-commons-shared-lib']) _
 def NODE = nodeDetails("uaa")
 def APP_VERSION = 'UNKNOWN'
-def BINTRAY_LOCATION = 'UNKNOWN'
-def BINTRAY_ARTIFACT1 = 'UNKNOWN'
-def BINTRAY_ARTIFACT2 = 'UNKNOWN'
-def BINTRAY_JENKINSFILE = 'UNKNOWN'
 
 pipeline {
     agent none
@@ -23,7 +19,7 @@ pipeline {
         booleanParam(name: 'MOCK_MVC_TESTS', defaultValue: true, description: 'Run Mock MVC tests')
         booleanParam(name: 'INTEGRATION_TESTS', defaultValue: true, description: 'Run Integration tests')
         booleanParam(name: 'DEGRADED_TESTS', defaultValue: true, description: 'Run degraded mode tests')
-        booleanParam(name: 'PUSH_TO_DEVCLOUD', defaultValue: false, description: 'Publish to build artifactory')
+        booleanParam(name: 'PUSH_TO_BUILD_GE', defaultValue: false, description: 'Publish to build artifactory')
     }
     stages {
         stage('Build and run Tests') {
@@ -396,7 +392,7 @@ pipeline {
                 label 'dind'
             }
             when {
-                expression { params.PUSH_TO_DEVCLOUD == true }
+                expression { params.PUSH_TO_BUILD_GE == true }
             }
             steps{
                 dir('uaa') {
@@ -419,12 +415,12 @@ pipeline {
                        "files": [
                            {
                                "pattern": "build/cloudfoundry-identity-uaa-${APP_VERSION}.war",
-                               "target": "MAAXA-MVN/builds/uaa/${APP_VERSION}/"
+                               "target": "MAAXA/builds/uaa/${APP_VERSION}/"
                            }
                        ]
                     }"""
-                    def buildInfo = devcloudArtServer.upload(uploadSpec)
-                    devcloudArtServer.publishBuildInfo(buildInfo)
+                    def buildInfo = buildGeArtServer.upload(uploadSpec)
+                    buildGeArtServer.publishBuildInfo(buildInfo)
                 }
             }
             post {
@@ -439,7 +435,7 @@ pipeline {
 
         stage('Trigger publish to Bintray') {
             when {
-                expression { params.PUSH_TO_DEVCLOUD == true }
+                expression { params.PUSH_TO_BUILD_GE == true }
             }
             steps {
                 script {
