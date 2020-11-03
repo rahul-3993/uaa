@@ -252,7 +252,7 @@ public class SamlLoginIT {
         webDriver.findElement(By.name("username")).clear();
         webDriver.findElement(By.name("username")).sendKeys(testAccounts.getUserName());
         webDriver.findElement(By.name("password")).sendKeys(testAccounts.getPassword());
-        webDriver.findElement(By.xpath("//input[@value='Login']")).click();
+        webDriver.findElement(By.id("submit_button")).click();
 
         assertThat(webDriver.getCurrentUrl(), containsString(redirectUri + "?error=access_denied&error_description=SAML+user+does+not+exist.+You+can+correct+this+by+creating+a+shadow+user+for+the+SAML+user."));
     }
@@ -305,7 +305,7 @@ public class SamlLoginIT {
         webDriver.findElement(By.name("username")).clear();
         webDriver.findElement(By.name("username")).sendKeys(testAccounts.getUserName());
         webDriver.findElement(By.name("password")).sendKeys(testAccounts.getPassword());
-        webDriver.findElement(By.xpath("//input[@value='Login']")).click();
+        webDriver.findElement(By.id("submit_button")).click();
 
         assertEquals("No local entity found for alias invalid, verify your configuration.", webDriver.findElement(By.cssSelector("h2")).getText());
     }
@@ -346,7 +346,7 @@ public class SamlLoginIT {
         webDriver.findElement(By.name("username")).clear();
         webDriver.findElement(By.name("username")).sendKeys(testAccounts.getUserName());
         webDriver.findElement(By.name("password")).sendKeys(testAccounts.getPassword());
-        webDriver.findElement(By.xpath("//input[@value='Login']")).click();
+        webDriver.findElement(By.id("submit_button")).click();
         assertThat(webDriver.findElement(By.cssSelector("h1")).getText(), Matchers.containsString("Where to"));
 
         logout();
@@ -407,7 +407,7 @@ public class SamlLoginIT {
         webDriver.findElement(By.name("username")).clear();
         webDriver.findElement(By.name("username")).sendKeys(testAccounts.getUserName());
         webDriver.findElement(By.name("password")).sendKeys(testAccounts.getPassword());
-        webDriver.findElement(By.xpath("//input[@value='Login']")).click();
+        webDriver.findElement(By.id("submit_button")).click();
         assertThat(webDriver.findElement(By.cssSelector("h1")).getText(), Matchers.containsString("Where to"));
 
         String redirectUrl = zoneUrl + "/login?test=test";
@@ -442,7 +442,7 @@ public class SamlLoginIT {
         webDriver.findElement(By.name("username")).clear();
         webDriver.findElement(By.name("username")).sendKeys(testAccounts.getUserName());
         webDriver.findElement(By.name("password")).sendKeys(testAccounts.getPassword());
-        webDriver.findElement(By.xpath("//input[@value='Login']")).click();
+        webDriver.findElement(By.id("submit_button")).click();
         assertThat(webDriver.findElement(By.cssSelector("h1")).getText(), Matchers.containsString("Where to"));
 
         webDriver.findElement(By.cssSelector(".dropdown-trigger")).click();
@@ -478,7 +478,7 @@ public class SamlLoginIT {
         webDriver.findElement(By.name("username")).clear();
         webDriver.findElement(By.name("username")).sendKeys(username);
         webDriver.findElement(By.name("password")).sendKeys(password);
-        webDriver.findElement(By.xpath("//input[@value='Login']")).click();
+        webDriver.findElement(By.id("submit_button")).click();
         assertThat(webDriver.findElement(By.cssSelector("h1")).getText(), Matchers.containsString(lookfor));
         IntegrationTestUtils.validateAccountChooserCookie(baseUrl, webDriver, IdentityZoneHolder.get());
     }
@@ -615,7 +615,7 @@ public class SamlLoginIT {
         webDriver.findElement(By.name("username")).clear();
         webDriver.findElement(By.name("username")).sendKeys(username);
         webDriver.findElement(By.name("password")).sendKeys(password);
-        webDriver.findElement(By.xpath("//input[@value='Login']")).click();
+        webDriver.findElement(By.id("submit_button")).click();
 
         //we should now be on the login page because we don't have a redirect
         assertThat(webDriver.findElement(By.cssSelector("h1")).getText(), Matchers.containsString("Where to?"));
@@ -692,7 +692,7 @@ public class SamlLoginIT {
         webDriver.findElement(By.name("username")).clear();
         webDriver.findElement(By.name("username")).sendKeys(testAccounts.getUserName());
         webDriver.findElement(By.name("password")).sendKeys("koala");
-        webDriver.findElement(By.xpath("//input[@value='Login']")).click();
+        webDriver.findElement(By.id("submit_button")).click();
 
         assertThat(webDriver.getCurrentUrl(), startsWith("https://www.google.com"));
         webDriver.get(baseUrl + "/logout.do");
@@ -761,7 +761,7 @@ public class SamlLoginIT {
         webDriver.findElement(By.name("username")).clear();
         webDriver.findElement(By.name("username")).sendKeys(testAccounts.getUserName());
         webDriver.findElement(By.name("password")).sendKeys("koala");
-        webDriver.findElement(By.xpath("//input[@value='Login']")).click();
+        webDriver.findElement(By.id("submit_button")).click();
 
         assertThat(webDriver.findElement(By.cssSelector("h1")).getText(), Matchers.containsString("Where to?"));
         webDriver.get(baseUrl + "/logout.do");
@@ -852,7 +852,7 @@ public class SamlLoginIT {
         webDriver.findElement(By.name("username")).clear();
         webDriver.findElement(By.name("username")).sendKeys("marissa4");
         webDriver.findElement(By.name("password")).sendKeys("saml2");
-        webDriver.findElement(By.xpath("//input[@value='Login']")).click();
+        webDriver.findElement(By.id("submit_button")).click();
 
         assertThat(webDriver.findElement(By.cssSelector("h1")).getText(), Matchers.containsString("Where to?"));
         webDriver.get(baseUrl + "/logout.do");
@@ -948,7 +948,7 @@ public class SamlLoginIT {
         webDriver.findElement(By.name("username")).clear();
         webDriver.findElement(By.name("username")).sendKeys("marissa5");
         webDriver.findElement(By.name("password")).sendKeys("saml5");
-        webDriver.findElement(By.xpath("//input[@value='Login']")).click();
+        webDriver.findElement(By.id("submit_button")).click();
         assertThat(webDriver.findElement(By.cssSelector("h1")).getText(), Matchers.containsString("Where to?"));
 
         Cookie cookie= webDriver.manage().getCookieNamed("JSESSIONID");
@@ -1181,7 +1181,7 @@ public class SamlLoginIT {
         webDriver.findElement(By.name("username")).clear();
         webDriver.findElement(By.name("username")).sendKeys("marissa6");
         webDriver.findElement(By.name("password")).sendKeys("saml6");
-        webDriver.findElement(By.xpath("//input[@value='Login']")).click();
+        webDriver.findElement(By.id("submit_button")).click();
         assertThat(webDriver.findElement(By.cssSelector("h1")).getText(), Matchers.containsString("Where to?"));
 
         Cookie cookie= webDriver.manage().getCookieNamed("JSESSIONID");
@@ -1292,7 +1292,7 @@ public class SamlLoginIT {
         webDriver.findElement(By.name("username")).clear();
         webDriver.findElement(By.name("username")).sendKeys(testAccounts.getUserName());
         webDriver.findElement(By.name("password")).sendKeys(testAccounts.getPassword());
-        webDriver.findElement(By.xpath("//input[@value='Login']")).click();
+        webDriver.findElement(By.id("submit_button")).click();
         assertThat(webDriver.findElement(By.cssSelector("h1")).getText(), Matchers.containsString("Where to?"));
 
         webDriver.get(baseUrl + "/logout.do");
@@ -1393,7 +1393,7 @@ public class SamlLoginIT {
         webDriver.findElement(By.name("username")).clear();
         webDriver.findElement(By.name("username")).sendKeys(testAccounts.getUserName());
         webDriver.findElement(By.name("password")).sendKeys("koala");
-        webDriver.findElement(By.xpath("//input[@value='Login']")).click();
+        webDriver.findElement(By.id("submit_button")).click();
 
         assertThat(webDriver.findElement(By.cssSelector("h1")).getText(), Matchers.containsString("Where to?"));
         webDriver.get(baseUrl + "/logout.do");
@@ -1493,6 +1493,6 @@ public class SamlLoginIT {
         webDriver.findElement(By.name("username")).clear();
         webDriver.findElement(By.name("username")).sendKeys(testAccounts.getUserName());
         webDriver.findElement(By.name("password")).sendKeys(testAccounts.getPassword());
-        webDriver.findElement(By.xpath("//input[@value='Login']")).click();
+        webDriver.findElement(By.id("submit_button")).click();
     }
 }

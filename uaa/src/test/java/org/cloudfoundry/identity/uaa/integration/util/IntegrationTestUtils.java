@@ -86,7 +86,7 @@ import static org.springframework.util.StringUtils.hasText;
 
 public class IntegrationTestUtils {
 
-    public static final String SIMPLESAMLPHP_UAA_ACCEPTANCE = "http://simplesamlphp.uaa-acceptance.cf-app.com";
+    public static final String SIMPLESAMLPHP_UAA_ACCEPTANCE = "http://simplesamlphp.cfapps.io";
     public static final String SIMPLESAMLPHP_LOGIN_PROMPT_XPATH_EXPR =
         "//h2[contains(text(), 'Enter your username and password')]";
 
@@ -123,7 +123,7 @@ public class IntegrationTestUtils {
             "  </md:ContactPerson>\n" +
             "</md:EntityDescriptor>\n";
 
-    public static final String OIDC_ACCEPTANCE_URL = "https://oidc10.uaa-acceptance.cf-app.com/";
+    public static final String OIDC_ACCEPTANCE_URL = "https://oidc10.oms.identity.team/";
 
     public static void updateUserToForcePasswordChange(RestTemplate restTemplate, String baseUrl, String adminToken, String userId) {
         updateUserToForcePasswordChange(restTemplate, baseUrl, adminToken, userId, null);
