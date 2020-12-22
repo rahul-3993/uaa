@@ -220,12 +220,8 @@ pipeline {
 
                             curl -v http://simplesamlphp.uaa-acceptance.cf-app.com/saml2/idp/metadata.php
 
-                            install_chromedriver
-
-                            ### install ldap
-                            apt-get -y update || echo "problems were encountered when trying to update the package index, but let's continue anyway"
-                            DEBIAN_FRONTEND=noninteractive apt-get -qy install slapd ldap-utils
-                            /etc/init.d/slapd start 
+                            ### start slapd and add entries to ldap for tests
+                            /etc/init.d/slapd start
                             /etc/init.d/slapd status
                             ldapadd -Y EXTERNAL -H ldapi:/// -f uaa/uaa/src/test/resources/ldap_db_init.ldif
                             ldapadd -x -D 'cn=admin,dc=test,dc=com' -w password -f uaa/uaa/src/test/resources/ldap_init.ldif
