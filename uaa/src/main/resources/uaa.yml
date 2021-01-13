@@ -577,3 +577,7 @@ ldap:
     password: 'password'
     searchBase: 'dc=test,dc=com'
     searchFilter: 'cn={0}'
+
+springdoc:
+  api-docs:
+    path: /api-docs
