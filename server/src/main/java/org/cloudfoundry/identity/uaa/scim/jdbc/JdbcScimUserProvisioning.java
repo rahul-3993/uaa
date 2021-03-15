@@ -12,8 +12,8 @@
  *******************************************************************************/
 package org.cloudfoundry.identity.uaa.scim.jdbc;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.cloudfoundry.identity.uaa.audit.event.SystemDeletable;
 import org.cloudfoundry.identity.uaa.constants.OriginKeys;
 import org.cloudfoundry.identity.uaa.resources.ResourceMonitor;
@@ -31,7 +31,6 @@ import org.cloudfoundry.identity.uaa.scim.exception.ScimResourceConstraintFailed
 import org.cloudfoundry.identity.uaa.scim.exception.ScimResourceNotFoundException;
 import org.cloudfoundry.identity.uaa.scim.util.ScimUtils;
 import org.cloudfoundry.identity.uaa.user.JdbcUaaUserDatabase;
-import org.cloudfoundry.identity.uaa.util.PasswordEncoderFactory;
 import org.cloudfoundry.identity.uaa.util.TimeService;
 import org.cloudfoundry.identity.uaa.util.TimeServiceImpl;
 import org.springframework.dao.DuplicateKeyException;
@@ -39,14 +38,11 @@ import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.dao.IncorrectResultSizeDataAccessException;
 import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.jdbc.core.PreparedStatementSetter;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.security.authentication.BadCredentialsException;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.util.Assert;
 
-import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
@@ -66,10 +62,10 @@ import static org.springframework.util.StringUtils.hasText;
 public class JdbcScimUserProvisioning extends AbstractQueryable<ScimUser>
     implements ScimUserProvisioning, ResourceMonitor<ScimUser>, SystemDeletable {
 
-    private final Log logger = LogFactory.getLog(getClass());
+    private final Logger logger = LoggerFactory.getLogger(getClass());
 
     @Override
-    public Log getLogger() {
+    public Logger getLogger() {
         return logger;
     }
 
@@ -78,7 +74,7 @@ public class JdbcScimUserProvisioning extends AbstractQueryable<ScimUser>
     public static final String CREATE_USER_SQL = "insert into users (" + USER_FIELDS
                     + ",password) values (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
 
-    public static final String UPDATE_USER_SQL = "update users set version=?, lastModified=?, userName=?, email=?, givenName=?, familyName=?, active=?, phoneNumber=?, verified=?, origin=?, external_id=?, salt=? where id=? and version=? and identity_zone_id=?";
+    public static final String UPDATE_USER_SQL = "update users set version=?, lastModified=?, username=?, email=?, givenName=?, familyName=?, active=?, phoneNumber=?, verified=?, origin=?, external_id=?, salt=? where id=? and version=? and identity_zone_id=?";
 
     public static final String DEACTIVATE_USER_SQL = "update users set active=? where id=? and identity_zone_id=?";
 
@@ -98,6 +94,12 @@ public class JdbcScimUserProvisioning extends AbstractQueryable<ScimUser>
 
     public static final String USER_BY_ID_QUERY = "select " + USER_FIELDS + " from users " + "where id=? and identity_zone_id=?";
 
+    public static final String USER_BY_EMAIL_AND_ORIGIN_AND_ZONE_QUERY = "select " + USER_FIELDS + " from users " + "where LOWER(email)=LOWER(?) and LOWER(origin)=LOWER(?) and LOWER(identity_zone_id)=LOWER(?)";
+
+    public static final String USER_BY_USERNAME_AND_ZONE_QUERY = "select " + USER_FIELDS + " from users " + "where LOWER(username)=LOWER(?) and LOWER(identity_zone_id)=LOWER(?)";
+
+    public static final String USER_BY_USERNAME_AND_ORIGIN_AND_ZONE_QUERY = "select " + USER_FIELDS + " from users " + "where LOWER(username)=LOWER(?) and LOWER(origin)=LOWER(?) and LOWER(identity_zone_id)=LOWER(?)";
+
     public static final String ALL_USERS = "select " + USER_FIELDS + " from users";
 
     public static final String HARD_DELETE_OF_GROUP_MEMBERS_BY_ZONE = "delete from group_membership where identity_zone_id = ?";
@@ -110,7 +112,7 @@ public class JdbcScimUserProvisioning extends AbstractQueryable<ScimUser>
 
     protected final JdbcTemplate jdbcTemplate;
 
-    private PasswordEncoder passwordEncoder = new PasswordEncoderFactory().get();
+    private final PasswordEncoder passwordEncoder;
 
     private boolean deactivateOnDelete = true;
 
@@ -120,11 +122,15 @@ public class JdbcScimUserProvisioning extends AbstractQueryable<ScimUser>
 
     private TimeService timeService = new TimeServiceImpl();
 
-    public JdbcScimUserProvisioning(JdbcTemplate jdbcTemplate, JdbcPagingListFactory pagingListFactory) {
+    public JdbcScimUserProvisioning(
+            JdbcTemplate jdbcTemplate,
+            JdbcPagingListFactory pagingListFactory,
+            final PasswordEncoder passwordEncoder) {
         super(jdbcTemplate, pagingListFactory, mapper);
         Assert.notNull(jdbcTemplate);
         this.jdbcTemplate = jdbcTemplate;
         setQueryConverter(new SimpleSearchQueryConverter());
+        this.passwordEncoder = passwordEncoder;
     }
 
     public void setTimeService(TimeService timeService) {
@@ -138,6 +144,21 @@ public class JdbcScimUserProvisioning extends AbstractQueryable<ScimUser>
         } catch (EmptyResultDataAccessException e) {
             throw new ScimResourceNotFoundException("User " + id + " does not exist");
         }
+    }
+
+    @Override
+    public List<ScimUser> retrieveByEmailAndZone(String email, String origin, String zoneId) {
+        return jdbcTemplate.query(USER_BY_EMAIL_AND_ORIGIN_AND_ZONE_QUERY, mapper, email, origin, zoneId);
+    }
+
+    @Override
+    public List<ScimUser> retrieveByUsernameAndZone(String username, String zoneId) {
+        return jdbcTemplate.query(USER_BY_USERNAME_AND_ZONE_QUERY , mapper, username, zoneId);
+    }
+
+    @Override
+    public List<ScimUser> retrieveByUsernameAndOriginAndZone(String username, String origin, String zoneId) {
+        return jdbcTemplate.query(USER_BY_USERNAME_AND_ORIGIN_AND_ZONE_QUERY , mapper, username, origin, zoneId);
     }
 
     @Override
@@ -167,42 +188,39 @@ public class JdbcScimUserProvisioning extends AbstractQueryable<ScimUser>
         final String origin = user.getOrigin();
 
         try {
-            jdbcTemplate.update(CREATE_USER_SQL, new PreparedStatementSetter() {
-                @Override
-                public void setValues(PreparedStatement ps) throws SQLException {
-                    Timestamp t = new Timestamp(new Date().getTime());
-                    ps.setString(1, id);
-                    ps.setInt(2, user.getVersion());
-                    ps.setTimestamp(3, t);
-                    ps.setTimestamp(4, t);
-                    ps.setString(5, user.getUserName());
-                    ps.setString(6, user.getPrimaryEmail());
-                    if (user.getName() == null) {
-                        ps.setString(7, null);
-                        ps.setString(8, null);
-                    }
-                    else {
-                        ps.setString(7, user.getName().getGivenName());
-                        ps.setString(8, user.getName().getFamilyName());
-                    }
-                    ps.setBoolean(9, user.isActive());
-                    String phoneNumber = extractPhoneNumber(user);
-                    ps.setString(10, phoneNumber);
-                    ps.setBoolean(11, user.isVerified());
-                    ps.setString(12, origin);
-                    ps.setString(13, hasText(user.getExternalId())?user.getExternalId():null);
-                    ps.setString(14, identityZoneId);
-                    ps.setString(15, user.getSalt());
-
-                    ps.setTimestamp(16, getPasswordLastModifiedTimestamp(t));
-                    ps.setNull(17, Types.BIGINT);
-                    ps.setNull(18, Types.BIGINT);
-                    ps.setString(19, user.getPassword());
+            jdbcTemplate.update(CREATE_USER_SQL, ps -> {
+                Timestamp t = new Timestamp(new Date().getTime());
+                ps.setString(1, id);
+                ps.setInt(2, user.getVersion());
+                ps.setTimestamp(3, t);
+                ps.setTimestamp(4, t);
+                ps.setString(5, user.getUserName());
+                ps.setString(6, user.getPrimaryEmail());
+                if (user.getName() == null) {
+                    ps.setString(7, null);
+                    ps.setString(8, null);
                 }
+                else {
+                    ps.setString(7, user.getName().getGivenName());
+                    ps.setString(8, user.getName().getFamilyName());
+                }
+                ps.setBoolean(9, user.isActive());
+                String phoneNumber = extractPhoneNumber(user);
+                ps.setString(10, phoneNumber);
+                ps.setBoolean(11, user.isVerified());
+                ps.setString(12, origin);
+                ps.setString(13, hasText(user.getExternalId())?user.getExternalId():null);
+                ps.setString(14, identityZoneId);
+                ps.setString(15, user.getSalt());
 
+                ps.setTimestamp(16, getPasswordLastModifiedTimestamp(t));
+                ps.setNull(17, Types.BIGINT);
+                ps.setNull(18, Types.BIGINT);
+                ps.setString(19, user.getPassword());
             });
         } catch (DuplicateKeyException e) {
-            ScimUser existingUser = query("userName eq \"" + user.getUserName() + "\" and origin eq \"" + (hasText(user.getOrigin())? user.getOrigin() : OriginKeys.UAA) + "\"", zoneId).get(0);
+            String userOrigin = hasText(user.getOrigin()) ? user.getOrigin() : OriginKeys.UAA;
+            ScimUser existingUser = retrieveByUsernameAndOriginAndZone(user.getUserName(), userOrigin, zoneId).get(0);
             Map<String,Object> userDetails = new HashMap<>();
             userDetails.put("active", existingUser.isActive());
             userDetails.put("verified", existingUser.isVerified());
@@ -239,27 +257,24 @@ public class JdbcScimUserProvisioning extends AbstractQueryable<ScimUser>
         final String origin = hasText(user.getOrigin()) ? user.getOrigin() : OriginKeys.UAA;
         user.setOrigin(origin);
         ScimUtils.validate(user);
-        int updated = jdbcTemplate.update(UPDATE_USER_SQL, new PreparedStatementSetter() {
-            @Override
-            public void setValues(PreparedStatement ps) throws SQLException {
-                int pos = 1;
-                Timestamp t = new Timestamp(new Date().getTime());
-                ps.setInt(pos++, user.getVersion() + 1);
-                ps.setTimestamp(pos++, t);
-                ps.setString(pos++, user.getUserName());
-                ps.setString(pos++, user.getPrimaryEmail());
-                ps.setString(pos++, user.getName().getGivenName());
-                ps.setString(pos++, user.getName().getFamilyName());
-                ps.setBoolean(pos++, user.isActive());
-                ps.setString(pos++, extractPhoneNumber(user));
-                ps.setBoolean(pos++, user.isVerified());
-                ps.setString(pos++, origin);
-                ps.setString(pos++, hasText(user.getExternalId())?user.getExternalId():null);
-                ps.setString(pos++, user.getSalt());
-                ps.setString(pos++, id);
-                ps.setInt(pos++, user.getVersion());
-                ps.setString(pos++, zoneId);
-            }
+        int updated = jdbcTemplate.update(UPDATE_USER_SQL, ps -> {
+            int pos = 1;
+            Timestamp t = new Timestamp(new Date().getTime());
+            ps.setInt(pos++, user.getVersion() + 1);
+            ps.setTimestamp(pos++, t);
+            ps.setString(pos++, user.getUserName());
+            ps.setString(pos++, user.getPrimaryEmail());
+            ps.setString(pos++, user.getName().getGivenName());
+            ps.setString(pos++, user.getName().getFamilyName());
+            ps.setBoolean(pos++, user.isActive());
+            ps.setString(pos++, extractPhoneNumber(user));
+            ps.setBoolean(pos++, user.isVerified());
+            ps.setString(pos++, origin);
+            ps.setString(pos++, hasText(user.getExternalId())?user.getExternalId():null);
+            ps.setString(pos++, user.getSalt());
+            ps.setString(pos++, id);
+            ps.setInt(pos++, user.getVersion());
+            ps.setString(pos++, zoneId);
         });
         ScimUser result = retrieve(id, zoneId);
         if (updated == 0) {
@@ -283,16 +298,13 @@ public class JdbcScimUserProvisioning extends AbstractQueryable<ScimUser>
             return; //we don't want to update the same password
         }
         final String encNewPassword = passwordEncoder.encode(newPassword);
-        int updated = jdbcTemplate.update(CHANGE_PASSWORD_SQL, new PreparedStatementSetter() {
-            @Override
-            public void setValues(PreparedStatement ps) throws SQLException {
-                Timestamp t = new Timestamp(System.currentTimeMillis());
-                ps.setTimestamp(1, t);
-                ps.setString(2, encNewPassword);
-                ps.setTimestamp(3, getPasswordLastModifiedTimestamp(t));
-                ps.setString(4, id);
-                ps.setString(5, zoneId);
-            }
+        int updated = jdbcTemplate.update(CHANGE_PASSWORD_SQL, ps -> {
+            Timestamp t = new Timestamp(System.currentTimeMillis());
+            ps.setTimestamp(1, t);
+            ps.setString(2, encNewPassword);
+            ps.setTimestamp(3, getPasswordLastModifiedTimestamp(t));
+            ps.setString(4, id);
+            ps.setString(5, zoneId);
         });
         if (updated == 0) {
             throw new ScimResourceNotFoundException("User " + id + " does not exist");
@@ -417,16 +429,6 @@ public class JdbcScimUserProvisioning extends AbstractQueryable<ScimUser>
     }
 
     /**
-     * The encoder used to hash passwords before storing them in the database.
-     *
-     * Defaults to a {@link BCryptPasswordEncoder}.
-     */
-    public void setPasswordEncoder(PasswordEncoder passwordEncoder) {
-        Assert.notNull(passwordEncoder, "passwordEncoder cannot be null");
-        this.passwordEncoder = passwordEncoder;
-    }
-
-    /**
      * Sets the regular expression which will be used to validate the username.
      */
     public void setUsernamePattern(String usernamePattern) {
@@ -512,7 +514,7 @@ public class JdbcScimUserProvisioning extends AbstractQueryable<ScimUser>
 
     @Override
     protected void validateOrderBy(String orderBy) throws IllegalArgumentException {
-        super.validateOrderBy(orderBy, USER_FIELDS);
+        super.validateOrderBy(orderBy, USER_FIELDS.replace(",salt", ""));
     }
 
     @Override

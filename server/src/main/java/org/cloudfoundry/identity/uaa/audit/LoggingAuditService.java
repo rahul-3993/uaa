@@ -1,23 +1,12 @@
-/*******************************************************************************
- *     Cloud Foundry
- *     Copyright (c) [2009-2016] Pivotal Software, Inc. All Rights Reserved.
- *
- *     This product is licensed to you under the Apache License, Version 2.0 (the "License").
- *     You may not use this product except in compliance with the License.
- *
- *     This product includes a number of subcomponents with
- *     separate copyright notices and license terms. Your use of these
- *     subcomponents is subject to the terms and conditions of the
- *     subcomponent's license, as noted in the LICENSE file.
- *******************************************************************************/
 package org.cloudfoundry.identity.uaa.audit;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
 import org.cloudfoundry.identity.uaa.logging.LogSanitizerUtil;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.jmx.export.annotation.ManagedMetric;
 import org.springframework.jmx.export.annotation.ManagedResource;
 import org.springframework.jmx.support.MetricType;
+import org.springframework.stereotype.Component;
 
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -25,6 +14,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 /**
  * Audit service implementation which just outputs the relevant information
  * through the logger.
+ *
+ * Keep this as a top-level bean to ensure it is exposed as a @ManagedResource
  *
  * @author Luke Taylor
  * @author Dave Syer
@@ -34,9 +25,10 @@ import java.util.concurrent.atomic.AtomicInteger;
     objectName="cloudfoundry.identity:name=UaaAudit",
     description = "UAA Audit Metrics"
 )
+@Component("loggingAuditService")
 public class LoggingAuditService implements UaaAuditService {
 
-    private Log logger = LogFactory.getLog("UAA.Audit");
+    private Logger logger = LoggerFactory.getLogger("UAA.Audit");
 
     private AtomicInteger userAuthenticationCount = new AtomicInteger();
 
@@ -174,11 +166,11 @@ public class LoggingAuditService implements UaaAuditService {
         }
     }
 
-    public void setLogger(Log logger) {
+    public void setLogger(Logger logger) {
         this.logger = logger;
     }
 
-    public Log getLogger() {
+    public Logger getLogger() {
         return logger;
     }
 }

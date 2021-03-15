@@ -21,7 +21,7 @@ import org.cloudfoundry.identity.uaa.integration.util.ScreenshotOnFail;
 import org.cloudfoundry.identity.uaa.oauth.jwt.Jwt;
 import org.cloudfoundry.identity.uaa.oauth.jwt.JwtHelper;
 import org.cloudfoundry.identity.uaa.oauth.token.ClaimConstants;
-import org.cloudfoundry.identity.uaa.provider.AbstractXOAuthIdentityProviderDefinition;
+import org.cloudfoundry.identity.uaa.provider.AbstractExternalOAuthIdentityProviderDefinition;
 import org.cloudfoundry.identity.uaa.provider.IdentityProvider;
 import org.cloudfoundry.identity.uaa.provider.OIDCIdentityProviderDefinition;
 import org.cloudfoundry.identity.uaa.provider.SamlIdentityProviderDefinition;
@@ -32,6 +32,7 @@ import org.cloudfoundry.identity.uaa.test.UaaTestAccounts;
 import org.cloudfoundry.identity.uaa.util.JsonUtils;
 import org.cloudfoundry.identity.uaa.zone.IdentityZone;
 import org.cloudfoundry.identity.uaa.zone.IdentityZoneConfiguration;
+import org.cloudfoundry.identity.uaa.zone.IdentityZoneHolder;
 import org.hamcrest.Matchers;
 import org.junit.After;
 import org.junit.Assert;
@@ -58,6 +59,7 @@ import java.net.URISyntaxException;
 import java.net.URL;
 import java.net.URLEncoder;
 import java.net.UnknownHostException;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -65,6 +67,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+
+import static org.cloudfoundry.identity.uaa.integration.util.IntegrationTestUtils.SIMPLESAMLPHP_LOGIN_PROMPT_XPATH_EXPR;
 import static org.cloudfoundry.identity.uaa.integration.util.IntegrationTestUtils.isMember;
 import static org.cloudfoundry.identity.uaa.oauth.token.ClaimConstants.SUB;
 import static org.cloudfoundry.identity.uaa.oauth.token.TokenConstants.GRANT_TYPE_AUTHORIZATION_CODE;
@@ -115,7 +119,7 @@ public class OIDCLoginIT {
     private String adminToken;
     private String subdomain;
     private String zoneUrl;
-    private IdentityProvider<AbstractXOAuthIdentityProviderDefinition> identityProvider;
+    private IdentityProvider<AbstractExternalOAuthIdentityProviderDefinition> identityProvider;
     private String clientCredentialsToken;
     private BaseClientDetails zoneClient;
     private ScimGroup createdGroup;
@@ -215,7 +219,7 @@ public class OIDCLoginIT {
     }
 
     private void doLogout(String zoneUrl) {
-        for (String url : Arrays.asList("http://simplesamlphp.cfapps.io/module.php/core/authenticate.php?as=example-userpass&logout", baseUrl + "/logout.do", zoneUrl + "/logout.do")) {
+        for (String url : Arrays.asList(IntegrationTestUtils.SIMPLESAMLPHP_UAA_ACCEPTANCE + "/module.php/core/authenticate.php?as=example-userpass&logout", baseUrl + "/logout.do", zoneUrl + "/logout.do")) {
             webDriver.get(url);
             webDriver.manage().deleteAllCookies();
         }
@@ -226,7 +230,7 @@ public class OIDCLoginIT {
 
         webDriver.findElement(By.cssSelector(".dropdown-trigger")).click();
         webDriver.findElement(By.linkText("Sign Out")).click();
-        IntegrationTestUtils.validateAccountChooserCookie(zoneUrl, webDriver);
+        IntegrationTestUtils.validateAccountChooserCookie(zoneUrl, webDriver, IdentityZoneHolder.get());
     }
 
     private void login(String zoneUrl, String userName, String password) {
@@ -250,7 +254,7 @@ public class OIDCLoginIT {
     }
 
     @Test
-    public void successfulLoginWithOIDCProvider() throws Exception {
+    public void successfulLoginWithOIDCProvider() {
         Long beforeTest = System.currentTimeMillis();
         validateSuccessfulOIDCLogin(zoneUrl, testAccounts.getUserName(), testAccounts.getPassword());
         Long afterTest = System.currentTimeMillis();
@@ -263,7 +267,7 @@ public class OIDCLoginIT {
     }
 
     @Test
-    public void testLoginWithInactiveProviderDoesNotWork() throws Exception {
+    public void testLoginWithInactiveProviderDoesNotWork() {
         webDriver.get(zoneUrl + "/logout.do");
         webDriver.get(zoneUrl + "/");
         Cookie beforeLogin = webDriver.manage().getCookieNamed("JSESSIONID");
@@ -287,9 +291,9 @@ public class OIDCLoginIT {
     }
 
     @Test
-    public void testLoginWithLoginHintUaa() throws Exception {
+    public void testLoginWithLoginHintUaa() {
         webDriver.get(zoneUrl + "/logout.do");
-        String loginHint = URLEncoder.encode("{\"origin\":\"puppy\"}", "utf-8");
+        String loginHint = URLEncoder.encode("{\"origin\":\"puppy\"}", StandardCharsets.UTF_8);
 
         webDriver.get(zoneUrl + "/login?login_hint=" + loginHint);
 
@@ -297,7 +301,7 @@ public class OIDCLoginIT {
     }
 
     @Test
-    public void successfulLoginWithOIDCProviderWithExternalGroups() throws Exception {
+    public void successfulLoginWithOIDCProviderWithExternalGroups() {
 
         validateSuccessfulOIDCLogin(zoneUrl, testAccounts.getUserName(), testAccounts.getPassword());
         String adminToken = IntegrationTestUtils.getClientCredentialsToken(serverRunning, "admin", "adminsecret");
@@ -309,7 +313,7 @@ public class OIDCLoginIT {
     }
 
     @Test
-    public void successfulLoginWithOIDCProviderAndClientAuthInBody() throws Exception {
+    public void successfulLoginWithOIDCProviderAndClientAuthInBody() {
         identityProvider.getConfig().setClientAuthInBody(true);
         assertTrue(identityProvider.getConfig().isClientAuthInBody());
         updateProvider();
@@ -318,7 +322,7 @@ public class OIDCLoginIT {
     }
 
     @Test
-    public void successfulLoginWithOIDCProviderSetsLastLogin() throws Exception {
+    public void successfulLoginWithOIDCProviderSetsLastLogin() {
         login(zoneUrl, testAccounts.getUserName(), testAccounts.getPassword());
         doLogout(zoneUrl);
         login(zoneUrl, testAccounts.getUserName(), testAccounts.getPassword());
@@ -351,7 +355,7 @@ public class OIDCLoginIT {
     }
 
     @Test
-    public void testShadowUserNameDefaultsToOIDCSubjectClaim() throws Exception {
+    public void testShadowUserNameDefaultsToOIDCSubjectClaim() {
         Map<String, Object> attributeMappings = new HashMap<>(identityProvider.getConfig().getAttributeMappings());
         attributeMappings.remove(USER_NAME_ATTRIBUTE_NAME);
         identityProvider.getConfig().setAttributeMappings(attributeMappings);
@@ -427,7 +431,7 @@ public class OIDCLoginIT {
             Assert.assertThat(webDriver.getCurrentUrl(), containsString(baseUrl));
 
             webDriver.findElement(By.linkText("SAML Login")).click();
-            webDriver.findElement(By.xpath("//h2[contains(text(), 'Enter your username and password')]"));
+            webDriver.findElement(By.xpath(SIMPLESAMLPHP_LOGIN_PROMPT_XPATH_EXPR));
             webDriver.findElement(By.name("username")).clear();
             webDriver.findElement(By.name("username")).sendKeys("marissa6");
             webDriver.findElement(By.name("password")).sendKeys("saml6");
@@ -479,7 +483,7 @@ public class OIDCLoginIT {
     }
 
     @Test
-    public void testResponseTypeRequired() throws Exception {
+    public void testResponseTypeRequired() {
         BaseClientDetails uaaClient = new BaseClientDetails(new RandomValueStringGenerator().generate(), null, "openid,user_attributes", "authorization_code,client_credentials", "uaa.admin,scim.read,scim.write,uaa.resource", baseUrl);
         uaaClient.setClientSecret("secret");
         uaaClient.setAutoApproveScopes(Collections.singleton("true"));
@@ -511,7 +515,7 @@ public class OIDCLoginIT {
         config.setRelyingPartyId("8c5ea049-869e-47f8-a492-852a05f507af");
         config.setRelyingPartySecret(null);
         config.setIssuer("https://sts.windows.net/9bc40aaf-e150-4c30-bb3c-a8b3b677266e/");
-        config.setScopes(Arrays.asList("openid"));
+        config.setScopes(Collections.singletonList("openid"));
         config.setResponseType("code id_token");
         return config;
     }

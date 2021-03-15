@@ -17,7 +17,6 @@ package org.cloudfoundry.identity.uaa.authentication;
 import org.flywaydb.core.internal.util.StringUtils;
 import org.springframework.http.MediaType;
 
-import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
@@ -34,7 +33,7 @@ import java.util.Map;
 public class ClientParametersAuthenticationFilter extends AbstractClientParametersAuthenticationFilter {
 
     @Override
-    public void wrapClientCredentialLogin(HttpServletRequest req, HttpServletResponse res, Map<String, String> loginInfo, String clientId) throws IOException, ServletException {
+    public void wrapClientCredentialLogin(HttpServletRequest req, HttpServletResponse res, Map<String, String> loginInfo, String clientId) {
         if (!StringUtils.hasText(req.getHeader("Authorization")) && StringUtils.hasText(req.getParameter(CLIENT_ID)) && isUrlEncodedForm(req)) {
             doClientCredentialLogin(req, loginInfo, clientId);
         }

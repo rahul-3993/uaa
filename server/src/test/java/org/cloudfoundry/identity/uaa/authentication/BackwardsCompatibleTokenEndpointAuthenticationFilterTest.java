@@ -16,8 +16,9 @@
 package org.cloudfoundry.identity.uaa.authentication;
 
 import org.cloudfoundry.identity.uaa.oauth.TokenTestSupport;
-import org.cloudfoundry.identity.uaa.provider.oauth.XOAuthAuthenticationManager;
-import org.cloudfoundry.identity.uaa.provider.oauth.XOAuthCodeToken;
+import org.cloudfoundry.identity.uaa.provider.oauth.ExternalOAuthAuthenticationManager;
+import org.cloudfoundry.identity.uaa.provider.oauth.ExternalOAuthCodeToken;
+import org.cloudfoundry.identity.uaa.util.SessionUtils;
 import org.cloudfoundry.identity.uaa.zone.IdentityZoneHolder;
 import org.junit.After;
 import org.junit.Before;
@@ -26,6 +27,7 @@ import org.junit.Test;
 import org.mockito.ArgumentCaptor;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
+import org.springframework.mock.web.MockHttpSession;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.InsufficientAuthenticationException;
 import org.springframework.security.core.AuthenticationException;
@@ -35,7 +37,7 @@ import org.springframework.security.saml.SAMLProcessingFilter;
 import org.springframework.security.web.AuthenticationEntryPoint;
 
 import javax.servlet.FilterChain;
-import java.util.Arrays;
+import java.util.Collections;
 
 import static java.util.Optional.ofNullable;
 import static org.cloudfoundry.identity.uaa.oauth.TokenTestSupport.OPENID;
@@ -61,7 +63,7 @@ public class BackwardsCompatibleTokenEndpointAuthenticationFilterTest {
     private AuthenticationManager passwordAuthManager;
     private OAuth2RequestFactory requestFactory;
     private SAMLProcessingFilter samlAuthFilter;
-    private XOAuthAuthenticationManager xoAuthAuthenticationManager;
+    private ExternalOAuthAuthenticationManager externalOAuthAuthenticationManager;
     private BackwardsCompatibleTokenEndpointAuthenticationFilter filter;
     private MockHttpServletRequest request;
     private MockHttpServletResponse response;
@@ -70,19 +72,19 @@ public class BackwardsCompatibleTokenEndpointAuthenticationFilterTest {
     private TokenTestSupport support;
 
     @Before
-    public void setUp() throws Exception {
+    public void setUp() {
 
         passwordAuthManager = mock(AuthenticationManager.class);
         requestFactory = mock(OAuth2RequestFactory.class);
         samlAuthFilter = mock(SAMLProcessingFilter.class);
-        xoAuthAuthenticationManager = mock(XOAuthAuthenticationManager.class);
+        externalOAuthAuthenticationManager = mock(ExternalOAuthAuthenticationManager.class);
 
         filter = spy(
             new BackwardsCompatibleTokenEndpointAuthenticationFilter(
                 passwordAuthManager,
                 requestFactory,
                 samlAuthFilter,
-                xoAuthAuthenticationManager
+                    externalOAuthAuthenticationManager
             )
         );
 
@@ -95,7 +97,7 @@ public class BackwardsCompatibleTokenEndpointAuthenticationFilterTest {
     }
 
     @After
-    public void tearDown() throws Exception {
+    public void tearDown() {
         SecurityContextHolder.clearContext();
         IdentityZoneHolder.clear();
         ofNullable(support).ifPresent(TokenTestSupport::clear);
@@ -105,7 +107,9 @@ public class BackwardsCompatibleTokenEndpointAuthenticationFilterTest {
     public void password_expired() throws Exception {
         UaaAuthentication uaaAuthentication = mock(UaaAuthentication.class);
         when(uaaAuthentication.isAuthenticated()).thenReturn(true);
-        when(uaaAuthentication.isRequiresPasswordChange()).thenReturn(true);
+        MockHttpSession httpSession = new MockHttpSession();
+        SessionUtils.setPasswordChangeRequired(httpSession, true);
+        request.setSession(httpSession);
         when(passwordAuthManager.authenticate(any())).thenReturn(uaaAuthentication);
         request.addParameter(GRANT_TYPE, "password");
         request.addParameter("username", "marissa");
@@ -124,7 +128,7 @@ public class BackwardsCompatibleTokenEndpointAuthenticationFilterTest {
         verify(filter, times(1)).attemptTokenAuthentication(same(request), same(response));
         verify(passwordAuthManager, times(1)).authenticate(any());
         verifyZeroInteractions(samlAuthFilter);
-        verifyZeroInteractions(xoAuthAuthenticationManager);
+        verifyZeroInteractions(externalOAuthAuthenticationManager);
     }
 
 
@@ -136,7 +140,7 @@ public class BackwardsCompatibleTokenEndpointAuthenticationFilterTest {
         verify(filter, times(1)).attemptTokenAuthentication(same(request), same(response));
         verify(samlAuthFilter, times(1)).attemptAuthentication(same(request), same(response));
         verifyZeroInteractions(passwordAuthManager);
-        verifyZeroInteractions(xoAuthAuthenticationManager);
+        verifyZeroInteractions(externalOAuthAuthenticationManager);
     }
 
     @Test
@@ -144,9 +148,9 @@ public class BackwardsCompatibleTokenEndpointAuthenticationFilterTest {
         request.addParameter(GRANT_TYPE, GRANT_TYPE_SAML2_BEARER);
         filter.doFilter(request, response, chain);
         verify(filter, times(1)).attemptTokenAuthentication(same(request), same(response));
-        verifyZeroInteractions(xoAuthAuthenticationManager);
+        verifyZeroInteractions(externalOAuthAuthenticationManager);
         verifyZeroInteractions(passwordAuthManager);
-        verifyZeroInteractions(xoAuthAuthenticationManager);
+        verifyZeroInteractions(externalOAuthAuthenticationManager);
         ArgumentCaptor<AuthenticationException> exceptionArgumentCaptor = ArgumentCaptor.forClass(AuthenticationException.class);
         verify(entryPoint, times(1)).commence(same(request), same(response), exceptionArgumentCaptor.capture());
         assertNotNull(exceptionArgumentCaptor.getValue());
@@ -158,15 +162,15 @@ public class BackwardsCompatibleTokenEndpointAuthenticationFilterTest {
     @Ignore("GE Fork has its own JWT-bearer implementation")
     public void attempt_jwt_token_authentication() throws Exception {
         support = new TokenTestSupport(null);
-        String idToken = support.getIdTokenAsString(Arrays.asList(OPENID));
+        String idToken = support.getIdTokenAsString(Collections.singletonList(OPENID));
         request.addParameter(GRANT_TYPE, GRANT_TYPE_JWT_BEARER);
         request.addParameter("assertion", idToken);
         filter.doFilter(request, response, chain);
         verify(filter, times(1)).attemptTokenAuthentication(same(request), same(response));
-        ArgumentCaptor<XOAuthCodeToken> authenticateData = ArgumentCaptor.forClass(XOAuthCodeToken.class);
-        verify(xoAuthAuthenticationManager, times(1)).authenticate(authenticateData.capture());
+        ArgumentCaptor<ExternalOAuthCodeToken> authenticateData = ArgumentCaptor.forClass(ExternalOAuthCodeToken.class);
+        verify(externalOAuthAuthenticationManager, times(1)).authenticate(authenticateData.capture());
         verifyZeroInteractions(passwordAuthManager);
-        verifyZeroInteractions(xoAuthAuthenticationManager);
+        verifyZeroInteractions(externalOAuthAuthenticationManager);
         assertEquals(idToken, authenticateData.getValue().getIdToken());
         assertNull(authenticateData.getValue().getOrigin());
     }
@@ -177,9 +181,9 @@ public class BackwardsCompatibleTokenEndpointAuthenticationFilterTest {
         request.addParameter(GRANT_TYPE, GRANT_TYPE_JWT_BEARER);
         filter.doFilter(request, response, chain);
         verify(filter, times(1)).attemptTokenAuthentication(same(request), same(response));
-        verifyZeroInteractions(xoAuthAuthenticationManager);
+        verifyZeroInteractions(externalOAuthAuthenticationManager);
         verifyZeroInteractions(passwordAuthManager);
-        verifyZeroInteractions(xoAuthAuthenticationManager);
+        verifyZeroInteractions(externalOAuthAuthenticationManager);
         ArgumentCaptor<AuthenticationException> exceptionArgumentCaptor = ArgumentCaptor.forClass(AuthenticationException.class);
         verify(entryPoint, times(1)).commence(same(request), same(response), exceptionArgumentCaptor.capture());
         assertNotNull(exceptionArgumentCaptor.getValue());

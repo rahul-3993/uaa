@@ -14,8 +14,8 @@
  */
 package org.cloudfoundry.identity.uaa.authentication;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.cloudfoundry.identity.uaa.authentication.manager.CommonLoginPolicy;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
@@ -53,12 +53,12 @@ public abstract class AbstractClientParametersAuthenticationFilter implements Fi
 
     public static final String CLIENT_ID = "client_id";
     public static final String CLIENT_SECRET = "client_secret";
-    protected final Log logger = LogFactory.getLog(getClass());
+    protected final Logger logger = LoggerFactory.getLogger(getClass());
 
     protected AuthenticationManager clientAuthenticationManager;
 
     protected AuthenticationEntryPoint authenticationEntryPoint = new OAuth2AuthenticationEntryPoint();
- 
+
     protected CommonLoginPolicy loginPolicy;
 
     public AuthenticationManager getClientAuthenticationManager() {
@@ -104,7 +104,7 @@ public abstract class AbstractClientParametersAuthenticationFilter implements Fi
         chain.doFilter(req, res);
     }
 
-    public abstract void wrapClientCredentialLogin(HttpServletRequest req, HttpServletResponse res, Map<String, String> loginInfo, String clientId) throws IOException, ServletException;
+    public abstract void wrapClientCredentialLogin(HttpServletRequest req, HttpServletResponse res, Map<String, String> loginInfo, String clientId);
 
     protected void doClientCredentialLogin(HttpServletRequest req, Map<String, String> loginInfo, String clientId) {
         Authentication clientAuth = performClientAuthentication(req, loginInfo, clientId);
@@ -160,7 +160,7 @@ public abstract class AbstractClientParametersAuthenticationFilter implements Fi
     }
 
     @Override
-    public void init(FilterConfig filterConfig) throws ServletException {
+    public void init(FilterConfig filterConfig) {
     }
 
     @Override
