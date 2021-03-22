@@ -21,9 +21,12 @@ import org.cloudfoundry.identity.uaa.provider.IdentityProvider;
 import org.cloudfoundry.identity.uaa.provider.IdentityProviderProvisioning;
 import org.cloudfoundry.identity.uaa.provider.SamlIdentityProviderDefinition;
 import org.cloudfoundry.identity.uaa.provider.SlowHttpServer;
-import org.cloudfoundry.identity.uaa.zone.IdentityZoneHolder;
 import org.junit.Rule;
-import org.junit.jupiter.api.*;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.junit.rules.ExpectedException;
 import org.opensaml.DefaultBootstrap;
 import org.opensaml.xml.parse.BasicParserPool;
@@ -238,7 +241,7 @@ public class SamlIdentityProviderConfiguratorTests {
 
         when(provisioning.retrieveActive(anyString())).thenReturn(Arrays.asList(idp1, idp2));
 
-        return configurator.getIdentityProviderDefinitions(clientIdpAliases, IdentityZoneHolder.get());
+        return configurator.getIdentityProviderDefinitions(clientIdpAliases, Arrays.asList(idp1, idp2));
     }
 
     @Test
