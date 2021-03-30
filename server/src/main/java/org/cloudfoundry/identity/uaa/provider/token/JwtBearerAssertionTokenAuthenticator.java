@@ -3,13 +3,13 @@ package org.cloudfoundry.identity.uaa.provider.token;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.ge.predix.pki.device.spi.DevicePublicKeyProvider;
 import com.ge.predix.pki.device.spi.PublicKeyNotFoundException;
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
 import org.cloudfoundry.identity.uaa.oauth.client.ClientConstants;
 import org.cloudfoundry.identity.uaa.oauth.token.ClaimConstants;
 import org.cloudfoundry.identity.uaa.provider.KeyProviderConfig;
 import org.cloudfoundry.identity.uaa.provider.KeyProviderProvisioning;
 import org.cloudfoundry.identity.uaa.util.JsonUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
@@ -35,7 +35,7 @@ import static org.cloudfoundry.identity.uaa.oauth.token.TokenConstants.GRANT_TYP
 
 public class JwtBearerAssertionTokenAuthenticator {
 
-    private final Log logger = LogFactory.getLog(getClass());
+    private static final Logger logger = LoggerFactory.getLogger(JwtBearerAssertionTokenAuthenticator.class);
     private ClientDetailsService clientDetailsService;
     private DevicePublicKeyProvider clientPublicKeyProvider;
     private final int maxAcceptableClockSkewSeconds = 60;
@@ -93,7 +93,7 @@ public class JwtBearerAssertionTokenAuthenticator {
                 return;
             }
         } catch (RuntimeException e) {
-            this.logger.debug(e);
+            logger.debug(e.getMessage());
             throw new BadCredentialsException("Invalid JWT token.");
         }
         throw new BadCredentialsException("Invalid jwt-bearer assertion.");
@@ -133,7 +133,7 @@ public class JwtBearerAssertionTokenAuthenticator {
                     Collections.emptyList());
 
         } catch (RuntimeException e) {
-            this.logger.debug("Validation failed for jwt-bearer assertion token. token:{" + jwt + "} error: " + e);
+            logger.debug("Validation failed for jwt-bearer assertion token. token:{" + jwt + "} error: " + e);
         }
 
         // Do not include error detail in this exception.
@@ -233,18 +233,18 @@ public class JwtBearerAssertionTokenAuthenticator {
                     OAuth2AccessToken dcsAccessToken = dcsEndpointTokenGranter.grant(GRANT_TYPE_CLIENT_CREDENTIALS, tokenRequest);
                     base64UrlEncodedPublicKey = this.clientPublicKeyProvider.getPublicKeyWithToken(tenantId, deviceId,
                             predixZoneId, dcsAccessToken.getValue());
-                    this.logger.debug("Public Key for tenant: " + base64UrlEncodedPublicKey);
+                    logger.debug("Public Key for tenant: " + base64UrlEncodedPublicKey);
                     return new String(Base64.getUrlDecoder().decode(base64UrlEncodedPublicKey));
                 }
             }
             //fallback to global settings for dcs call
             base64UrlEncodedPublicKey = this.clientPublicKeyProvider.getPublicKey(tenantId, deviceId, "");
-            this.logger.debug("Public Key for tenant: " + base64UrlEncodedPublicKey);
+            logger.debug("Public Key for tenant: " + base64UrlEncodedPublicKey);
             return new String(Base64.getUrlDecoder().decode(base64UrlEncodedPublicKey));
         } catch (PublicKeyNotFoundException e) {
-            this.logger.debug("Unable to retrieve public key to validate jwt-bearer assertion. Error: " + e);
+            logger.debug("Unable to retrieve public key to validate jwt-bearer assertion. Error: " + e);
         } catch (RuntimeException e) {
-            this.logger.debug("Unable to retrieve public key to validate jwt-bearer assertion. Error: " + e);
+            logger.debug("Unable to retrieve public key to validate jwt-bearer assertion. Error: " + e);
         }
 
         throw new BadCredentialsException("Unknown client.");

@@ -4,8 +4,13 @@ import org.springframework.security.oauth2.provider.ClientDetails;
 import org.springframework.security.oauth2.provider.ClientDetailsService;
 import org.springframework.security.oauth2.provider.NoSuchClientException;
 import org.springframework.util.StringUtils;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Component;
 
+@Component("keyProviderValidator")
 public class KeyProviderValidator {
+
+    @Autowired
     ClientDetailsService clientDetailsService;
 
     public void validate(KeyProviderConfig config) throws KeyProviderValidatorException {

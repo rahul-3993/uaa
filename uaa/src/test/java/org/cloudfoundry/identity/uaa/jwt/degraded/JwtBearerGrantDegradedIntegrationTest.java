@@ -50,11 +50,7 @@ public class JwtBearerGrantDegradedIntegrationTest {
 
     protected final static Logger logger = LoggerFactory.getLogger(JwtBearerGrantDegradedIntegrationTest.class);
 
-
-    @Value("${integration.test.base_url}")
-    private String baseUrl;
-
-    @Value("${PUBLISHED_HOST:predix-uaa-integration}")
+    @Value("${PUBLISHED_HOST:localhost:8080/uaa}")
     String publishedHost;
 
     @Value("${CF_DOMAIN:run.aws-usw02-dev.ice.predix.io}")
@@ -66,15 +62,12 @@ public class JwtBearerGrantDegradedIntegrationTest {
     @Value("${BASIC_AUTH_CLIENT_SECRET:appclientsecret}")
     String basicAuthClientSecret;
 
+    @Value("${RUN_AGAINST_CLOUD:false}")
+    String runAgainstCloud;
+
     private String baseUaaZoneUrl;
 
     private String audience;
-
-    @Autowired
-    public Environment environment;
-
-
-    ServerRunning serverRunning = ServerRunning.isRunning();
 
     private final RestTemplate tokenRestTemplate = new RestTemplate();
 
@@ -88,8 +81,8 @@ public class JwtBearerGrantDegradedIntegrationTest {
 
     @Before
     public void setup() {
-        String protocol = Boolean.valueOf(environment.getProperty("RUN_AGAINST_CLOUD")) ? "https://" : "http://";
-        baseUaaZoneUrl = Boolean.valueOf(environment.getProperty("RUN_AGAINST_CLOUD")) ? (protocol + "test-jwt-zone." + publishedHost + "." + cfDomain) : baseUrl;
+        String protocol = Boolean.valueOf(runAgainstCloud) ? "https://" : "http://";
+        baseUaaZoneUrl = Boolean.valueOf(runAgainstCloud) ? (protocol + "test-jwt-zone." + publishedHost + "." + cfDomain) : (protocol + "test-jwt-zone." + publishedHost);
         audience = baseUaaZoneUrl + "/oauth/token";
     }
 

@@ -137,7 +137,7 @@ public class ClientAdminEndpointsValidatorTests {
         validator.validate(client, false, true);
     }
 
-    @Ignore
+    @Ignore("GE Fork has its own JWT-bearer implementation")
     @Test
     public void test_validate_jwt_bearer_grant_type_without_secret() {
         client.setAuthorizedGrantTypes(Collections.singletonList(GRANT_TYPE_JWT_BEARER));
@@ -148,7 +148,7 @@ public class ClientAdminEndpointsValidatorTests {
         validator.validate(client, true, true);
     }
 
-    @Ignore
+    @Ignore("GE Fork has its own JWT-bearer implementation")
     @Test
     public void test_validate_jwt_bearer_grant_type_without_scopes() {
         client.setAuthorizedGrantTypes(Collections.singletonList(GRANT_TYPE_JWT_BEARER));

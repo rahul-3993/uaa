@@ -156,9 +156,9 @@ task degradedJwtTestCloud(type: Test) {
 
 task degradedJwtTestLocal(type: Test) {
     systemProperty "RUN_AGAINST_CLOUD", false
-    dependsOn rootProject.cargoStartLocal
-    finalizedBy rootProject.cargoStopLocal
+    dependsOn rootProject.setupDegradedTestsForJwtBearerLocal
     include "org/cloudfoundry/identity/uaa/jwt/degraded/*.class"
+    finalizedBy rootProject.cargoStopLocal
 }
 
 war {

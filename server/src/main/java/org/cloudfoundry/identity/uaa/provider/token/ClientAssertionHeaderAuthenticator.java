@@ -2,10 +2,10 @@ package org.cloudfoundry.identity.uaa.provider.token;
 
 import java.util.Map;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
 import org.cloudfoundry.identity.uaa.oauth.token.ClaimConstants;
 import org.cloudfoundry.identity.uaa.util.JsonUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.jwt.Jwt;
 import org.springframework.security.jwt.JwtHelper;
@@ -15,7 +15,7 @@ import org.springframework.util.StringUtils;
 import com.fasterxml.jackson.core.type.TypeReference;
 
 public class ClientAssertionHeaderAuthenticator {
-    private static final Log logger = LogFactory.getLog(ClientAssertionHeaderAuthenticator.class);
+    private static final Logger logger = LoggerFactory.getLogger(ClientAssertionHeaderAuthenticator.class);
 
     private final Integer maxHeaderLifeInSeconds;
     

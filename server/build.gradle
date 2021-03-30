@@ -8,7 +8,11 @@ dependencies {
 
     implementation(libraries.tomcatJdbc)
     provided(libraries.tomcatEmbed)
-    implementation(libraries.predixPublicKeyProvider)
+    implementation(libraries.predixPublicKeyProvider) {
+        exclude(module: "jcl-over-slf4j")
+        exclude(module: "commons-logging")
+        exclude(module: "httpclient")
+    }
     implementation(libraries.javaxMail)
 
     implementation(libraries.jacksonDatabind)

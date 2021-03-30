@@ -209,7 +209,7 @@ public class ClientAdminEndpointsMockMvcTests {
         verify(mockApplicationEventPublisher, times(1)).publishEvent(abstractUaaEventCaptor.capture());
     }
 
-    @Disabled
+    @Disabled("GE Fork has its own JWT-bearer implementation")
     @Test
     void testCreateClientWithJwtBearerGrantInvalid() throws Exception {
         String id = new RandomValueStringGenerator().generate();

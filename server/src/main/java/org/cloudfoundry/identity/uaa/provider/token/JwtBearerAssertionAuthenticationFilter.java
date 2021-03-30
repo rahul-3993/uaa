@@ -1,9 +1,9 @@
 package org.cloudfoundry.identity.uaa.provider.token;
 
 import com.ge.predix.pki.device.spi.DevicePublicKeyProvider;
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
 import org.cloudfoundry.identity.uaa.provider.KeyProviderProvisioning;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.core.Authentication;
@@ -27,7 +27,7 @@ import static org.cloudfoundry.identity.uaa.oauth.token.TokenConstants.GRANT_TYP
 
 public class JwtBearerAssertionAuthenticationFilter extends OncePerRequestFilter {
     private static final String PREDIX_CLIENT_ASSERTION_HEADER = "Predix-Client-Assertion";
-    private static final Log logger = LogFactory.getLog(JwtBearerAssertionAuthenticationFilter.class);
+    private static final Logger logger = LoggerFactory.getLogger(JwtBearerAssertionAuthenticationFilter.class);
 
     private ClientDetailsService clientDetailsService;
     private DevicePublicKeyProvider publicKeyProvider;

@@ -471,7 +471,6 @@ class InvitationsEndpointMockMvcTests {
 
             ExpiringCode expiringCode = expiringCodeStore.retrieveCode(code, IdentityZoneHolder.get().getId());
             IdentityZoneHolder.clear();
-
             assertThat(expiringCode.getExpiresAt().getTime(), is(greaterThan(System.currentTimeMillis())));
             assertThat(expiringCode.getIntent(), is(ExpiringCodeType.INVITATION.name()));
             Map<String, String> data = readValue(expiringCode.getData(), new TypeReference<Map<String, String>>() {
