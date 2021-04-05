@@ -5,6 +5,7 @@ import org.cloudfoundry.identity.uaa.util.TimeService;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.mock.env.MockEnvironment;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
 
@@ -65,6 +66,8 @@ public class LimitedModeUaaFilterTests {
 
     @Test
     void disabled() throws Exception {
+        MockEnvironment env = new MockEnvironment();
+        filter.setEnvironment(env.withProperty("spring_profiles", "default"));
         filter.doFilterInternal(mockHttpServletRequest, mockHttpServletResponse, mockFilterChain);
         verify(mockFilterChain, times(1)).doFilter(same(mockHttpServletRequest), same(mockHttpServletResponse));
         assertFalse(filter.isEnabled());

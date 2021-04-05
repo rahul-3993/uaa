@@ -27,8 +27,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @DefaultTestContext
 class OpenIdConnectEndpointsMockMvcTests {
-
+    static final String WELL_KNOWN_PATH = "/oauth/token/.well-known/openid-configuration";
     private IdentityZone identityZone;
+
     @Autowired
     private WebApplicationContext webApplicationContext;
     @Autowired
@@ -47,7 +48,7 @@ class OpenIdConnectEndpointsMockMvcTests {
     @Test
     void testWellKnownEndpoint() throws Exception {
         for (String host : Arrays.asList("localhost", "subdomain.localhost")) {
-            for (String url : Arrays.asList("/.well-known/openid-configuration", "/oauth/token/.well-known/openid-configuration")) {
+            for (String url : Arrays.asList("/.well-known/openid-configuration", WELL_KNOWN_PATH)) {
                 MockHttpServletResponse response = mockMvc.perform(
                         get(url)
                                 .header("Host", host)
@@ -81,7 +82,7 @@ class OpenIdConnectEndpointsMockMvcTests {
     @Test
     void testUserInfoEndpointIsCorrect() throws Exception {
         for (String host : Arrays.asList("localhost", "subdomain.localhost")) {
-            for (String url : Arrays.asList("/.well-known/openid-configuration", "/oauth/token/.well-known/openid-configuration")) {
+            for (String url : Arrays.asList("/.well-known/openid-configuration", WELL_KNOWN_PATH)) {
                 MockHttpServletResponse response = mockMvc.perform(
                         get(url)
                                 .header("Host", host)

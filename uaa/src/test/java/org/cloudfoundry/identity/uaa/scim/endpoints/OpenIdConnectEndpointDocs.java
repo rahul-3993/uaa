@@ -14,6 +14,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 class OpenIdConnectEndpointDocs extends EndpointDocs {
+    final static String WELL_KNOWN_ENDPOINT = "/oauth/token/.well-known/openid-configuration";
     @Test
     void getWellKnownOpenidConf() throws Exception {
         Snippet responseFields = responseFields(
@@ -37,8 +38,8 @@ class OpenIdConnectEndpointDocs extends EndpointDocs {
         );
 
         mockMvc.perform(
-                get("/.well-known/openid-configuration")
-                        .servletPath("/.well-known/openid-configuration")
+                get(WELL_KNOWN_ENDPOINT)
+                        .servletPath(WELL_KNOWN_ENDPOINT)
                         .accept(APPLICATION_JSON))
                 .andExpect(status().isOk())
                 .andDo(document("{ClassName}/{methodName}",

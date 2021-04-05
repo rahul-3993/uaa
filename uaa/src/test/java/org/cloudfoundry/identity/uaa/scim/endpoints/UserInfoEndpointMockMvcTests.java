@@ -1,6 +1,7 @@
 package org.cloudfoundry.identity.uaa.scim.endpoints;
 
 import org.cloudfoundry.identity.uaa.DefaultTestContext;
+import org.cloudfoundry.identity.uaa.account.OpenIdConfiguration;
 import org.cloudfoundry.identity.uaa.account.UserInfoResponse;
 import org.cloudfoundry.identity.uaa.mock.util.MockMvcUtils;
 import org.cloudfoundry.identity.uaa.scim.ScimUser;
@@ -30,6 +31,7 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.springframework.http.MediaType.APPLICATION_JSON;
 
 @DefaultTestContext
 class UserInfoEndpointMockMvcTests {
@@ -105,6 +107,18 @@ class UserInfoEndpointMockMvcTests {
     }
 
     @Test
+    public void testGetUserInfoEndpointFromWellKnownConfiguration() throws Exception {
+        MockHttpServletResponse response = mockMvc.perform(get("/oauth/token/.well-known/openid-configuration")
+            .servletPath("/oauth/token/.well-known/openid-configuration")
+            .accept(APPLICATION_JSON))
+            .andExpect(status().isOk())
+            .andReturn().getResponse();
+
+        OpenIdConfiguration openIdConfiguration = JsonUtils.readValue(response.getContentAsString(), OpenIdConfiguration.class);
+        getUserInfo(openIdConfiguration.getUserInfoUrl(), "openid");
+    }
+
+    @Test
     void attributesWithRolesAndUserAttributes() throws Exception {
         UserInfoResponse userInfo = getUserInfo("openid user_attributes roles");
         Map<String, List<String>> uas = userInfo.getUserAttributes();
@@ -124,6 +138,9 @@ class UserInfoEndpointMockMvcTests {
     }
 
     private UserInfoResponse getUserInfo(String scopes) throws Exception {
+        return getUserInfo("/userinfo", scopes);
+    }
+    private UserInfoResponse getUserInfo(String url, String scopes) throws Exception {
         String userInfoToken = testClient.getUserOAuthAccessToken(
                 clientId,
                 clientSecret,
@@ -133,7 +150,7 @@ class UserInfoEndpointMockMvcTests {
         );
 
         MockHttpServletResponse response = mockMvc.perform(
-                get("/userinfo")
+                get(url == null? "/userinfo" : url)
                         .header("Authorization", "Bearer " + userInfoToken))
                 .andExpect(status().isOk())
                 .andReturn().getResponse();
