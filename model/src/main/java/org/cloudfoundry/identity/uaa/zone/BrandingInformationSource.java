@@ -9,8 +9,6 @@ public interface BrandingInformationSource {
 
     String getCompanyName();
 
-    String getZoneCompanyName();
-
     String getProductLogo();
 
     String getSquareLogo();
