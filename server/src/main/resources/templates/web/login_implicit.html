@@ -21,6 +21,7 @@
     <h1 th:text="${T(org.cloudfoundry.identity.uaa.zone.IdentityZoneHolder).uaa ? 'One more step!':'One more step to access '+zone_name+'!'}">Your authentication is being processed!</h1>
     <div class="island-content">
         <form method="post" novalidate="novalidate" accept-charset="UTF-8" id="formAuthenticate">
+            <input type="submit" value="Sign in" class="island-button"/>
         </form>
     </div>
     <script type="text/javascript" th:inline="javascript">
