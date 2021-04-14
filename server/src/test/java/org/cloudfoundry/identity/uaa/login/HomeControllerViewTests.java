@@ -9,7 +9,6 @@ import org.cloudfoundry.identity.uaa.extensions.PollutionPreventionExtension;
 import org.cloudfoundry.identity.uaa.zone.*;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -84,7 +83,6 @@ class HomeControllerViewTests extends TestClassNullifier {
     }
 
     @Test
-    @Disabled
     void tilesFromClientMetadataAndTilesConfigShown() throws Exception {
         mockMvc.perform(get("/"))
                 .andExpect(xpath("//*[@id='tile-1'][text()[contains(.,'client-1')]]").exists())
@@ -98,7 +96,6 @@ class HomeControllerViewTests extends TestClassNullifier {
     }
 
     @Test
-    @Disabled
     void tilesFromClientMetadataAndTilesConfigShown_forOtherZone() throws Exception {
         IdentityZone identityZone = MultitenancyFixture.identityZone("test", "test");
         IdentityZoneHolder.set(identityZone);
