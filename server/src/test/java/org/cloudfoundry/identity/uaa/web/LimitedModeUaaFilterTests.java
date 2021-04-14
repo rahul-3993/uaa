@@ -66,8 +66,6 @@ public class LimitedModeUaaFilterTests {
 
     @Test
     void disabled() throws Exception {
-        MockEnvironment env = new MockEnvironment();
-        filter.setEnvironment(env.withProperty("spring_profiles", "default"));
         filter.doFilterInternal(mockHttpServletRequest, mockHttpServletResponse, mockFilterChain);
         verify(mockFilterChain, times(1)).doFilter(same(mockHttpServletRequest), same(mockHttpServletResponse));
         assertFalse(filter.isEnabled());
