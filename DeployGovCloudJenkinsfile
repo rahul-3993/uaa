@@ -71,7 +71,9 @@ pipeline {
                     echo 'Installing ruby and uaac'
                     apk update && apk upgrade
                     apk add ruby ca-certificates ruby-dev build-base ruby-rdoc ruby-irb libstdc++ fontconfig
-                    gem install cf-uaac bundle
+                    gem uninstall cf-uaac
+                    gem install cf-uaac -v 4.1.0
+                    gem install bundle
                     echo PATH is $PATH
 
                     startvpn.sh
