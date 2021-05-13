@@ -2,6 +2,11 @@
 # if any of these exist:
 # [$UAA_CONFIG_URL, $UAA_CONFIG_PATH/uaa.yml, $CLOUD_FOUNDRY_CONFIG_PATH/uaa.yml]
 
+device:
+  assertion:
+    proxy-public-key: |
+      not-used
+
 #spring_profiles: postgresql,default
 #spring_profiles: ldap,default,hsqldb
 #spring_profiles: saml
@@ -136,7 +141,7 @@
 #    searchBase: ''
 #    searchFilter: 'cn={0}'
 #    passwordAttributeName: userPassword
-#    passwordEncoder: org.cloudfoundry.identity.uaa.login.ldap.DynamicPasswordComparator
+#    passwordEncoder: org.cloudfoundry.identity.uaa.provider.ldap.DynamicPasswordComparator
 #    localPasswordCompare: true
 
 #password:
@@ -175,6 +180,8 @@ scim:
     uaa.admin: Act as an administrator throughout the UAA
     uaa.none: Forbid acting as a user
     uaa.offline_token: Allow offline access
+
+issuer.uri: http://localhost:8080
 
 oauth:
   user:

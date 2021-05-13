@@ -106,6 +106,7 @@ test {
     exclude '**/*IT.class'
     exclude '**/*AT.class'
     exclude 'org/cloudfoundry/identity/uaa/degraded/*.class'
+    exclude 'org/cloudfoundry/identity/uaa/jwt/degraded/*.class'
     exclude '**/*Docs.class'
     systemProperty 'java.io.tmpdir', '/tmp'
     systemProperty("mock.suite.test", "true")
@@ -152,6 +153,9 @@ generateDocs {
 }
 
 integrationTest {
+    exclude '**/*AT.class'
+    exclude 'org/cloudfoundry/identity/uaa/degraded/*.class'
+    exclude 'org/cloudfoundry/identity/uaa/jwt/degraded/*.class'
     filter {
         exclude '**/*AT.class'
         exclude 'org/cloudfoundry/identity/uaa/degraded/*.class'
@@ -174,6 +178,18 @@ task degradedTestLocal(type: Test) {
   dependsOn rootProject.cargoStartLocal
   finalizedBy rootProject.cargoStopLocal
   include "org/cloudfoundry/identity/uaa/degraded/*.class"
+}
+
+task degradedJwtTestCloud(type: Test) {
+    systemProperty "RUN_AGAINST_CLOUD", true
+    include "org/cloudfoundry/identity/uaa/jwt/degraded/*.class"
+}
+
+task degradedJwtTestLocal(type: Test) {
+    systemProperty "RUN_AGAINST_CLOUD", false
+    dependsOn rootProject.setupDegradedTestsForJwtBearerLocal
+    include "org/cloudfoundry/identity/uaa/jwt/degraded/*.class"
+    finalizedBy rootProject.cargoStopLocal
 }
 
 war {

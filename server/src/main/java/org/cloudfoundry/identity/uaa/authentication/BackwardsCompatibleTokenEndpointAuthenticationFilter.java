@@ -17,8 +17,11 @@ import org.cloudfoundry.identity.uaa.provider.oauth.ExternalOAuthAuthenticationM
 import org.cloudfoundry.identity.uaa.util.SessionUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.cloudfoundry.identity.uaa.provider.oauth.ExternalOAuthCodeToken;
-import org.springframework.security.authentication.*;
+import org.springframework.security.authentication.AuthenticationDetailsSource;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.authentication.InsufficientAuthenticationException;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -33,14 +36,18 @@ import org.springframework.security.saml.SAMLProcessingFilter;
 import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 
-import javax.servlet.*;
+import javax.servlet.Filter;
+import javax.servlet.FilterChain;
+import javax.servlet.FilterConfig;
+import javax.servlet.ServletException;
+import javax.servlet.ServletRequest;
+import javax.servlet.ServletResponse;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 
-import static org.cloudfoundry.identity.uaa.oauth.token.TokenConstants.GRANT_TYPE_JWT_BEARER;
 import static org.cloudfoundry.identity.uaa.oauth.token.TokenConstants.GRANT_TYPE_PASSWORD;
 import static org.cloudfoundry.identity.uaa.oauth.token.TokenConstants.GRANT_TYPE_SAML2_BEARER;
 
@@ -220,7 +227,7 @@ public class BackwardsCompatibleTokenEndpointAuthenticationFilter implements Fil
                 logger.debug("No assertion or filter, not attempting SAML authentication for token endpoint.");
                 throw new InsufficientAuthenticationException("SAML Assertion is missing");
             }
-        } else if (GRANT_TYPE_JWT_BEARER.equals(grantType)) {
+        }/* else if (GRANT_TYPE_JWT_BEARER.equals(grantType)) {
             logger.debug(GRANT_TYPE_JWT_BEARER +" found. Attempting authentication with assertion");
             String assertion = request.getParameter("assertion");
             if (assertion != null && externalOAuthAuthenticationManager != null) {
@@ -232,7 +239,7 @@ public class BackwardsCompatibleTokenEndpointAuthenticationFilter implements Fil
                 logger.debug("No assertion or authentication manager, not attempting JWT bearer authentication for token endpoint.");
                 throw new InsufficientAuthenticationException("Assertion is missing");
             }
-        }
+        }*/
         if (authResult != null && authResult.isAuthenticated()) {
             logger.debug("Authentication success: " + authResult.getName());
             return authResult;
