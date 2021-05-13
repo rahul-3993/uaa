@@ -377,7 +377,9 @@ public class LoginSamlAuthenticationProvider extends SAMLAuthenticationProvider 
         }
         if (haveUserAttributesChanged(user, userWithSamlAttributes)) {
             userModified = true;
-            user = user.modifyAttributes(userWithSamlAttributes.getEmail(),
+            user = user.modifyAttributes(
+                    StringUtils.endsWith(userWithSamlAttributes.getEmail(), '@' + UaaUser.DEFAULT_EMAIL_DOMAIN)
+                            ? user.getEmail() : userWithSamlAttributes.getEmail(),
                     userWithSamlAttributes.getGivenName(),
                     userWithSamlAttributes.getFamilyName(),
                     userWithSamlAttributes.getPhoneNumber(),

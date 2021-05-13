@@ -86,6 +86,8 @@ import static org.springframework.util.StringUtils.hasText;
 
 public class IntegrationTestUtils {
 
+    public static final String ZONE_NAME_TEMPLATE = "The Twiglet Zone[%s]";
+
     private static final Pattern CSRF_FORM_ELEMENT = Pattern.compile(
             "\\<input type=\\\"hidden\\\" name=\\\"" + CSRF_PARAMETER_NAME + "\\\" value=\\\"(.*?)\\\""
     );
