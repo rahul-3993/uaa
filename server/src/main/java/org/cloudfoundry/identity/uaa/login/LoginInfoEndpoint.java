@@ -257,10 +257,11 @@ public class LoginInfoEndpoint {
             clientName = (String) clientInfo.get(ClientConstants.CLIENT_NAME);
         }
 
+        List<IdentityProvider> allActiveIdentityProvidersInZone = getActiveIdentityProviderDefinitions();
         Map<String, SamlIdentityProviderDefinition> samlIdentityProviders =
-                getSamlIdentityProviderDefinitions(allowedIdentityProviderKeys);
+                getSamlIdentityProviderDefinitions(allowedIdentityProviderKeys, allActiveIdentityProvidersInZone);
         Map<String, AbstractExternalOAuthIdentityProviderDefinition> oauthIdentityProviders =
-                getOauthIdentityProviderDefinitions(allowedIdentityProviderKeys);
+                getOauthIdentityProviderDefinitions(allowedIdentityProviderKeys, allActiveIdentityProvidersInZone);
         Map<String, AbstractIdentityProviderDefinition> allIdentityProviders =
                 new HashMap<>() {{
                     putAll(samlIdentityProviders);
@@ -570,19 +571,23 @@ public class LoginInfoEndpoint {
         return idpAuthenticationUrl;
     }
 
-    private Map<String, SamlIdentityProviderDefinition> getSamlIdentityProviderDefinitions(List<String> allowedIdps) {
-        List<SamlIdentityProviderDefinition> filteredIdps = idpDefinitions.getIdentityProviderDefinitions(allowedIdps, IdentityZoneHolder.get());
+    private Map<String, SamlIdentityProviderDefinition> getSamlIdentityProviderDefinitions(List<String> allowedIdps, List<IdentityProvider> activeIdpsInZone) {
+        List<SamlIdentityProviderDefinition> filteredIdps = idpDefinitions.getIdentityProviderDefinitions(allowedIdps, activeIdpsInZone);
         return filteredIdps.stream().collect(new MapCollector<>(SamlIdentityProviderDefinition::getIdpEntityAlias, idp -> idp));
     }
 
-    protected Map<String, AbstractExternalOAuthIdentityProviderDefinition> getOauthIdentityProviderDefinitions(List<String> allowedIdps) {
+    protected Map<String, AbstractExternalOAuthIdentityProviderDefinition> getOauthIdentityProviderDefinitions(List<String> allowedIdps, List<IdentityProvider> activeIdpsInZone) {
 
         List<IdentityProvider> identityProviders =
-                externalOAuthProviderConfigurator.retrieveAll(true, IdentityZoneHolder.get().getId());
+                externalOAuthProviderConfigurator.retrieveAll(activeIdpsInZone);
 
         return identityProviders.stream()
                 .filter(p -> allowedIdps == null || allowedIdps.contains(p.getOriginKey()))
                 .collect(idpsMapCollector);
+    }
+
+    private List<IdentityProvider> getActiveIdentityProviderDefinitions() {
+        return providerProvisioning.retrieveActive(IdentityZoneHolder.get().getId());
     }
 
     private boolean hasSavedOauthAuthorizeRequest(HttpSession session) {
