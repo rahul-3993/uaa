@@ -187,7 +187,7 @@ public class JwtBearerAssertionTokenAuthenticator {
         // require positive numeric expiration claim
         Integer exp = null;
         try {
-            exp = (Integer) claims.get(ClaimConstants.EXP);
+            exp = (Integer) claims.get(ClaimConstants.EXPIRY_IN_SECONDS);
         } catch (RuntimeException e) {
             throw new InvalidTokenException("exp claim is in the wrong format.");
         }
@@ -299,7 +299,7 @@ public class JwtBearerAssertionTokenAuthenticator {
     }
 
     private void assertTokenIsCurrent(final Map<String, Object> claims) {
-        long expSeconds = (Integer) claims.get(ClaimConstants.EXP);
+        long expSeconds = (Integer) claims.get(ClaimConstants.EXPIRY_IN_SECONDS);
         long expWithSkewMillis = (expSeconds + this.maxAcceptableClockSkewSeconds) * 1000;
         long currentTime = System.currentTimeMillis();
 

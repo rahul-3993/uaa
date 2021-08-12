@@ -61,7 +61,7 @@ public class MockAssertionToken {
         response.put(ClaimConstants.IAT, issuedAtMillis / 1000L);
 
         if (expiration != null) {
-            response.put(ClaimConstants.EXP, expiration);
+            response.put(ClaimConstants.EXPIRY_IN_SECONDS, expiration);
         }
         response.put(ClaimConstants.AUD, audience);
 

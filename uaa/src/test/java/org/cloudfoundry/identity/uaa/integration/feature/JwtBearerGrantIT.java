@@ -457,7 +457,7 @@ public class JwtBearerGrantIT {
         Assert.assertEquals(GRANT_TYPE_JWT_BEARER, claims.get(ClaimConstants.GRANT_TYPE));
         Assert.assertEquals("http://localhost:8080/uaa/oauth/token", claims.get(ClaimConstants.ISS));
         long currentTimestamp = System.currentTimeMillis() / 1000;
-        String expirationTimestamp = (claims.get(ClaimConstants.EXP)).toString();
+        String expirationTimestamp = (claims.get(ClaimConstants.EXPIRY_IN_SECONDS)).toString();
         String issueTimestamp = (claims.get(ClaimConstants.IAT)).toString();
         Assert.assertTrue(Long.parseLong(expirationTimestamp) > currentTimestamp);
         Assert.assertTrue(Long.parseLong(issueTimestamp) <= currentTimestamp);
