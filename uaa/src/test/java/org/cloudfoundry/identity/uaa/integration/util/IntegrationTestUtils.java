@@ -89,6 +89,7 @@ public class IntegrationTestUtils {
     private static final Pattern CSRF_FORM_ELEMENT = Pattern.compile(
             "\\<input type=\\\"hidden\\\" name=\\\"" + CSRF_PARAMETER_NAME + "\\\" value=\\\"(.*?)\\\""
     );
+    public static final String ZONE_NAME_TEMPLATE = "The Twiglet Zone[%s]";
 
     public static final String SIMPLESAMLPHP_UAA_ACCEPTANCE = "http://simplesamlphp.uaa-acceptance.cf-app.com";
     public static final String SIMPLESAMLPHP_LOGIN_PROMPT_XPATH_EXPR = "//h2[contains(text(), 'Enter your username and password')]";
