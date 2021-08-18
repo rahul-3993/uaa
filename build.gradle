@@ -30,15 +30,10 @@ def applicationPort = project.hasProperty('port') ? project.getProperty('port').
 
 apply(plugin: "com.bmuschko.cargo")
 
-
-def uaaVersion = version
 def geArtifactoryReader = System.getenv('ARTIFACTORY_READER')
 def geArtifactoryReaderPassword  = System.getenv('ARTIFACTORY_READER_PW')
 def proxyHost  = System.getenv('PROXY_HOST')
 def proxyPort  = System.getenv('PROXY_PORT')
-
-
-
 def nonProxyHosts = 'localhost|*.localhost'
 
 allprojects {
@@ -60,7 +55,7 @@ allprojects {
         mavenCentral()
         maven {
             credentials {
-                username  geArtifactoryReader
+                username geArtifactoryReader
                 password geArtifactoryReaderPassword
             }
             url 'https://artifactory.build.ge.com/predix-virtual'
@@ -241,6 +236,7 @@ cargo {
             property("metrics.perRequestMetrics", System.getProperty("metrics.perRequestMetrics", "true"))
             property("smtp.host", "localhost")
             property("smtp.port", 2525)
+
             if (proxyHost != null && proxyHost.trim() != '') {
                 property 'http.proxyHost', proxyHost
                 property 'http.proxyPort', proxyPort

@@ -28,7 +28,7 @@ buildscript {
 }
 
 apply plugin: com.bmuschko.gradle.docker.DockerRemoteApiPlugin
-apply plugin: 'java'
+apply(plugin: "java")
 
 import com.bmuschko.gradle.docker.tasks.image.Dockerfile
 import com.bmuschko.gradle.docker.tasks.image.DockerBuildImage
