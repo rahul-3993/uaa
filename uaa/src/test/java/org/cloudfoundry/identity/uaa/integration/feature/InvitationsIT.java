@@ -66,7 +66,7 @@ import static org.junit.Assert.assertTrue;
 import static org.springframework.http.HttpMethod.POST;
 import static org.springframework.http.MediaType.APPLICATION_JSON;
 
-@Ignore // Invitations flow is disabled in Predix.
+@Ignore("GE Fork does not use invitations flow")
 @RunWith(SpringJUnit4ClassRunner.class)
 @ContextConfiguration(classes = DefaultIntegrationTestConfig.class)
 @ExtendWith(PollutionPreventionExtension.class)

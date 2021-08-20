@@ -96,6 +96,7 @@ public class JdbcExpiringCodeStore implements ExpiringCodeStore {
             String code = generator.generate();
             try {
                 int update = jdbcTemplate.update(insert, code, expiresAt.getTime(), data, intent, zoneId);
+
                 if (update == 1) {
                     return new ExpiringCode(code, expiresAt, data, intent);
                 } else {
@@ -140,6 +141,7 @@ public class JdbcExpiringCodeStore implements ExpiringCodeStore {
 
         try {
             ExpiringCode expiringCode = jdbcTemplate.queryForObject(selectAllFields, rowMapper, code, zoneId);
+
             if (expiringCode != null) {
                 jdbcTemplate.update(delete, code, zoneId);
             }
@@ -160,7 +162,6 @@ public class JdbcExpiringCodeStore implements ExpiringCodeStore {
     @Override
     public void expireByIntent(String intent, String zoneId) {
         Assert.hasText(intent);
-
         jdbcTemplate.update(deleteIntent, intent, zoneId);
     }
 

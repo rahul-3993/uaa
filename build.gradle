@@ -414,8 +414,18 @@ task setupDegradedTestLocal(type: Exec, dependsOn: cargoStartLocal) {
 }
 
 task setupDegradedTestCloud(type: Exec) {
+    workingDir 'scripts'
+    commandLine './setupDegradedTests.sh'
+}
+
+task setupDegradedTestsForJwtBearerCloud(type: Exec) {
   workingDir 'scripts'
-  commandLine './setupDegradedTests.sh'
+  commandLine './setupDegradedTestsForJwtBearer.sh'
+}
+
+task setupDegradedTestsForJwtBearerLocal(type: Exec, dependsOn: rootProject.cargoStartLocal) {
+  workingDir 'scripts'
+  commandLine './setupDegradedTestsForJwtBearer.sh'
 }
 
 // task dependencies

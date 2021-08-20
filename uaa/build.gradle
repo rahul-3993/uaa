@@ -152,6 +152,9 @@ generateDocs {
 }
 
 integrationTest {
+    exclude '**/*AT.class'
+    exclude 'org/cloudfoundry/identity/uaa/degraded/*.class'
+    exclude 'org/cloudfoundry/identity/uaa/jwt/degraded/*.class'
     filter {
         exclude '**/*AT.class'
         exclude 'org/cloudfoundry/identity/uaa/degraded/*.class'
@@ -170,10 +173,22 @@ task degradedTestCloud(type: Test) {
 }
 
 task degradedTestLocal(type: Test) {
-  systemProperty "RUN_AGAINST_CLOUD", false
-  dependsOn rootProject.cargoStartLocal
-  finalizedBy rootProject.cargoStopLocal
-  include "org/cloudfoundry/identity/uaa/degraded/*.class"
+    systemProperty "RUN_AGAINST_CLOUD", false
+    dependsOn rootProject.cargoStartLocal
+    finalizedBy rootProject.cargoStopLocal
+    include "org/cloudfoundry/identity/uaa/degraded/*.class"
+}
+
+task degradedJwtTestCloud(type: Test) {
+    systemProperty "RUN_AGAINST_CLOUD", true
+    include "org/cloudfoundry/identity/uaa/jwt/degraded/*.class"
+}
+
+task degradedJwtTestLocal(type: Test) {
+    systemProperty "RUN_AGAINST_CLOUD", false
+    dependsOn rootProject.setupDegradedTestsForJwtBearerLocal
+    include "org/cloudfoundry/identity/uaa/jwt/degraded/*.class"
+    finalizedBy rootProject.cargoStopLocal
 }
 
 war {
