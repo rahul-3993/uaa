@@ -93,7 +93,7 @@ test {
     exclude("org/cloudfoundry/identity/uaa/integration/*.class")
     exclude("**/*IT.class")
     exclude '**/*AT.class'
-    exclude 'org/cloudfoundry/identity/uaa/jwt/degraded/*.class'
+    exclude 'org/cloudfoundry/identity/uaa/degraded/*.class'
     exclude("**/*Docs.class")
     systemProperty("mock.suite.test", "true")
 }
