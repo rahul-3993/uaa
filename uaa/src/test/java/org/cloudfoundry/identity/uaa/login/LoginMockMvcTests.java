@@ -2245,6 +2245,50 @@ public class LoginMockMvcTests {
     }
 
     @Test
+    public void testXhrCorsPolicy_ForbiddenURI(
+        @Autowired IdentityZoneProvisioning identityZoneProvisioning
+    ) throws Exception {
+        String subdomain = "testzone"+ generator.generate();
+        IdentityZone zone = new IdentityZone();
+        zone.getConfig().getTokenPolicy().setKeys(Collections.singletonMap(subdomain+"_key", "key_for_"+subdomain));
+
+        CorsConfiguration corsConfig = new CorsConfiguration();
+        corsConfig.setAllowedUris(Arrays.asList("^/uaa/userinfo$", "^/uaa/logout.do$", "^/login\\.do$", "^/saml/.*"));
+        corsConfig.setAllowedOrigins(Arrays.asList("^localhost$", "^.*\\.localhost$"));
+        corsConfig.setAllowedMethods(Arrays.asList("GET", "OPTIONS", "POST"));
+        corsConfig.setAllowedHeaders(Arrays.asList("Accept", "Authorization", "Content-Type", "X-Requested-With"));
+        zone.getConfig().getCorsPolicy().setXhrConfiguration(corsConfig);
+
+        zone.setId(UUID.randomUUID().toString());
+        zone.setName(subdomain);
+        zone.setSubdomain(subdomain);
+        zone.setDescription(subdomain);
+        identityZoneProvisioning.create(zone);
+        IdentityZoneHolder.set(zone);
+
+        //make POST call with non matching uri and with X-Requested-With header
+        MvcResult mvcResult = mockMvc.perform(post("/login/idp_discovery")
+                                                  .header("X-Requested-With", "com.ge.ent.MobileAPM")
+                                                  .header("Origin", subdomain + ".localhost")
+                                                  .with(new SetServerNameRequestPostProcessor(subdomain + ".localhost")))
+                                     .andExpect(status().isForbidden()).andReturn();
+        assertEquals("Illegal request URI", mvcResult.getResponse().getErrorMessage());
+
+        //change zone CORS policy to allow /login/idp_discovery uri
+        corsConfig = zone.getConfig().getCorsPolicy().getXhrConfiguration();
+        corsConfig.setAllowedUris(Arrays.asList("^/uaa/userinfo$", "^/uaa/logout.do$", "^/login\\.do$", "^/saml/.*",
+                                                "^/login/idp_discovery"));
+        zone.getConfig().getCorsPolicy().setXhrConfiguration(corsConfig);
+
+        //make POST call after uri was whitelisted
+        mockMvc.perform(post("/login/idp_discovery")
+                            .header("X-Requested-With", "com.ge.ent.MobileAPM")
+                            .header("Origin", subdomain + ".localhost")
+                            .with(new SetServerNameRequestPostProcessor(subdomain + ".localhost")))
+               .andExpect(status().is3xxRedirection());
+    }
+
+    @Test
     void login_LockoutPolicySucceeds_ForDefaultZone(
             @Autowired ScimUserProvisioning scimUserProvisioning
     ) throws Exception {

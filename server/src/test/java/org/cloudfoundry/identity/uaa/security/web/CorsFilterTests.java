@@ -431,6 +431,43 @@ public class CorsFilterTests {
         );
     }
 
+    @Test
+    public void testPostRequestWithForbiddenUri() throws ServletException, IOException {
+        CorsFilter corsFilter = new CorsFilter();
+
+        List<String> allowedUris = new ArrayList<>(Arrays.asList("^/userinfo$", "^/login\\.do$", "^/logout\\.do$",
+                                                                 "^/saml/.*", "^/login/idp_discovery"));
+        corsFilter.getXhrConfiguration().setAllowedUris(allowedUris);
+        corsFilter.getDefaultConfiguration().setAllowedUris(allowedUris);
+
+        List<String> allowedOrigins = new ArrayList<>(Arrays.asList("^localhost$", "^.*\\.localhost$",
+                                                                    "^.*\\.ice\\.predix\\.io$"));
+        corsFilter.getXhrConfiguration().setAllowedOrigins(allowedOrigins);
+
+        List<String> allowedHeaders = new ArrayList<>(Arrays.asList("Accept", "Accept-Encoding", "Accept-Language",
+                                                                    "Authorization", "Cache-Control", "Connection",
+                                                                    "Content-Type", "Cookie", "Host", "Origin", "Referer",
+                                                                    "User-Agent", "X-Requested-With"));
+        corsFilter.getXhrConfiguration().setAllowedHeaders(allowedHeaders);
+
+        List<String> allowedMethods = new ArrayList<>(Arrays.asList("GET", "OPTIONS", "POST"));
+        corsFilter.getXhrConfiguration().setAllowedMethods(allowedMethods);
+
+        corsFilter.initialize();
+
+        MockHttpServletRequest request = new MockHttpServletRequest("POST", "/login/idp_discovery");
+        request.addHeader("Origin", "https://d1730ade-7c0d-4652-8d44-cb563fcc1e27.predix-uaa.run.aws-usw02-pr.ice.predix.io");
+        request.addHeader("X-Requested-With", "com.ge.ent.MobileAPM");
+
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        FilterChain filterChain = newMockFilterChain();
+
+        corsFilter.doFilter(request, response, filterChain);
+
+        assertEquals(403, response.getStatus());
+    }
+
     private static CorsFilter createConfiguredCorsFilter() {
         CorsFilter corsFilter = new CorsFilter();
 
