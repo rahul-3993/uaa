@@ -1,4 +1,6 @@
-FROM ubuntu:18.04
+FROM gesoscontainercentral.azurecr.io/gesos-base-ubuntu:18.04
+
+USER root
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     curl jq git lsb-release unzip vim sudo \
@@ -171,3 +173,6 @@ RUN /bin/start-slapd \
     && ldapadd -x -D 'cn=admin,dc=test,dc=com' -w password -f /ldap/copy_of-uaa_src_main_resources_ldap_init.ldif \
     && rm -rf /ldap/
 #/PROJECT_SETUP
+
+USER gecloud
+
