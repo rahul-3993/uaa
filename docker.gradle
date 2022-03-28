@@ -6,6 +6,9 @@ DOCKER_REPO_USER
 DOCKER_REPO_USER_PW
 DOCKER_CONTAINER_NAME
 
+To build UAA docker image using release artifacts:
+export USE_RELEASE_ARTIFACTS=true
+
 When pulling the uaa docker image from a registry you can inject the uaa profile and uaa.yml
 into the docker container environment.
 
@@ -24,6 +27,7 @@ buildscript {
 
   dependencies {
     classpath(libraries.cargoDockerPlugin)
+    classpath(libraries.downloadGradlePlugin)
   }
 }
 
@@ -38,68 +42,83 @@ import com.bmuschko.gradle.docker.DockerRegistryCredentials
 import com.bmuschko.gradle.docker.tasks.container.DockerCreateContainer
 import com.bmuschko.gradle.docker.tasks.container.DockerStartContainer
 
-task createDockerfile(type: Dockerfile) {
-  dependsOn assemble
-  destFile = project.file('build/docker/Dockerfile')
-  from 'tomcat:8.5-jre8'
-  maintainer 'UAA team "$MAINTAINER_EMAIL"'
-  instruction 'ENV LOGIN_CONFIG_URL WEB-INF/classes/required_configuration.yml'
-  instruction 'ENV ARTIFACTORY_READER $ARTIFACTORY_READER'
-  instruction 'ENV ARTIFACTORY_READER_PW $ARTIFACTORY_READER_PW'
-  instruction 'ENV CLOUD_FOUNDRY_CONFIG_PATH /uaa'
-  instruction 'RUN bash -c "rm -r /usr/local/tomcat/webapps/ROOT"'
-  instruction 'RUN bash -c "rm -r /usr/local/tomcat/webapps/host-manager"'
-  instruction 'RUN bash -c "rm -r /usr/local/tomcat/webapps/manager"'
-  instruction 'RUN bash -c "rm -r /usr/local/tomcat/webapps/examples"'
-  instruction 'RUN bash -c "rm -r /usr/local/tomcat/webapps/docs"'
-  instruction 'ADD cloudfoundry-identity-uaa-' + version + '.war /usr/local/tomcat/webapps/ROOT.war'
-  instruction 'ADD uaa-docker.yml /uaa/uaa.yml'
-  instruction 'RUN bash -c "echo $LOGIN_CONFIG_URL"'
-  instruction 'EXPOSE 8080'
+import de.undercouch.gradle.tasks.download.Download
+
+def use_release_artifacts = System.getenv('USE_RELEASE_ARTIFACTS')
+def build_context = "${buildDir}/docker/"
+
+task downloadReleaseArtifacts(type: Download) {
+  doFirst {
+    mkdir build_context
+  }
+  src 'https://artifactory.build.ge.com/MAAXA/org/cloudfoundry/identity/' \
+      + 'cloudfoundry-identity-uaa/' \
+      + version \
+      + '/cloudfoundry-identity-uaa-' \
+      + version \
+      + '.war'
+  dest build_context
+  username System.getenv('ARTIFACTORY_READER')
+  password System.getenv('ARTIFACTORY_READER_PW')
+}
+
+task copyDockerfile(type: Copy) {
+  if (use_release_artifacts == 'true') {
+    dependsOn downloadReleaseArtifacts
+  } else {
+    dependsOn assemble
+  }
+
+  from 'Dockerfile'
+  into build_context
 }
 
 task deleteDockerfile() {
-  delete file('build/docker')
+  delete file(build_context)
 }
 
 task copyContainerFiles(type: Copy) {
-  dependsOn createDockerfile
-  from 'uaa/build/libs'
-  from 'uaa/build/resources/main/tomcat-server.xml'
-  from 'uaa/build/resources/main/uaa-docker.yml'
-  into 'build/docker'
+  dependsOn copyDockerfile
+  if (use_release_artifacts == 'true') {
+    from 'uaa/src/main/resources/uaa-docker.yml'
+  } else {
+    from 'uaa/build/libs'
+    from 'uaa/build/resources/main/uaa-docker.yml'
+  }
+  into build_context
 }
 
 task buildImage(type: DockerBuildImage) {
   dependsOn copyContainerFiles
-  inputDir = createDockerfile.destFile.parentFile
-  tag = System.getenv('DOCKER_REPO_URL') + '/' + System.getenv('DOCKER_REPO_USER') + '/uaa:' + version
+  inputDir = file(build_context)
+  images.add(System.getenv('DOCKER_REPO_URL') + '/uaa:' + version)
+  buildArgs = [MAINTAINER_EMAIL: System.getenv('MAINTAINER_EMAIL'), VERSION: version]
 }
 
 task createUaaContainer(type: DockerCreateContainer) {
   dependsOn buildImage
-  targetImageId { buildImage.getImageId() }
+  targetImageId buildImage.imageId
   containerName = System.getenv('DOCKER_CONTAINER_NAME')
-  portBindings = ['8080:8080']
-
-  env = ["CATALINA_OPTS='-Dspring.profiles.active=default'", 
-         "ENFORCE_CLIENT_ASSERTION_HEADER=" + System.getenv('ENFORCE_CLIENT_ASSERTION_HEADER'),
-         "KEY_PROVIDER_SERVICE_URL=" + System.getenv('KEY_PROVIDER_SERVICE_URL'),
-         "KEY_PROVIDER_TOKEN_URL=" + System.getenv('KEY_PROVIDER_TOKEN_URL'),
-         "KEY_PROVIDER_CLIENT_ID=" + System.getenv('KEY_PROVIDER_CLIENT_ID'),
-         "KEY_PROVIDER_CLIENT_SECRET=" + System.getenv('KEY_PROVIDER_CLIENT_SECRET'),
-         "KEY_PROVIDER_DEFAULT_INSTANCE=" + System.getenv('KEY_PROVIDER_DEFAULT_INSTANCE')]
+  hostConfig.portBindings = ['8080:8080']
+  envVars.putAll([
+          'CATALINA_OPTS': '-Dspring.profiles.active=default',
+          'ENFORCE_CLIENT_ASSERTION_HEADER': System.getenv('ENFORCE_CLIENT_ASSERTION_HEADER'),
+          'KEY_PROVIDER_SERVICE_URL': System.getenv('KEY_PROVIDER_SERVICE_URL'),
+          'KEY_PROVIDER_TOKEN_URL': System.getenv('KEY_PROVIDER_TOKEN_URL'),
+          'KEY_PROVIDER_CLIENT_ID': System.getenv('KEY_PROVIDER_CLIENT_ID'),
+          'KEY_PROVIDER_CLIENT_SECRET': System.getenv('KEY_PROVIDER_CLIENT_SECRET'),
+          'KEY_PROVIDER_DEFAULT_INSTANCE': System.getenv('KEY_PROVIDER_DEFAULT_INSTANCE')
+  ])
 }
 
 task startUaaContainer(type: DockerStartContainer) {
   dependsOn createUaaContainer
-  targetContainerId { createUaaContainer.getContainerId() }
+  targetContainerId createUaaContainer.containerId
 }
 
 task pushUaaImage(type: DockerPushImage) {
   dependsOn buildImage
-  imageName = System.getenv('DOCKER_REPO_URL') + '/' + System.getenv('DOCKER_REPO_USER') + '/uaa:' + version
-  registryCredentials = new DockerRegistryCredentials()
+  images.add(System.getenv('DOCKER_REPO_URL') + '/uaa:' + version)
   registryCredentials.url = System.getenv('DOCKER_REPO_URL')
   registryCredentials.username = System.getenv('DOCKER_REPO_USER')
   registryCredentials.password = System.getenv('DOCKER_REPO_USER_PW')
