@@ -4,7 +4,6 @@ import org.apache.http.client.utils.URIBuilder;
 import org.cloudfoundry.identity.uaa.constants.OriginKeys;
 import org.cloudfoundry.identity.uaa.provider.IdentityProvider;
 import org.cloudfoundry.identity.uaa.provider.IdentityProviderProvisioning;
-import org.cloudfoundry.identity.uaa.provider.JdbcIdentityProviderProvisioning;
 import org.cloudfoundry.identity.uaa.provider.SamlIdentityProviderDefinition;
 import org.cloudfoundry.identity.uaa.zone.IdentityZone;
 import org.cloudfoundry.identity.uaa.zone.IdentityZoneHolder;
@@ -53,8 +52,18 @@ public class SamlIdentityProviderConfigurator {
         return result;
     }
 
-    public List<SamlIdentityProviderDefinition> getIdentityProviderDefinitions(List<String> allowedIdps, IdentityZone zone) {
-        List<SamlIdentityProviderDefinition> idpsInTheZone = getIdentityProviderDefinitionsForZone(zone);
+    private List<SamlIdentityProviderDefinition> getIdentityProviderDefinitionsForZone(List<IdentityProvider> activeIdpsInZone) {
+        List<SamlIdentityProviderDefinition> result = new LinkedList<>();
+        for (IdentityProvider provider : activeIdpsInZone) {
+            if (OriginKeys.SAML.equals(provider.getType())) {
+                result.add((SamlIdentityProviderDefinition) provider.getConfig());
+            }
+        }
+        return result;
+    }
+
+    public List<SamlIdentityProviderDefinition> getIdentityProviderDefinitions(List<String> allowedIdps, List<IdentityProvider> activeIdpsInZone) {
+        List<SamlIdentityProviderDefinition> idpsInTheZone = getIdentityProviderDefinitionsForZone(activeIdpsInZone);
         if (allowedIdps != null) {
             List<SamlIdentityProviderDefinition> result = new LinkedList<>();
             for (SamlIdentityProviderDefinition def : idpsInTheZone) {
