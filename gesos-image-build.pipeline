@@ -25,6 +25,7 @@ pipeline {
     environment {
         GESOS_API_KEY = credentials('GESOS_API_KEY')
         GITHUB_CREDENTIALS = credentials('gesoftware-cf-uaa-creds')
+        AWS_ECR_SSO_CREDENTIALS = credentials('AWS_ECR_SSO_CREDENTIALS')
     }
     stages {
         stage('Github status configuration') {
@@ -105,6 +106,92 @@ pipeline {
                         echo("Retrying " + retryCount + "/60")
                     }
                     error("GE SOS build exceeded time limit")
+                }
+            }
+        }
+        stage('Download image from AWS ECR and run acceptance tests ') {
+            steps {
+                dir('uaa') {
+                    checkout scm
+                }
+                dir('uaa-k8s-deploy') {
+                    git changelog: false,
+                        credentialsId: 'GITHUB_CREDENTIALS',
+                        poll: false,
+                        url: 'https://github.devtools.predix.io/predix-security/uaa-k8s-deploy.git',
+                        branch: 'master'
+                }
+                script {
+                    sh """
+                                    # Install docker CLI (mvn:3.5 image uses Debian 9)
+                                    apt update
+                                    apt install -y --no-install-recommends ca-certificates curl gnupg lsb-release apt-transport-https
+                                    mkdir -p /etc/apt/keyrings
+                                    curl -fsSL https://download.docker.com/linux/debian/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+                                    echo "deb [arch=\$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/debian \
+                                        \$(lsb_release -cs) stable" | tee /etc/apt/sources.list.d/docker.list > /dev/null
+                                    apt update
+                                    apt install -y --no-install-recommends docker-ce-cli
+
+                                    # AWS login via GE SSO using gossamer
+                                    CURRENT_VERSION=3.1.7
+                                    wget https://github.com/GESkunkworks/gossamer3/releases/download/v\${CURRENT_VERSION}/gossamer3_\${CURRENT_VERSION}_linux_amd64.tar.gz
+                                    tar -xzvf gossamer3_\${CURRENT_VERSION}_linux_amd64.tar.gz -C /usr/local/bin
+                                    chmod u+x /usr/local/bin/gossamer3
+                                    gossamer3 configure --skip-prompt --url=${GE_SSO_URL} \
+                                        --idp-provider=Ping --mfa=None
+                                    gossamer3 login --skip-prompt -p saml \
+                                        --assume-child-role=${IAM_AWS_JENKINS_ROLE} \
+                                        --username=${AWS_ECR_SSO_CREDENTIALS_USR} \
+                                        --password=${AWS_ECR_SSO_CREDENTIALS_PSW}
+
+                                    # Install AWS CLI tools
+                                    wget https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip
+                                    unzip awscli-exe-linux-x86_64.zip
+                                    ./aws/install
+                                """
+
+                    sh """
+                                    # Download uaa image from aws ecr iam-uaa repo 
+                                    IAM_ECR_URL=${IAM_ECR_URL}
+                                    repo_name="iam-uaa"
+
+                                    # Login to IAM ECR and pull from IAM ECR
+                                    aws --profile saml ecr get-login-password --region us-west-2 | \
+                                        docker login --username AWS --password-stdin \${IAM_ECR_URL}
+                                    docker pull \${IAM_ECR_URL}/\${repo_name}:${imageTag}
+
+                                    # Create container from uaa image
+                                    cd ..
+
+                                    # Run acceptance tests
+                                        
+                                    # Remove container
+                                    docker kill $DOCKER_CONTAINER_NAME && docker rm $DOCKER_CONTAINER_NAME || true
+                                    if [ $LAST != 0 ]; then
+                                        exit $LAST
+                                    fi
+
+                                """
+                }
+            }
+            post {
+                always {
+                    junit testResults: 'uaa/uaa/build/test-results/**/*.xml', allowEmptyResults: true
+                    publishHTML target: [
+                        allowMissing: true,
+                        alwaysLinkToLastBuild: true,
+                        keepAll: true,
+                        reportDir: 'uaa/uaa/build/reports/tests/acceptanceTest',
+                        reportFiles: 'index.html',
+                        reportName: 'Acceptance Test Results'
+                    ]
+                }
+                success {
+                    echo "Acceptance test stage success"
+                }
+                failure {
+                    echo "Acceptance test stage failed"
                 }
             }
         }
