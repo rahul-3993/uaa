@@ -8,6 +8,7 @@ pipeline {
         docker {
             image 'openjdk:8'
             label 'dind'
+            args '-v /var/run/docker.sock:/var/run/docker.sock'
         }
     }
     parameters {
@@ -116,13 +117,13 @@ pipeline {
                 }
                 dir('uaa-k8s-deploy') {
                     git changelog: false,
-                        credentialsId: 'GITHUB_CREDENTIALS',
+                        credentialsId: 'github.devtools.predix.io',
                         poll: false,
-                        url: 'https://github.build.ge.com/predix/uaa-k8s-deploy.git',
+                        url: 'https://github.devtools.predix.io/predix-security/uaa-k8s-deploy.git',
                         branch: 'master'
                 }
                 script {
-                    sh """
+                    sh '''
                         # Install docker CLI (mvn:3.5 image uses Debian 9)
                         apt update
                         apt install -y --no-install-recommends ca-certificates curl gnupg lsb-release apt-transport-https
@@ -149,43 +150,90 @@ pipeline {
                         wget https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip
                         unzip awscli-exe-linux-x86_64.zip
                         ./aws/install
-                    """
+                    '''
 
-                    sh """
+                    sh '''
                         # Download uaa image from aws ecr iam-uaa repo 
                         IAM_ECR_URL=${IAM_ECR_URL}
                         repo_name="iam-uaa"
+                        imageTag='rc_75.18.1'
 
                         # Login to IAM ECR and pull from IAM ECR
                         aws --profile saml ecr get-login-password --region us-west-2 | \
                             docker login --username AWS --password-stdin \${IAM_ECR_URL}
-                        docker pull \${IAM_ECR_URL}/\${repo_name}:${imageTag}
+                        docker pull \${IAM_ECR_URL}/\${repo_name}:\${imageTag}
 
                         # Create container from uaa image
                         UAA_HOST="localhost"
                         UAA_PORT=8080
-                        CURRENT_WORKING_DIRECTORY=pwd
-                        echo $CURRENT_WORKING_DIRECTORY
                         CONTAINER_NAME="local_uaa_0"
-                        CONTAINER_ID=docker run -d -v $CURRENT_WORKING_DIRECTORY/uaa/uaa/src/main/resources/uaa-docker.yml:/uaa/uaa.yml \
-                                    -p 8080:$UAA_PORT --env CATALINA_OPTS='-Dspring.profiles.active=default' \
-                                    --name=$CONTAINER_NAME \${IAM_ECR_URL}/\${repo_name}:${imageTag}
+                        CURRENT_WORKING_DIRECTORY=$(pwd) 
+                        CONTAINER_ID=$(docker run -d -v \${CURRENT_WORKING_DIRECTORY}/uaa/uaa/src/main/resources/uaa-docker.yml:/uaa/uaa.yml \
+                                    -p 8080:\$UAA_PORT --env CATALINA_OPTS='-Dspring.profiles.active=default' \
+                                    --name=\$CONTAINER_NAME \${IAM_ECR_URL}/\${repo_name}:\${imageTag})
+                        echo "Wait for 30 seconds for container to startup properly"
                         sleep 30
+                        docker ps -a --filter "name=local_uaa_0"
+                        if [ $(docker ps -a --filter "name=local_uaa_0" | wc -l) -gt 1 ]; then
+                            echo "Container local_uaa_0 started successfully with id=\${CONTAINER_ID}"
+                        else
+                            echo "Container local_uaa_0 created with id=\${CONTAINER_ID} but failed to start"
+                        fi
 
                         # Update local dns entries
                         export UAA_IPADDR=`docker inspect --format '{{ .NetworkSettings.IPAddress }}' $CONTAINER_NAME`
-                        echo -e "\n${UAA_IPADDR} uaa-acceptance-zone.${UAA_HOST} cors-test-zone.${UAA_HOST} ${UAA_HOST}" >> /etc/hosts
+                        echo -e "\n${UAA_IPADDR} uaa-acceptance-zone.\${UAA_HOST} cors-test-zone.\${UAA_HOST} \${UAA_HOST}" >> /etc/hosts
+
+                        # Install utility yq for yaml processor
+                        VERSION=v4.2.0 
+                        BINARY=yq_linux_amd64
+                        wget https://github.com/mikefarah/yq/releases/download/${VERSION}/${BINARY}.tar.gz -O - |\
+                        tar xz && mv ${BINARY} /usr/bin/yq
+                        yq --version
+                        
+                        # Install kubectl
+                        apt-get update
+                        apt-get install -y ca-certificates curl
+                        curl -fsSLo /usr/share/keyrings/kubernetes-archive-keyring.gpg https://packages.cloud.google.com/apt/doc/apt-key.gpg
+                        echo "deb [signed-by=/usr/share/keyrings/kubernetes-archive-keyring.gpg] https://apt.kubernetes.io/ kubernetes-xenial main" | tee /etc/apt/sources.list.d/kubernetes.list
+                        apt-get update
+                        apt-get install -y kubectl
+                        
+                        # access eks dev env
+                        #aws --profile saml eks update-kubeconfig --name pss-internal --no-verify-ssl
+                        #kubectl get all --namespace=pss-iam-dev
+
+                        # Install helm
+                        curl https://baltocdn.com/helm/signing.asc | gpg --dearmor | tee /usr/share/keyrings/helm.gpg > /dev/null
+                        apt-get install apt-transport-https --yes
+                        echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/helm.gpg] https://baltocdn.com/helm/stable/debian/ all main" | tee /etc/apt/sources.list.d/helm-stable-debian.list
+                        apt-get update
+                        apt-get install -y helm=3.8.2-1 -V
+                        
+                        # Install uaac cli
+                        apt update
+                        
+                        #apt install ruby-dev -y 
+                        #apt install ruby -y
+                        #apt-get install ruby-full -y
+                        #ruby --version
+                        #gem install cf-uaac -v 4.1.0
+                        
+                        apt-get install ruby-full sudo build-essential nodejs -y
+                        gem install phantomjs
+                        gem install cf-uaac -v 4.1.0
+                        gem install bundle
 
                         # Run acceptance tests
                         cd uaa-k8s-deploy
-                        sh ./scripts/uaa-acceptance-tests.sh local
+                        bash ./scripts/uaa-acceptance-tests.sh dev
                                         
                         # Remove container
-                        docker kill $CONTAINER_ID && docker rm $CONTAINER_ID || true
-                            if [ $LAST != 0 ]; then
-                                exit $LAST
-                            fi
-                    """
+                        docker kill \$CONTAINER_ID && docker rm \$CONTAINER_ID || true
+                        if [ $LAST != 0 ]; then
+                            exit $LAST
+                        fi
+                    '''
                 }
             }
             post {
