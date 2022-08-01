@@ -142,6 +142,7 @@ pipeline {
                         gossamer3 configure --skip-prompt --url=${GE_SSO_URL} \
                             --idp-provider=Ping --mfa=None
                         gossamer3 login --skip-prompt -p saml \
+                            --role=${IAM_AWS_JENKINS_JUMP_ROLE} \
                             --assume-child-role=${IAM_AWS_JENKINS_ROLE} \
                             --username=${AWS_ECR_SSO_CREDENTIALS_USR} \
                             --password=${AWS_ECR_SSO_CREDENTIALS_PSW}
@@ -163,23 +164,10 @@ pipeline {
                             docker login --username AWS --password-stdin \${IAM_ECR_URL}
                         docker pull \${IAM_ECR_URL}/\${repo_name}:\${imageTag}
 
-                        # Create container from uaa image
+                        
                         UAA_HOST="localhost"
                         UAA_PORT=8080
-                        CONTAINER_NAME="local_uaa_0"
-                        CURRENT_WORKING_DIRECTORY=$(pwd) 
-                        CONTAINER_ID=$(docker run -d -v \${CURRENT_WORKING_DIRECTORY}/uaa/uaa/src/main/resources/uaa-docker.yml:/uaa/uaa.yml \
-                                    -p 8080:\$UAA_PORT --env CATALINA_OPTS='-Dspring.profiles.active=default' \
-                                    --name=\$CONTAINER_NAME \${IAM_ECR_URL}/\${repo_name}:\${imageTag})
-                        echo "Wait for 30 seconds for container to startup properly"
-                        sleep 30
-                        docker ps -a --filter "name=local_uaa_0"
-                        if [ $(docker ps -a --filter "name=local_uaa_0" | wc -l) -gt 1 ]; then
-                            echo "Container local_uaa_0 started successfully with id=\${CONTAINER_ID}"
-                        else
-                            echo "Container local_uaa_0 created with id=\${CONTAINER_ID} but failed to start"
-                        fi
-
+                        
                         # Update local dns entries
                         export UAA_IPADDR=`docker inspect --format '{{ .NetworkSettings.IPAddress }}' $CONTAINER_NAME`
                         echo -e "\n${UAA_IPADDR} uaa-acceptance-zone.\${UAA_HOST} cors-test-zone.\${UAA_HOST} \${UAA_HOST}" >> /etc/hosts
@@ -200,12 +188,16 @@ pipeline {
                         apt-get install -y kubectl
                         
                         # access eks dev env
+                        gossamer3 configure --skip-prompt --url=${GE_SSO_URL} \
+                            --idp-provider=Ping --mfa=None -p saml-for-eks
                         gossamer3 login --skip-prompt -p saml-for-eks \
-                            --assume-child-role=${IAM_AWS_POWERUSER_ROLE} \
+                            --role=${IAM_AWS_POWERUSER_JUMP_ROLE} \
+                            --assume-child-role=${IAM_AWS_PSS_IAM_DEV_NSADMIN_ROLE} \
                             --username=${AWS_ECR_SSO_CREDENTIALS_USR} \
                             --password=${AWS_ECR_SSO_CREDENTIALS_PSW}
                         aws --profile saml-for-eks eks update-kubeconfig --name pss-internal --no-verify-ssl
                         kubectl get all --namespace=pss-iam-dev
+                        
 
                         # Install helm
                         curl https://baltocdn.com/helm/signing.asc | gpg --dearmor | tee /usr/share/keyrings/helm.gpg > /dev/null
@@ -216,21 +208,59 @@ pipeline {
                         
                         # Install uaac cli
                         apt update
-                        
-                        #apt install ruby-dev -y 
-                        #apt install ruby -y
-                        #apt-get install ruby-full -y
-                        #ruby --version
-                        #gem install cf-uaac -v 4.1.0
-                        
                         apt-get install ruby-full sudo build-essential nodejs -y
                         gem install phantomjs
                         gem install cf-uaac -v 4.1.0
                         gem install bundle
 
                         # Run acceptance tests
+                        UAA_FUNCTIONAL_CONFIG_FILES="functional-uaa-config-files"
                         cd uaa-k8s-deploy
-                        bash ./scripts/uaa-acceptance-tests.sh dev
+                        yq eval -i '.uaaUrl = "http://localhost:8080"' uaa/values.yaml
+                        helm template uaa --output-dir "\${UAA_FUNCTIONAL_CONFIG_FILES}"
+                        
+                        search_dir="\${UAA_FUNCTIONAL_CONFIG_FILES}/uaa/templates"
+                        final_uaa_config_dir="\${search_dir}/final"
+                        mkdir -p "\${final_uaa_config_dir}"
+                        for entry in "\${search_dir}"/*
+                        do
+                            if [ -f "$entry" ]
+                            then
+                                FILE_NAME=$entry
+                                fileType=$(yq eval '.kind' \${FILE_NAME})
+                                if [ \${fileType} = ConfigMap ]
+                                then
+                                   lookupField=data
+                                elif [ \${fileType} = Secret ]
+                                then
+                                   lookupField=stringData
+                                fi
+                                
+                                if [ ! -z "\${lookupField}" ]
+                                then
+                                    KEY=$(yq eval ".\${lookupField}|.[]|key" \${FILE_NAME})
+                                    yq eval ".\${lookupField}|.[]" \${FILE_NAME} > "\${final_uaa_config_dir}/\${KEY}"
+                                    echo "file \${KEY} created successfully"
+                                fi
+                            fi
+                        done
+                        
+                        # Create container from uaa image
+                        CONTAINER_NAME="local_uaa_0"
+                        CURRENT_WORKING_DIRECTORY=$(pwd) 
+                        CONTAINER_ID=$(docker run -d --env CLOUDFOUNDRY_CONFIG_PATH="\${final_uaa_config_dir}" \
+                                    -p 8080:\${UAA_PORT} \
+                                    --name=\${CONTAINER_NAME} \${IAM_ECR_URL}/\${repo_name}:\${imageTag})
+                        echo "Wait for 30 seconds for container to startup properly"
+                        sleep 30
+                        docker ps -a --filter "name=local_uaa_0"
+                        if [ $(docker ps -a --filter "name=local_uaa_0" | wc -l) -gt 1 ]; then
+                            echo "Container local_uaa_0 started successfully with id=\${CONTAINER_ID}"
+                        else
+                            echo "Container local_uaa_0 created with id=\${CONTAINER_ID} but failed to start"
+                        fi
+                        
+                        bash ./scripts/uaa-acceptance-tests.sh local
                                         
                         # Remove container
                         docker kill \$CONTAINER_ID && docker rm \$CONTAINER_ID || true
