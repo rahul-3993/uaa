@@ -200,8 +200,12 @@ pipeline {
                         apt-get install -y kubectl
                         
                         # access eks dev env
-                        #aws --profile saml eks update-kubeconfig --name pss-internal --no-verify-ssl
-                        #kubectl get all --namespace=pss-iam-dev
+                        gossamer3 login --skip-prompt -p saml-for-eks \
+                            --assume-child-role=${IAM_AWS_POWERUSER_ROLE} \
+                            --username=${AWS_ECR_SSO_CREDENTIALS_USR} \
+                            --password=${AWS_ECR_SSO_CREDENTIALS_PSW}
+                        aws --profile saml-for-eks eks update-kubeconfig --name pss-internal --no-verify-ssl
+                        kubectl get all --namespace=pss-iam-dev
 
                         # Install helm
                         curl https://baltocdn.com/helm/signing.asc | gpg --dearmor | tee /usr/share/keyrings/helm.gpg > /dev/null
