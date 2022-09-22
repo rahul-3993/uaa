@@ -198,12 +198,21 @@ public class IdentityZoneConfigurationBootstrapTests {
     }
 
     @Test
-    public void disable_self_service_links() throws Exception {
-        bootstrap.setSelfServiceLinksEnabled(false);
+    public void disable_self_service_create_account_links() throws Exception {
+        bootstrap.setSelfServiceCreateAccountEnabled(false);
         bootstrap.afterPropertiesSet();
 
         IdentityZone zone = provisioning.retrieve(IdentityZone.getUaaZoneId());
-        assertFalse(zone.getConfig().getLinks().getSelfService().isSelfServiceLinksEnabled());
+        assertFalse(zone.getConfig().getLinks().getSelfService().isSelfServiceCreateAccountEnabled());
+    }
+
+    @Test
+    public void disable_self_service_reset_password_links() throws Exception {
+        bootstrap.setSelfServiceResetPasswordEnabled(false);
+        bootstrap.afterPropertiesSet();
+
+        IdentityZone zone = provisioning.retrieve(IdentityZone.getUaaZoneId());
+        assertFalse(zone.getConfig().getLinks().getSelfService().isSelfServiceResetPasswordEnabled());
     }
 
     @Test
@@ -223,13 +232,14 @@ public class IdentityZoneConfigurationBootstrapTests {
 
         IdentityZone zone = provisioning.retrieve(IdentityZone.getUaaZoneId());
         assertEquals("/configured_signup", zone.getConfig().getLinks().getSelfService().getSignup());
-        assertNull(zone.getConfig().getLinks().getSelfService().getPasswd());
+        assertEquals("/forgot_password", zone.getConfig().getLinks().getSelfService().getPasswd());
     }
 
     @Test
     public void passwd_link_configured() throws Exception {
         links.put("passwd", "/configured_passwd");
         bootstrap.setSelfServiceLinks(links);
+        bootstrap.setSelfServiceCreateAccountEnabled(false);
         bootstrap.afterPropertiesSet();
 
         IdentityZone zone = provisioning.retrieve(IdentityZone.getUaaZoneId());

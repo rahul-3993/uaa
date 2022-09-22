@@ -483,9 +483,15 @@ public final class MockMvcUtils {
         provisioning.update(uaaIdp, zoneId);
     }
 
-    public static void setSelfServiceLinksEnabled(ApplicationContext context, String zoneId, boolean enabled) {
+    public static void setSelfServiceCreateAccountEnabled(ApplicationContext context, String zoneId, boolean enabled) {
         IdentityZoneConfiguration config = getZoneConfiguration(context, zoneId);
-        config.getLinks().getSelfService().setSelfServiceLinksEnabled(enabled);
+        config.getLinks().getSelfService().setSelfServiceCreateAccountEnabled(enabled);
+        setZoneConfiguration(context, zoneId, config);
+    }
+
+    public static void setSelfServiceResetPasswordEnabled(ApplicationContext context, String zoneId, boolean enabled) {
+        IdentityZoneConfiguration config = getZoneConfiguration(context, zoneId);
+        config.getLinks().getSelfService().setSelfServiceResetPasswordEnabled(enabled);
         setZoneConfiguration(context, zoneId, config);
     }
 
