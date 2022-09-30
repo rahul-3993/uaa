@@ -28,14 +28,18 @@ public class SamlIdentityProviderConfigurator {
     private final BasicParserPool parserPool;
     private final IdentityProviderProvisioning providerProvisioning;
     private final FixedHttpMetaDataProvider fixedHttpMetaDataProvider;
+    private final RequestScopedIdpDefinitionsCache requestScopedIdpDefinitionsCache;
 
     public SamlIdentityProviderConfigurator(
             final BasicParserPool parserPool,
             final @Qualifier("identityProviderProvisioning") IdentityProviderProvisioning providerProvisioning,
-            final FixedHttpMetaDataProvider fixedHttpMetaDataProvider) {
+            final FixedHttpMetaDataProvider fixedHttpMetaDataProvider,
+            final @Qualifier(
+                "requestScopedIdpDefinitionsCache") RequestScopedIdpDefinitionsCache requestScopedIdpDefinitionsCache) {
         this.parserPool = parserPool;
         this.providerProvisioning = providerProvisioning;
         this.fixedHttpMetaDataProvider = fixedHttpMetaDataProvider;
+        this.requestScopedIdpDefinitionsCache = requestScopedIdpDefinitionsCache;
     }
 
     public List<SamlIdentityProviderDefinition> getIdentityProviderDefinitions() {
@@ -44,7 +48,13 @@ public class SamlIdentityProviderConfigurator {
 
     public List<SamlIdentityProviderDefinition> getIdentityProviderDefinitionsForZone(IdentityZone zone) {
         List<SamlIdentityProviderDefinition> result = new LinkedList<>();
-        for (IdentityProvider provider : providerProvisioning.retrieveActive(zone.getId())) {
+        String zoneId = zone.getId();
+        List<IdentityProvider> idpsForZone = requestScopedIdpDefinitionsCache.getIdps(zoneId);
+        if (idpsForZone == null) {
+            idpsForZone = providerProvisioning.retrieveActive(zoneId);
+            requestScopedIdpDefinitionsCache.setIdps(zoneId, idpsForZone);
+        }
+        for (IdentityProvider provider : idpsForZone) {
             if (OriginKeys.SAML.equals(provider.getType())) {
                 result.add((SamlIdentityProviderDefinition) provider.getConfig());
             }

@@ -156,7 +156,7 @@ class SamlAuthenticationMockMvcTests {
     void sendAuthnRequestToIdp() throws Exception {
         createIdp();
 
-        Mockito.verify(jdbcIdentityProviderProvisioning, times(6)).retrieveActive(spZone.getId());
+        Mockito.verify(jdbcIdentityProviderProvisioning, times(1)).retrieveActive(spZone.getId());
 
         String idpEntityId = idpZone.getSubdomain() + ".cloudfoundry-saml-login";
         MvcResult mvcResult = mockMvc.perform(
@@ -171,7 +171,7 @@ class SamlAuthenticationMockMvcTests {
                 .andExpect(status().isFound())
                 .andReturn();
 
-        Mockito.verify(jdbcIdentityProviderProvisioning, times(12)).retrieveActive(spZone.getId());
+        Mockito.verify(jdbcIdentityProviderProvisioning, times(2)).retrieveActive(spZone.getId());
 
         mvcResult = mockMvc.perform(
                 get(mvcResult.getResponse().getRedirectedUrl())
@@ -184,7 +184,7 @@ class SamlAuthenticationMockMvcTests {
                 .andExpect(status().isOk())
                 .andReturn();
 
-        Mockito.verify(jdbcIdentityProviderProvisioning, times(25)).retrieveActive(spZone.getId());
+        Mockito.verify(jdbcIdentityProviderProvisioning, times(3)).retrieveActive(spZone.getId());
 
         String body = mvcResult.getResponse().getContentAsString();
         String relayState = extractRelayState(body);
