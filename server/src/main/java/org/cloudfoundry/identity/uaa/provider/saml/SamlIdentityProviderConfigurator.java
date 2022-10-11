@@ -10,10 +10,16 @@ import org.cloudfoundry.identity.uaa.zone.IdentityZoneHolder;
 import org.opensaml.saml2.metadata.provider.MetadataProviderException;
 import org.opensaml.xml.parse.BasicParserPool;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.cache.CacheManager;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.EnableCaching;
+import org.springframework.cache.concurrent.ConcurrentMapCacheManager;
+import org.springframework.context.annotation.Bean;
 import org.springframework.security.saml.metadata.ExtendedMetadata;
 import org.springframework.security.saml.metadata.ExtendedMetadataDelegate;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
+import org.springframework.web.context.annotation.RequestScope;
 
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -28,38 +34,35 @@ public class SamlIdentityProviderConfigurator {
     private final BasicParserPool parserPool;
     private final IdentityProviderProvisioning providerProvisioning;
     private final FixedHttpMetaDataProvider fixedHttpMetaDataProvider;
-    private final RequestScopedIdpDefinitionsCache requestScopedIdpDefinitionsCache;
 
     public SamlIdentityProviderConfigurator(
             final BasicParserPool parserPool,
             final @Qualifier("identityProviderProvisioning") IdentityProviderProvisioning providerProvisioning,
-            final FixedHttpMetaDataProvider fixedHttpMetaDataProvider,
-            final @Qualifier(
-                "requestScopedIdpDefinitionsCache") RequestScopedIdpDefinitionsCache requestScopedIdpDefinitionsCache) {
+            final FixedHttpMetaDataProvider fixedHttpMetaDataProvider) {
         this.parserPool = parserPool;
         this.providerProvisioning = providerProvisioning;
         this.fixedHttpMetaDataProvider = fixedHttpMetaDataProvider;
-        this.requestScopedIdpDefinitionsCache = requestScopedIdpDefinitionsCache;
     }
 
     public List<SamlIdentityProviderDefinition> getIdentityProviderDefinitions() {
         return getIdentityProviderDefinitionsForZone(IdentityZoneHolder.get());
     }
 
+    @Cacheable(cacheNames = "requestScopedIdpDefinitionsCache", cacheManager = "requestScopedIdpDefinitionsForZoneCacheManager")
     public List<SamlIdentityProviderDefinition> getIdentityProviderDefinitionsForZone(IdentityZone zone) {
         List<SamlIdentityProviderDefinition> result = new LinkedList<>();
-        String zoneId = zone.getId();
-        List<IdentityProvider> idpsForZone = requestScopedIdpDefinitionsCache.getIdps(zoneId);
-        if (idpsForZone == null) {
-            idpsForZone = providerProvisioning.retrieveActive(zoneId);
-            requestScopedIdpDefinitionsCache.setIdps(zoneId, idpsForZone);
-        }
-        for (IdentityProvider provider : idpsForZone) {
+        for (IdentityProvider provider : providerProvisioning.retrieveActive(zone.getId())) {
             if (OriginKeys.SAML.equals(provider.getType())) {
                 result.add((SamlIdentityProviderDefinition) provider.getConfig());
             }
         }
         return result;
+    }
+
+    @Bean("requestScopedIdpDefinitionsForZoneCacheManager")
+    @RequestScope
+    public CacheManager getCacheManager(){
+        return new ConcurrentMapCacheManager();
     }
 
     private List<SamlIdentityProviderDefinition> getIdentityProviderDefinitionsForZone(List<IdentityProvider> activeIdpsInZone) {
