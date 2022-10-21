@@ -20,7 +20,11 @@ device:
 
 jwt:
   token:
-    signing-key: tokenKey
+    policy:
+      activeKeyId: key-id-1
+      keys:
+        key-id-1:
+          signingKey: tokenKey
 
 login:
   serviceProviderKey: |
