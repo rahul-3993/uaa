@@ -122,6 +122,7 @@ public class SamlIdentityProviderConfiguratorTests {
     SamlIdentityProviderDefinition singleAdd = null;
     SamlIdentityProviderDefinition singleAddWithoutHeader = null;
     IdentityProviderProvisioning provisioning = mock(IdentityProviderProvisioning.class);
+    RequestScopedIdpDefinitionsCache requestScopedIdpDefinitionsCache = mock(RequestScopedIdpDefinitionsCache.class);
 
     @BeforeEach
     public void setUp() {
@@ -147,7 +148,7 @@ public class SamlIdentityProviderConfiguratorTests {
         fixedHttpMetaDataProvider = mock(FixedHttpMetaDataProvider.class);
 
         configurator = new SamlIdentityProviderConfigurator(
-                new BasicParserPool(), provisioning, fixedHttpMetaDataProvider);
+            new BasicParserPool(), provisioning, fixedHttpMetaDataProvider, requestScopedIdpDefinitionsCache);
 
     }
 
