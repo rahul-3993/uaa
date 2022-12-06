@@ -2,12 +2,15 @@ package org.cloudfoundry.identity.uaa.zone;
 
 import static org.springframework.http.HttpStatus.BAD_REQUEST;
 import static org.springframework.http.HttpStatus.INTERNAL_SERVER_ERROR;
+import static org.springframework.http.HttpStatus.METHOD_NOT_ALLOWED;
 import static org.springframework.http.HttpStatus.NOT_FOUND;
 
+import javax.naming.OperationNotSupportedException;
 import javax.validation.ConstraintViolationException;
 import javax.validation.constraints.NotBlank;
 
-import org.cloudfoundry.identity.uaa.zone.model.ZoneResponse;
+import org.cloudfoundry.identity.uaa.zone.model.OrchestratorZoneRequest;
+import org.cloudfoundry.identity.uaa.zone.model.OrchestratorZoneResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
@@ -16,29 +19,42 @@ import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @Validated
 @RestController("zoneEndpoints")
-@RequestMapping("/zones")
-public class ZoneController {
+@RequestMapping("/orchestrator/zones")
+public class OrchestratorZoneController {
 
-    private static final Logger logger = LoggerFactory.getLogger(ZoneController.class);
-    private final ZoneService zoneService;
+    private static final Logger logger = LoggerFactory.getLogger(OrchestratorZoneController.class);
+    private final OrchestratorZoneService zoneService;
 
     public static final String MANDATORY_VALIDATION_MESSAGE = "must not be empty";
 
-    public ZoneController(ZoneService zoneService) {
+    public OrchestratorZoneController(OrchestratorZoneService zoneService) {
         this.zoneService = zoneService;
     }
 
     @GetMapping
-    public ResponseEntity<ZoneResponse> getZone(@NotBlank(message = MANDATORY_VALIDATION_MESSAGE) @RequestParam String name) {
-        return new ResponseEntity<>(zoneService.getZoneDetails(name), HttpStatus.ACCEPTED);
+    public ResponseEntity<OrchestratorZoneResponse> getZone(@NotBlank(message = MANDATORY_VALIDATION_MESSAGE) @RequestParam String name) {
+        return new ResponseEntity<>(zoneService.getZoneDetails(name), HttpStatus.OK);
+    }
+
+    @DeleteMapping
+    public ResponseEntity<?> deleteZone(@NotBlank(message = MANDATORY_VALIDATION_MESSAGE) @RequestParam String name) {
+        return zoneService.deleteZone(name);
+    }
+
+    @PutMapping
+    public ResponseEntity<?> updateZone(@RequestBody OrchestratorZoneRequest zoneRequest) throws OperationNotSupportedException {
+        throw new OperationNotSupportedException("Put Operation not Supported");
     }
 
     @ExceptionHandler(ZoneDoesNotExistsException.class)
@@ -66,10 +82,14 @@ public class ZoneController {
         return new ResponseEntity<>("{\"message\", \""+ e.getMessage() +"\" }", BAD_REQUEST);
     }
 
+    @ExceptionHandler(OperationNotSupportedException.class)
+    public ResponseEntity<String> handleOperationNotSupportedException(OperationNotSupportedException e) {
+        return new ResponseEntity<>("{\"message\", \""+ e.getMessage() +"\" }", METHOD_NOT_ALLOWED);
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<String> handleException(Exception e) {
         logger.error(e.getClass() + ": " + e.getMessage(), e);
         return new ResponseEntity<>("{\"message\",\"Server Error.\" }", INTERNAL_SERVER_ERROR);
     }
-
 }

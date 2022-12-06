@@ -1,6 +1,6 @@
 package org.cloudfoundry.identity.uaa.integration;
 
-import static org.cloudfoundry.identity.uaa.zone.ZoneService.X_IDENTITY_ZONE_ID;
+import static org.cloudfoundry.identity.uaa.zone.OrchestratorZoneService.X_IDENTITY_ZONE_ID;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.fail;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -11,7 +11,9 @@ import org.cloudfoundry.identity.uaa.ServerRunning;
 import org.cloudfoundry.identity.uaa.test.TestAccountSetup;
 import org.cloudfoundry.identity.uaa.test.UaaTestAccounts;
 import org.cloudfoundry.identity.uaa.zone.IdentityZone;
-import org.cloudfoundry.identity.uaa.zone.model.ZoneResponse;
+import org.cloudfoundry.identity.uaa.zone.model.OrchestratorZone;
+import org.cloudfoundry.identity.uaa.zone.model.OrchestratorZoneRequest;
+import org.cloudfoundry.identity.uaa.zone.model.OrchestratorZoneResponse;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
@@ -30,8 +32,8 @@ import org.springframework.security.oauth2.client.test.OAuth2ContextSetup;
 import org.springframework.security.oauth2.client.token.grant.client.ClientCredentialsResourceDetails;
 import org.springframework.web.client.RestTemplate;
 
-@OAuth2ContextConfiguration(ZoneControllerIntegrationTests.ZoneClient.class)
-public class ZoneControllerIntegrationTests {
+@OAuth2ContextConfiguration(OrchestratorZoneControllerIntegrationTests.ZoneClient.class)
+public class OrchestratorZoneControllerIntegrationTests {
 
     @Rule
     public ServerRunning serverRunning = ServerRunning.isRunning();
@@ -67,11 +69,11 @@ public class ZoneControllerIntegrationTests {
         //TODO: delete once the orchestrator create API implemented
         IdentityZone identityZone = createZone();
         assertNotNull(identityZone);
-        ResponseEntity<ZoneResponse> response = client.getForEntity(
-            serverRunning.getUrl("/zones") + "?name=" + identityZone.getName(),
-            ZoneResponse.class);
+        ResponseEntity<OrchestratorZoneResponse> response = client.getForEntity(
+            serverRunning.getUrl("/orchestrator/zones") + "?name=" + identityZone.getName(),
+            OrchestratorZoneResponse.class);
         if (response.getStatusCode().is2xxSuccessful()) {
-            ZoneResponse zoneResponse = response.getBody();
+            OrchestratorZoneResponse zoneResponse = response.getBody();
             assertNotNull(zoneResponse);
             assertNotNull(identityZone);
             assertNotNull(zoneResponse.getParameters());
@@ -91,12 +93,12 @@ public class ZoneControllerIntegrationTests {
     @Test
     public void testGetZone_Notfound() {
         ResponseEntity<String> response = client.getForEntity(
-            serverRunning.getUrl("/zones") + "?name=random-name",
+            serverRunning.getUrl("/orchestrator/zones") + "?name=random-name",
             String.class);
         if (response.getStatusCode().is4xxClientError()) {
             assertEquals(response.getStatusCode(), HttpStatus.NOT_FOUND);
             assertNotNull(response.getBody());
-            assertEquals("{\"message\", \"Zone[random-name] not found.\" }", response.getBody().toString());
+            assertEquals("{\"message\", \"Zone[random-name] not found.\" }", response.getBody());
         } else {
             fail("Server not returning expected status code");
         }
@@ -105,14 +107,14 @@ public class ZoneControllerIntegrationTests {
     @Test
     public void testGetZone_EmptyError() {
         ResponseEntity<String> response = client.getForEntity(
-            serverRunning.getUrl("/zones"),
+            serverRunning.getUrl("/orchestrator/zones"),
             String.class);
         if (response.getStatusCode().is4xxClientError()) {
             assertEquals(response.getStatusCode(), HttpStatus.BAD_REQUEST);
             assertNotNull(response.getBody());
             assertEquals(
                 "{\"message\", \"Required request parameter 'name' for method parameter type String is not present\" }",
-                response.getBody().toString());
+                response.getBody());
         } else {
             fail("Server not returning expected status code");
         }
@@ -121,15 +123,55 @@ public class ZoneControllerIntegrationTests {
     @Test
     public void testGetZone_NameRequiredError() {
         ResponseEntity<String> response = client.getForEntity(
-            serverRunning.getUrl("/zones") + "?name=",
+            serverRunning.getUrl("/orchestrator/zones") + "?name=",
             String.class);
         if (response.getStatusCode().is4xxClientError()) {
             assertEquals(response.getStatusCode(), HttpStatus.BAD_REQUEST);
             assertNotNull(response.getBody());
-            assertEquals("{\"message\", \"getZone.name: must not be empty\" }", response.getBody().toString());
+            assertEquals("{\"message\", \"getZone.name: must not be empty\" }", response.getBody());
         } else {
             fail("Server not returning expected status code");
         }
+    }
+
+    @Test
+    public void testDeleteZone() {
+        //TODO: delete once the orchestrator create API implemented
+        IdentityZone identityZone = createZone();
+        assertNotNull(identityZone);
+        ResponseEntity<String> response =
+            client.exchange(serverRunning.getUrl("/orchestrator/zones") + "?name=" + identityZone.getName(),
+                            HttpMethod.DELETE, null, String.class);
+        assertEquals(HttpStatus.ACCEPTED, response.getStatusCode());
+        ResponseEntity<String> getResponse = client.getForEntity(
+            serverRunning.getUrl("/orchestrator/zones") + "?name=" + identityZone.getName(),
+            String.class);
+        assertEquals(getResponse.getStatusCode(), HttpStatus.NOT_FOUND);
+        assertNotNull(getResponse.getBody());
+        assertEquals("{\"message\", \"Zone["+identityZone.getName()+"] not found.\" }", getResponse.getBody());
+    }
+
+    @Test
+    public void testDeleteZone_NotFound() {
+        ResponseEntity<String> response =
+            client.exchange(serverRunning.getUrl("/orchestrator/zones") + "?name=random-name",
+                            HttpMethod.DELETE, null, String.class);
+        assertEquals(HttpStatus.NOT_FOUND, response.getStatusCode());
+        assertNotNull(response.getBody());
+        assertEquals("{\"message\", \"Zone[random-name] not found.\" }", response.getBody());
+    }
+
+    @Test
+    public void testUpdateZone() {
+        OrchestratorZoneRequest zoneRequest = new OrchestratorZoneRequest();
+        zoneRequest.setName("test name");
+        zoneRequest.setParameters(new OrchestratorZone());
+        ResponseEntity<String> getResponse = client.exchange(
+            serverRunning.getUrl("/orchestrator/zones"), HttpMethod.PUT, new HttpEntity<>(zoneRequest),
+            String.class);
+        assertEquals(getResponse.getStatusCode(), HttpStatus.METHOD_NOT_ALLOWED);
+        assertNotNull(getResponse.getBody());
+        assertEquals("{\"message\", \"Put Operation not Supported\" }", getResponse.getBody());
     }
 
     //TODO: delete once the orchestrator create API implemented
@@ -157,7 +199,7 @@ public class ZoneControllerIntegrationTests {
     static class ZoneClient extends ClientCredentialsResourceDetails {
 
         public ZoneClient(Object target) {
-            ZoneControllerIntegrationTests test = (ZoneControllerIntegrationTests) target;
+            OrchestratorZoneControllerIntegrationTests test = (OrchestratorZoneControllerIntegrationTests) target;
             ClientCredentialsResourceDetails resource = test.testAccounts.getClientCredentialsResource(
                 new String[] { "zones.write" }, "identity", "identitysecret");
             setClientId(resource.getClientId());
