@@ -2,6 +2,8 @@ package org.cloudfoundry.identity.uaa.integration;
 
 import static org.cloudfoundry.identity.uaa.zone.OrchestratorZoneService.X_IDENTITY_ZONE_ID;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
@@ -10,7 +12,7 @@ import java.util.UUID;
 import org.cloudfoundry.identity.uaa.ServerRunning;
 import org.cloudfoundry.identity.uaa.test.TestAccountSetup;
 import org.cloudfoundry.identity.uaa.test.UaaTestAccounts;
-import org.cloudfoundry.identity.uaa.zone.IdentityZone;
+import org.cloudfoundry.identity.uaa.util.JsonUtils;
 import org.cloudfoundry.identity.uaa.zone.model.OrchestratorZone;
 import org.cloudfoundry.identity.uaa.zone.model.OrchestratorZoneRequest;
 import org.cloudfoundry.identity.uaa.zone.model.OrchestratorZoneResponse;
@@ -34,6 +36,10 @@ import org.springframework.web.client.RestTemplate;
 
 @OAuth2ContextConfiguration(OrchestratorZoneControllerIntegrationTests.ZoneClient.class)
 public class OrchestratorZoneControllerIntegrationTests {
+
+    public static final String ZONE_NAME = "The Twiglet Zone";
+    public static final String SUB_DOMAIN_NAME = "sub-domain-01";
+    public static final String ADMIN_CLIENT_SECRET = "admin-secret-01";
 
     @Rule
     public ServerRunning serverRunning = ServerRunning.isRunning();
@@ -66,25 +72,22 @@ public class OrchestratorZoneControllerIntegrationTests {
 
     @Test
     public void testGetZone() {
-        //TODO: delete once the orchestrator create API implemented
-        IdentityZone identityZone = createZone();
-        assertNotNull(identityZone);
+        String zoneName = createZoneGetZoneName();
         ResponseEntity<OrchestratorZoneResponse> response = client.getForEntity(
-            serverRunning.getUrl("/orchestrator/zones") + "?name=" + identityZone.getName(),
+            serverRunning.getUrl("/orchestrator/zones") + "?name=" + zoneName,
             OrchestratorZoneResponse.class);
         if (response.getStatusCode().is2xxSuccessful()) {
             OrchestratorZoneResponse zoneResponse = response.getBody();
             assertNotNull(zoneResponse);
-            assertNotNull(identityZone);
             assertNotNull(zoneResponse.getParameters());
-            assertEquals(identityZone.getSubdomain(), zoneResponse.getParameters().getSubdomain());
-            assertEquals(identityZone.getSubdomain(), zoneResponse.getConnectionDetails().getSubdomain());
-            String uri = "http://" + identityZone.getSubdomain() + ".localhost:8080/uaa";
+            assertEquals(zoneName, zoneResponse.getParameters().getSubdomain());
+            assertEquals(zoneName, zoneResponse.getConnectionDetails().getSubdomain());
+            String uri = "http://" + zoneName + ".localhost:8080/uaa";
             assertEquals(uri, zoneResponse.getConnectionDetails().getUri());
             assertEquals("http://localhost:8080/dashboard", zoneResponse.getConnectionDetails().getDashboardUri());
             assertEquals(uri + "/oauth/token", zoneResponse.getConnectionDetails().getIssuerId());
             assertEquals(X_IDENTITY_ZONE_ID, zoneResponse.getConnectionDetails().getZone().getHttpHeaderName());
-            assertEquals(identityZone.getId(), zoneResponse.getConnectionDetails().getZone().getHttpHeaderValue());
+            assertNotNull(zoneResponse.getConnectionDetails().getZone().getHttpHeaderValue());
         } else {
             fail("Server not returning expected status code");
         }
@@ -136,19 +139,17 @@ public class OrchestratorZoneControllerIntegrationTests {
 
     @Test
     public void testDeleteZone() {
-        //TODO: delete once the orchestrator create API implemented
-        IdentityZone identityZone = createZone();
-        assertNotNull(identityZone);
+        String zoneName = createZoneGetZoneName();
         ResponseEntity<String> response =
-            client.exchange(serverRunning.getUrl("/orchestrator/zones") + "?name=" + identityZone.getName(),
+            client.exchange(serverRunning.getUrl("/orchestrator/zones") + "?name=" + zoneName,
                             HttpMethod.DELETE, null, String.class);
         assertEquals(HttpStatus.ACCEPTED, response.getStatusCode());
         ResponseEntity<String> getResponse = client.getForEntity(
-            serverRunning.getUrl("/orchestrator/zones") + "?name=" + identityZone.getName(),
+            serverRunning.getUrl("/orchestrator/zones") + "?name=" + zoneName,
             String.class);
         assertEquals(getResponse.getStatusCode(), HttpStatus.NOT_FOUND);
         assertNotNull(getResponse.getBody());
-        assertEquals("{\"message\", \"Zone["+identityZone.getName()+"] not found.\" }", getResponse.getBody());
+        assertEquals("{\"message\", \"Zone["+zoneName+"] not found.\" }", getResponse.getBody());
     }
 
     @Test
@@ -174,38 +175,165 @@ public class OrchestratorZoneControllerIntegrationTests {
         assertEquals("{\"message\", \"Put Operation not Supported\" }", getResponse.getBody());
     }
 
-    //TODO: delete once the orchestrator create API implemented
-    private IdentityZone createZone() {
-        String zoneId = UUID.randomUUID().toString();
-        String requestBody =
-            "{\"id\":\"" + zoneId + "\", \"subdomain\":\"" + zoneId + "\", \"name\":\"testCreateZone() " + zoneId +
-            "\"}";
+    @Test
+    public void testCreateZone() {
+        String zoneName = getName();
+        ResponseEntity<Void> response = createZone(zoneName);
+        assertEquals(HttpStatus.ACCEPTED, response.getStatusCode());
+        assertNull(response.getBody());
+    }
 
+    @Test
+    public void testCreateAndGetZone_SubdomainAsNULL_inRequestBody() {
+        String zoneName = createZoneSubdomainAsNullInParameter();
+        ResponseEntity<OrchestratorZoneResponse> getResponse = client.getForEntity(
+            serverRunning.getUrl("/orchestrator/zones") + "?name=" + zoneName,
+            OrchestratorZoneResponse.class);
+        if (getResponse.getStatusCode().is2xxSuccessful()) {
+            OrchestratorZoneResponse zoneResponse = getResponse.getBody();
+            assertNotNull(zoneResponse);
+            assertNull(zoneResponse.getParameters().getSubdomain());
+            String connectionDetailSubdomain = zoneResponse.getConnectionDetails().getSubdomain();
+            assertNotNull(connectionDetailSubdomain);
+            String uri = "http://" + connectionDetailSubdomain + ".localhost:8080/uaa";
+            assertEquals(uri, zoneResponse.getConnectionDetails().getUri());
+            assertEquals("http://localhost:8080/dashboard", zoneResponse.getConnectionDetails().getDashboardUri());
+            assertEquals(uri + "/oauth/token", zoneResponse.getConnectionDetails().getIssuerId());
+            assertEquals(X_IDENTITY_ZONE_ID, zoneResponse.getConnectionDetails().getZone().getHttpHeaderName());
+            assertEquals(connectionDetailSubdomain, zoneResponse.getConnectionDetails().getZone().getHttpHeaderValue());
+        } else {
+            fail("Server not returning expected status code");
+        }
+    }
+
+    private String createZoneSubdomainAsNullInParameter() {
+        String zoneName = getName();
+        String requestBody = JsonUtils.writeValueAsString(getOrchestratorZoneRequest(zoneName,ADMIN_CLIENT_SECRET,
+                                                                                     null));
         HttpHeaders headers = new HttpHeaders();
         headers.add("Accept", MediaType.APPLICATION_JSON_VALUE);
         headers.add("Content-Type", MediaType.APPLICATION_JSON_VALUE);
-
-        ResponseEntity<IdentityZone> response = client.exchange(
-            serverRunning.getUrl("/identity-zones"),
+        ResponseEntity<Void> response = client.exchange(
+            serverRunning.getUrl("/orchestrator/zones"),
             HttpMethod.POST,
-            new HttpEntity<>(requestBody, headers),
-            new ParameterizedTypeReference<IdentityZone>() { });
-        if (response.getStatusCode().is2xxSuccessful()) {
-            return response.getBody();
-        }
-        return null;
+            new HttpEntity<>(requestBody, headers), new ParameterizedTypeReference<Void>() {});
+
+        assertEquals(HttpStatus.ACCEPTED, response.getStatusCode());
+        assertNull(response.getBody());
+        return zoneName;
+    }
+
+    @Test
+    public void testCreateZone_ZoneAlreadyExists() {
+        OrchestratorZoneRequest orchestratorZoneRequest = getOrchestratorZoneRequest(ZONE_NAME,ADMIN_CLIENT_SECRET,
+                                                                                     SUB_DOMAIN_NAME);
+        client.exchange(
+            serverRunning.getUrl("/orchestrator/zones"), HttpMethod.POST, new HttpEntity<>(orchestratorZoneRequest),
+            String.class);
+
+        ResponseEntity<String> getResponseAlreadyExist = client.exchange(
+            serverRunning.getUrl("/orchestrator/zones"), HttpMethod.POST, new HttpEntity<>(orchestratorZoneRequest),
+            String.class);
+        assertEquals(getResponseAlreadyExist.getStatusCode(), HttpStatus.BAD_REQUEST);
+        assertTrue(getResponseAlreadyExist.getBody().contains("Orchestrator zone already exists for name:  "+ZONE_NAME));
+    }
+
+    @Test
+    public void testCreateZone_nameAsSpaceAndEmptyError() {
+        testNameAsSpaceAndEmpty(getOrchestratorZoneRequest("",ADMIN_CLIENT_SECRET,SUB_DOMAIN_NAME));
+        testNameAsSpaceAndEmpty(getOrchestratorZoneRequest("    ",ADMIN_CLIENT_SECRET,SUB_DOMAIN_NAME));
+    }
+
+    @Test
+    public void testCreateZone_subDomainWithSpaceOrSpecialCharFail() {
+        testWithSpaceOrSpecialCharFail(getOrchestratorZoneRequest(getName(),ADMIN_CLIENT_SECRET,
+                                                                  "sub#-domain"));
+        testWithSpaceOrSpecialCharFail(getOrchestratorZoneRequest(getName(),ADMIN_CLIENT_SECRET,
+                                                                  "-subdomainStartsWithHYphen"));
+        testWithSpaceOrSpecialCharFail(getOrchestratorZoneRequest(getName(),ADMIN_CLIENT_SECRET,
+                                                                  "subdomainEndsWithHYphen-"));
+        testWithSpaceOrSpecialCharFail(getOrchestratorZoneRequest(getName(),ADMIN_CLIENT_SECRET,
+                                                                  "sub\\\\domaincontainsslash"));
+        testWithSpaceOrSpecialCharFail(getOrchestratorZoneRequest(getName(),ADMIN_CLIENT_SECRET,
+                                                                  "sub$%domaincontainsSpecialChars"));
+    }
+
+    @Test
+    public void testCreateZone_adminClientSecretAsSpaceAndEmptyError() {
+        testAdminClientSecretAsSpaceAndEmpty(getOrchestratorZoneRequest(getName(),"", SUB_DOMAIN_NAME));
+        testAdminClientSecretAsSpaceAndEmpty(getOrchestratorZoneRequest(getName(),"    ", SUB_DOMAIN_NAME));
+    }
+
+    private void testAdminClientSecretAsSpaceAndEmpty(OrchestratorZoneRequest orchestratorZoneRequest) {
+        ResponseEntity<String> getResponse = client.exchange(
+            serverRunning.getUrl("/orchestrator/zones"), HttpMethod.POST, new HttpEntity<>(orchestratorZoneRequest),
+            String.class);
+        assertEquals(getResponse.getStatusCode(), HttpStatus.BAD_REQUEST);
+        assertTrue(getResponse.getBody().contains("The \"adminClientSecret\" field cannot contain" +
+                                                  " spaces or cannot be blank."));
+    }
+
+    private void testWithSpaceOrSpecialCharFail(OrchestratorZoneRequest orchestratorZoneRequest) {
+        ResponseEntity<String> getResponse = client.exchange(
+            serverRunning.getUrl("/orchestrator/zones"), HttpMethod.POST, new HttpEntity<>(orchestratorZoneRequest),
+            String.class);
+        assertEquals(getResponse.getStatusCode(), HttpStatus.BAD_REQUEST);
+        assertTrue(getResponse.getBody().contains("Special characters are not allowed in the subdomain " +
+                                                  "name except hyphen which can be specified in the middle."));
+    }
+
+    private void testNameAsSpaceAndEmpty(OrchestratorZoneRequest orchestratorZoneRequest) {
+        ResponseEntity<String> getResponse = client.exchange(
+            serverRunning.getUrl("/orchestrator/zones"), HttpMethod.POST, new HttpEntity<>(orchestratorZoneRequest),
+            String.class);
+        assertEquals(getResponse.getStatusCode(), HttpStatus.BAD_REQUEST);
+        assertTrue(getResponse.getBody().contains("default message [name]]; default message [must not be empty]]"));
     }
 
     static class ZoneClient extends ClientCredentialsResourceDetails {
 
         public ZoneClient(Object target) {
             OrchestratorZoneControllerIntegrationTests test = (OrchestratorZoneControllerIntegrationTests) target;
-            ClientCredentialsResourceDetails resource = test.testAccounts.getClientCredentialsResource(
-                new String[] { "zones.write" }, "identity", "identitysecret");
+            ClientCredentialsResourceDetails resource = test.testAccounts.getAdminClientCredentialsResource();
             setClientId(resource.getClientId());
             setClientSecret(resource.getClientSecret());
             setId(getClientId());
             setAccessTokenUri(test.serverRunning.getAccessTokenUri());
         }
+    }
+
+    private OrchestratorZoneRequest getOrchestratorZoneRequest(String name, String adminClientSecret,
+                                                               String subdomain) {
+        OrchestratorZone orchestratorZone = new OrchestratorZone(adminClientSecret, subdomain);
+        OrchestratorZoneRequest orchestratorZoneRequest = new OrchestratorZoneRequest();
+        orchestratorZoneRequest.setName(name);
+        orchestratorZoneRequest.setParameters(orchestratorZone);
+        return orchestratorZoneRequest;
+    }
+
+    private String getName() {
+        String id = UUID.randomUUID().toString();
+        return id;
+    }
+
+    private String createZoneGetZoneName() {
+        String zoneName = getName();
+        ResponseEntity<Void> createZoneResponse = createZone(zoneName);
+        assertEquals(HttpStatus.ACCEPTED, createZoneResponse.getStatusCode());
+        assertNull(createZoneResponse.getBody());
+        return zoneName;
+    }
+
+    private ResponseEntity<Void> createZone(String zoneName) {
+        String subDomain =  zoneName;
+        String requestBody = JsonUtils.writeValueAsString(getOrchestratorZoneRequest(zoneName,ADMIN_CLIENT_SECRET, subDomain));
+        HttpHeaders headers = new HttpHeaders();
+        headers.add("Accept", MediaType.APPLICATION_JSON_VALUE);
+        headers.add("Content-Type", MediaType.APPLICATION_JSON_VALUE);
+        ResponseEntity<Void> response = client.exchange(
+            serverRunning.getUrl("/orchestrator/zones"),
+            HttpMethod.POST,
+            new HttpEntity<>(requestBody, headers), new ParameterizedTypeReference<Void>() {});
+        return response;
     }
 }
