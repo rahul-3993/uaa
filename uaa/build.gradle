@@ -108,6 +108,8 @@ dependencies {
     testImplementation(libraries.nurego)
 
     testAnnotationProcessor(libraries.lombok)
+
+    testImplementation(project(":iam-k8s-utils"))
 }
 
 ext {
@@ -208,6 +210,12 @@ task degradedJwtTestLocal(type: Test) {
     dependsOn rootProject.setupDegradedTestsForJwtBearerLocal
     include "org/cloudfoundry/identity/uaa/jwt/degraded/*.class"
     finalizedBy rootProject.cargoStopLocal
+}
+
+task orchestratorIntegrationTest(type: Test) {
+    // Don't let tests be 'UP-TO-DATE' and not run
+    outputs.upToDateWhen { false }
+    include "org/cloudfoundry/identity/uaa/orchestrator/*.class"
 }
 
 war {
