@@ -1,5 +1,6 @@
 package org.cloudfoundry.identity.uaa.integration;
 
+import static org.cloudfoundry.identity.uaa.integration.util.IntegrationTestUtils.assertSupportsZoneDNS;
 import static org.cloudfoundry.identity.uaa.zone.OrchestratorZoneService.X_IDENTITY_ZONE_ID;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.core.Is.is;
@@ -73,7 +74,7 @@ import org.springframework.util.MultiValueMap;
 import org.springframework.util.StringUtils;
 import org.springframework.web.client.RestTemplate;
 
-@OAuth2ContextConfiguration(OrchestratorZoneControllerIntegrationTests.ZoneClient.class)
+@OAuth2ContextConfiguration(OrchestratorZoneControllerIntegrationTests.OrchestratorClient.class)
 public class OrchestratorZoneControllerIntegrationTests {
 
     public static final String ZONE_NAME = "The Twiglet Zone";
@@ -268,6 +269,7 @@ public class OrchestratorZoneControllerIntegrationTests {
 
     @Test
     public void testCreateZone_WithZoneConfigValidation() throws Throwable {
+        assertSupportsZoneDNS();
 
         // Create zone using orchestrator zone api
         String zoneName = ORCHESTRATOR_INT_TEST_ZONE;
@@ -479,11 +481,12 @@ public class OrchestratorZoneControllerIntegrationTests {
         assertTrue(getResponse.getBody().contains("name must not be blank"));
     }
 
-    static class ZoneClient extends ClientCredentialsResourceDetails {
+    static class OrchestratorClient extends ClientCredentialsResourceDetails {
 
-        public ZoneClient(Object target) {
+        public OrchestratorClient(Object target) {
             OrchestratorZoneControllerIntegrationTests test = (OrchestratorZoneControllerIntegrationTests) target;
-            ClientCredentialsResourceDetails resource = test.testAccounts.getAdminClientCredentialsResource();
+            ClientCredentialsResourceDetails resource = test.testAccounts.getClientCredentialsResource(
+                    new String[] {"uaa.none"}, "orchestrator-zone-provisioner", "orchestratorsecret");
             setClientId(resource.getClientId());
             setClientSecret(resource.getClientSecret());
             setId(getClientId());

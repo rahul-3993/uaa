@@ -253,7 +253,8 @@ public class IntegrationTestUtils {
                 "testzone4.localhost",
                 "testzonedoesnotexist.localhost",
                 "testzoneinactive.localhost",
-                "zone-with-cors-policy.localhost"
+                "zone-with-cors-policy.localhost",
+                "orchestrator-int-test-zone.localhost"
         ).forEach(IntegrationTestUtils::assertLoopback);
     }
 
