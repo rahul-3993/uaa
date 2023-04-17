@@ -217,8 +217,8 @@ public class OrchestratorZoneControllerIntegrationTests {
             assertNotNull(response.getBody());
             assertEquals(APPLICATION_JSON_UTF8, response.getHeaders().getContentType());
             String expected  =  JsonUtils.writeValueAsString(
-                new OrchestratorErrorResponse("Required request parameter 'name' for method parameter type String is " +
-                                              "not present"));
+                new OrchestratorZoneResponse(null, null, "Required request parameter 'name' for method parameter type String is " +
+                                              "not present", OrchestratorState.PERMANENT_FAILURE.toString()));
             assertEquals(expected, response.getBody());
         } else {
             fail("Server not returning expected status code");
@@ -393,7 +393,8 @@ public class OrchestratorZoneControllerIntegrationTests {
     @Test
     public void testCreateZone_Duplicate_Subdomain_Returns_409_Conflict() {
         String subDomain = createZoneGetZoneName();
-        String requestBody = JsonUtils.writeValueAsString(getOrchestratorZoneRequest(getName(),ADMIN_CLIENT_SECRET, subDomain));
+        String name = getName();
+        String requestBody = JsonUtils.writeValueAsString(getOrchestratorZoneRequest(name, ADMIN_CLIENT_SECRET, subDomain));
         HttpHeaders headers = new HttpHeaders();
         headers.add("Accept", MediaType.APPLICATION_JSON_VALUE);
         headers.add("Content-Type", MediaType.APPLICATION_JSON_VALUE);
@@ -408,7 +409,7 @@ public class OrchestratorZoneControllerIntegrationTests {
         String errorMessage = String.format("The subdomain name %s is already taken. Please use a different subdomain",
                                             subDomain);
         assertEquals(JsonUtils.writeValueAsString(
-            new OrchestratorErrorResponse(errorMessage)), response.getBody());
+            new OrchestratorZoneResponse(name, null, errorMessage, OrchestratorState.PERMANENT_FAILURE.toString())), response.getBody());
     }
 
     @Test
@@ -463,7 +464,7 @@ public class OrchestratorZoneControllerIntegrationTests {
         String errorMessage = String.format("The zone name %s is already taken. Please use a different " +
                                             "zone name", orchestratorZoneRequest.getName());
         assertEquals(JsonUtils.writeValueAsString(
-            new OrchestratorErrorResponse(errorMessage)), getResponseAlreadyExist.getBody());
+            new OrchestratorZoneResponse(zoneName, null, errorMessage, OrchestratorState.PERMANENT_FAILURE.toString())), getResponseAlreadyExist.getBody());
     }
 
     @Test
@@ -549,8 +550,7 @@ public class OrchestratorZoneControllerIntegrationTests {
     }
 
     private String getName() {
-        String id = UUID.randomUUID().toString();
-        return id;
+        return UUID.randomUUID().toString();
     }
 
     private String createZoneGetZoneName() {

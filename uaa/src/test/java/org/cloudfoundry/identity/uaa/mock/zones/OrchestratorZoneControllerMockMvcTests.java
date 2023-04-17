@@ -166,10 +166,12 @@ public class OrchestratorZoneControllerMockMvcTests {
     void testGetZone_nameRequiredError(String url) throws Exception {
         performMockMvcCallAndAssertError(get(url), status().isBadRequest(),
                                          JsonUtils.writeValueAsString(
-                                             new OrchestratorErrorResponse("Required request parameter 'name' for " +
-                                                                           "method parameter type String is not " +
-                                                                           "present")),
-                orchestratorZonesReadToken);
+                                             new OrchestratorZoneResponse(null, null,
+                                                                          "Required request parameter 'name' for " +
+                                                                          "method parameter type String is not " +
+                                                                          "present",
+                                                                          OrchestratorState.PERMANENT_FAILURE.toString())),
+                                         orchestratorZonesReadToken);
     }
 
     @ParameterizedTest
@@ -527,42 +529,6 @@ public class OrchestratorZoneControllerMockMvcTests {
 
         assertEquals(APPLICATION_JSON_VALUE, result.getResponse().getContentType());
         assertTrue(result.getResponse().getContentAsString().contains("Required request body is missing"));
-    }
-
-    //TODO: delete once the orchestrator create API implemented
-    @SneakyThrows
-    private IdentityZone createIdentityZone() {
-        IdentityZone identityZone = createSimpleIdentityZone(RandomString.make(10));
-        IdentityZoneConfiguration identityZoneConfiguration = new IdentityZoneConfiguration();
-        Map<String, String> keys = new HashMap<>();
-        keys.put("kid", "key");
-        identityZoneConfiguration.getTokenPolicy().setKeys(keys);
-        identityZoneConfiguration.getTokenPolicy().setActiveKeyId("kid");
-        identityZoneConfiguration.getTokenPolicy().setKeys(keys);
-
-        identityZone.setConfig(identityZoneConfiguration);
-        identityZone.getConfig().getSamlConfig().setPrivateKey(serviceProviderKey);
-        identityZone.getConfig().getSamlConfig().setPrivateKeyPassword(serviceProviderKeyPassword);
-        identityZone.getConfig().getSamlConfig().setCertificate(serviceProviderCertificate);
-        MvcResult result = mockMvc.perform(
-                                      post("/identity-zones")
-                                          .header("Authorization", "Bearer " + orchestratorZonesWriteToken)
-                                          .contentType(APPLICATION_JSON)
-                                          .content(JsonUtils.writeValueAsString(identityZone)))
-                                  .andExpect(status().is(HttpStatus.CREATED.value()))
-                                  .andReturn();
-
-        return JsonUtils.readValue(result.getResponse().getContentAsString(), IdentityZone.class);
-    }
-
-    //TODO: delete once the orchestrator create API implemented
-    private IdentityZone createSimpleIdentityZone(String id) {
-        IdentityZone identityZone = new IdentityZone();
-        identityZone.setId(id);
-        identityZone.setSubdomain(hasText(id) ? id : new RandomValueStringGenerator().generate());
-        identityZone.setName("test-name");
-        identityZone.setDescription("Like the Twilight Zone but tastier.");
-        return identityZone;
     }
 
     private static class IdentityZonesBaseUrlsArgumentsSource implements ArgumentsProvider {
