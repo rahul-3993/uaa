@@ -162,7 +162,9 @@ public class OrchestratorZoneControllerIntegrationTests {
         assertNotNull(actualResponse.getState());
         assertEquals(expectedResponse.getState(), actualResponse.getState());
 
-        assertNotNull(actualResponse.getName());
+        if (expectedResponse.getName() != null ) {
+            assertNotNull(actualResponse.getName());
+        }
         assertEquals(expectedResponse.getName(), actualResponse.getName());
 
         ConnectionDetails expectedConnectionDetails = expectedResponse.getConnectionDetails();
@@ -209,17 +211,19 @@ public class OrchestratorZoneControllerIntegrationTests {
 
     @Test
     public void testGetZone_EmptyError() {
-        ResponseEntity<String> response = client.getForEntity(
+        ResponseEntity<OrchestratorZoneResponse> response = client.getForEntity(
             serverRunning.getUrl(ORCHESTRATOR_ZONES_APIS_ENDPOINT),
-            String.class);
+                OrchestratorZoneResponse.class);
+
         if (response.getStatusCode().is4xxClientError()) {
             assertEquals(response.getStatusCode(), HttpStatus.BAD_REQUEST);
-            assertNotNull(response.getBody());
             assertEquals(APPLICATION_JSON_UTF8, response.getHeaders().getContentType());
-            String expected  =  JsonUtils.writeValueAsString(
-                new OrchestratorZoneResponse(null, null, "Required request parameter 'name' for method parameter type String is " +
-                                              "not present", OrchestratorState.PERMANENT_FAILURE.toString()));
-            assertEquals(expected, response.getBody());
+
+            OrchestratorZoneResponse expectedResponse = new OrchestratorZoneResponse();
+            expectedResponse.setMessage("Required request parameter 'name' for method parameter type String is not present");
+            expectedResponse.setState(OrchestratorState.PERMANENT_FAILURE.toString());
+
+            assertResponse(expectedResponse, response.getBody());
         } else {
             fail("Server not returning expected status code");
         }

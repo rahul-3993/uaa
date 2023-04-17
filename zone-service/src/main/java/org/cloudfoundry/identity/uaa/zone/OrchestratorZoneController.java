@@ -4,7 +4,6 @@ import static org.cloudfoundry.identity.uaa.zone.ErrorMessageUtil.MANDATORY_VALI
 import static org.cloudfoundry.identity.uaa.zone.ErrorMessageUtil.getErrorMessagesConstraintViolation;
 import static org.cloudfoundry.identity.uaa.zone.ErrorMessageUtil.getErrorMessagesHttpMessageNotReadable;
 import static org.cloudfoundry.identity.uaa.zone.ErrorMessageUtil.getErrorMessagesMethodArgumentInvalid;
-import static org.cloudfoundry.identity.uaa.zone.OrchestratorState.CREATE_IN_PROGRESS;
 import static org.springframework.http.HttpStatus.ACCEPTED;
 import static org.springframework.http.HttpStatus.CONFLICT;
 import static org.springframework.http.HttpStatus.FORBIDDEN;
@@ -66,7 +65,7 @@ public class OrchestratorZoneController {
         zoneService.createZone(orchestratorZoneRequest);
         OrchestratorZoneResponse body =
             new OrchestratorZoneResponse(orchestratorZoneRequest.getName(), null, ZONE_CREATED_MESSAGE,
-                                         CREATE_IN_PROGRESS.toString());
+                    OrchestratorState.CREATE_IN_PROGRESS.toString());
         return ResponseEntity.status(ACCEPTED).body(body);
     }
 
@@ -92,14 +91,14 @@ public class OrchestratorZoneController {
             zoneName = ((OrchestratorZoneServiceException) ex).getZoneName();
         }
         return ResponseEntity.badRequest().body(new OrchestratorZoneResponse(zoneName, null, ex.getMessage(),
-                                                                             OrchestratorState.PERMANENT_FAILURE.toString()));
+                OrchestratorState.PERMANENT_FAILURE.toString()));
     }
 
     @ExceptionHandler(value = { ZoneAlreadyExistsException.class })
     public ResponseEntity<OrchestratorZoneResponse> zoneAlreadyExist(ZoneAlreadyExistsException ex) {
         return ResponseEntity.status(CONFLICT).body(
             new OrchestratorZoneResponse(ex.getZoneName(), null, ex.getMessage(),
-                                         OrchestratorState.PERMANENT_FAILURE.toString()));
+                    OrchestratorState.PERMANENT_FAILURE.toString()));
     }
 
     @ExceptionHandler(value = { ZoneDoesNotExistsException.class })
