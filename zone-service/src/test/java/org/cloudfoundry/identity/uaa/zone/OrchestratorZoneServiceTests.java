@@ -194,9 +194,14 @@ public class OrchestratorZoneServiceTests {
         IdentityProvider identityProvider = createDefaultIdp(identityZone);
         when(zoneProvisioning.create(any())).thenReturn(identityZone);
         when(idpProvisioning.create(any(),any())).thenReturn(identityProvider);
-        when(clientDetailsService.create(any(),any())).thenThrow(new OrchestratorZoneServiceException("Client Already exists"));
-        Assertions.assertThrows(OrchestratorZoneServiceException.class, () -> zoneService.createZone(zoneRequest),
-                                "Client Already exists exception not thrown");
+        when(clientDetailsService.create(any(),any())).thenThrow(
+                new OrchestratorZoneServiceException(ZONE_NAME, "Client Already exists"));
+
+        OrchestratorZoneServiceException exception =
+                Assertions.assertThrows(OrchestratorZoneServiceException.class, () -> zoneService.createZone(zoneRequest),
+                "Client Already exists exception not thrown");
+
+        assertEquals(ZONE_NAME, exception.getZoneName());
         verify(idpProvisioning, times(1)).create(any(),any());
         verify(clientDetailsService, times(1)).create(any(),any());
         verify(clientDetailsValidator, times(1)).validate(any(),anyBoolean(),anyBoolean());
@@ -213,8 +218,11 @@ public class OrchestratorZoneServiceTests {
         when(idpProvisioning.create(any(),any())).thenThrow(new IdpAlreadyExistsException("IDP Already exists"));
         when(clientDetailsService.create(any(),any())).thenReturn(any());
 
-        Assertions.assertThrows(OrchestratorZoneServiceException.class, () -> zoneService.createZone(zoneRequest),
-                                "IDP Already exists exception not thrown");
+        OrchestratorZoneServiceException exception =
+                Assertions.assertThrows(OrchestratorZoneServiceException.class, () -> zoneService.createZone(zoneRequest),
+                "IDP Already exists exception not thrown");
+
+        assertEquals(ZONE_NAME, exception.getZoneName());
     }
 
     @Test
@@ -228,8 +236,11 @@ public class OrchestratorZoneServiceTests {
         when(idpProvisioning.create(any(),any())).thenReturn(identityProvider);
         when(clientDetailsService.create(any(),any())).thenReturn(any());
 
-        Assertions.assertThrows(ZoneAlreadyExistsException.class, () -> zoneService.createZone(zoneRequest),
-                                "Identity Zone Already exists exception not thrown");
+        ZoneAlreadyExistsException exception =
+                Assertions.assertThrows(ZoneAlreadyExistsException.class, () -> zoneService.createZone(zoneRequest),
+                "Identity Zone Already exists exception not thrown");
+
+        assertEquals(ZONE_NAME, exception.getZoneName());
     }
 
     @Test
@@ -285,10 +296,13 @@ public class OrchestratorZoneServiceTests {
         String errorMessage = String.format("The subdomain name %s is already taken. Please use a different subdomain",
                                             zoneRequest.getParameters().getSubdomain());
         when(zoneProvisioning.create(any())).thenThrow(new ZoneAlreadyExistsException(errorMessage));
+
         ZoneAlreadyExistsException exception =
             assertThrows(ZoneAlreadyExistsException.class, () ->
                              zoneService.createZone(zoneRequest),
                          errorMessage);
+
+        assertEquals(ZONE_NAME, exception.getZoneName());
         assertTrue(exception.getMessage().contains(errorMessage));
         verify(zoneProvisioning, times(1)).create(any());
     }
